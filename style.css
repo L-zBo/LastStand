@@ -1,0 +1,274 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #fff;
+}
+
+.screen {
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 开始界面 */
+#startScreen {
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+#startScreen h1 {
+    font-size: 3em;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.class-selection {
+    margin-top: 20px;
+}
+
+.class-selection h2 {
+    margin-bottom: 20px;
+    font-size: 1.5em;
+}
+
+.class-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.class-card {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 20px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.class-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.class-card h3 {
+    font-size: 1.8em;
+    margin-bottom: 10px;
+}
+
+.class-card p {
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+/* 游戏界面 */
+#gameScreen {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+#ui {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px 30px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    gap: 40px;
+    min-width: 800px;
+    backdrop-filter: blur(5px);
+}
+
+.ui-left, .ui-right {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stat-bar {
+    display: flex;
+    gap: 20px;
+    font-size: 0.95em;
+}
+
+.stat-bar span {
+    white-space: nowrap;
+}
+
+#gameCanvas {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    background: #1a1a2e;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* 升级界面 */
+#levelUpScreen {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    padding: 40px;
+    border-radius: 20px;
+    border: 3px solid #ffd700;
+    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+    z-index: 1000;
+}
+
+#levelUpScreen h2 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+}
+
+#levelUpScreen p {
+    font-size: 1.2em;
+    margin-bottom: 30px;
+}
+
+.buff-options {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.buff-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 25px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    min-width: 200px;
+    max-width: 250px;
+}
+
+.buff-card:hover {
+    transform: translateY(-10px) scale(1.05);
+    border-color: #ffd700;
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+}
+
+.buff-icon {
+    font-size: 3em;
+    margin-bottom: 10px;
+}
+
+.buff-card h3 {
+    font-size: 1.3em;
+    margin-bottom: 10px;
+    color: #ffd700;
+}
+
+.buff-card p {
+    font-size: 0.95em;
+    color: #fff;
+    margin: 0;
+}
+
+/* 游戏结束界面 */
+#gameOverScreen {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    padding: 50px;
+    border-radius: 20px;
+    border: 3px solid #ff4757;
+    box-shadow: 0 0 50px rgba(255, 71, 87, 0.5);
+    z-index: 1000;
+}
+
+#gameOverScreen h1 {
+    font-size: 3em;
+    margin-bottom: 30px;
+    color: #ff4757;
+    text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+}
+
+#gameStats {
+    margin-bottom: 30px;
+}
+
+#gameStats p {
+    font-size: 1.3em;
+    margin: 10px 0;
+}
+
+#restartBtn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: none;
+    padding: 15px 40px;
+    font-size: 1.2em;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+#restartBtn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+}
+
+/* 响应式设计 */
+@media (max-width: 900px) {
+    .class-cards {
+        grid-template-columns: 1fr;
+    }
+
+    #ui {
+        min-width: auto;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .buff-options {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #gameCanvas {
+        width: 100%;
+        height: auto;
+    }
+}
+
+/* 动画效果 */
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    }
+}
+
+.class-card:hover,
+.buff-card:hover {
+    animation: glow 1.5s infinite;
+}
