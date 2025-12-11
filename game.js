@@ -1,14 +1,14 @@
 // 游戏配置
 const CONFIG = {
     canvas: {
-        width: 800,
-        height: 600
+        width: 1200,
+        height: 800
     },
     player: {
-        size: 20
+        size: 25
     },
     enemy: {
-        size: 15,
+        size: 18,
         spawnInterval: 2000, // 2秒生成一波
         spawnRate: 3 // 每波生成3个
     }
@@ -21,28 +21,32 @@ const CLASSES = {
         health: 150,
         attack: 15,
         speed: 3,
-        color: '#ff6b6b'
+        color: '#ff6b6b',
+        sprite: '🛡️'
     },
     mage: {
         name: '法师',
         health: 80,
         attack: 25,
         speed: 3.5,
-        color: '#4ecdc4'
+        color: '#4ecdc4',
+        sprite: '🧙'
     },
     assassin: {
         name: '刺客',
         health: 100,
         attack: 20,
         speed: 5,
-        color: '#95e1d3'
+        color: '#95e1d3',
+        sprite: '🥷'
     },
     ranger: {
         name: '游侠',
         health: 110,
         attack: 18,
         speed: 4,
-        color: '#f38181'
+        color: '#f38181',
+        sprite: '🏹'
     }
 };
 
@@ -132,6 +136,7 @@ let game = {
     ctx: null,
     player: null,
     enemies: [],
+    particles: [], // 粒子效果
     keys: {},
     lastTime: 0,
     gameTime: 0,
@@ -141,6 +146,39 @@ let game = {
     spawnInterval: CONFIG.enemy.spawnInterval,
     spawnRate: CONFIG.enemy.spawnRate
 };
+
+// 粒子类（用于视觉效果）
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = (Math.random() - 0.5) * 4;
+        this.life = 1;
+        this.decay = 0.02;
+        this.size = Math.random() * 3 + 2;
+        this.color = color;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+    }
+
+    draw(ctx) {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    isDead() {
+        return this.life <= 0;
+    }
+}
 
 // 玩家类
 class Player {
@@ -154,12 +192,13 @@ class Player {
         this.attack = classConfig.attack;
         this.speed = classConfig.speed;
         this.color = classConfig.color;
+        this.sprite = classConfig.sprite;
         this.classType = classType;
         this.level = 1;
         this.exp = 0;
         this.maxExp = 100;
         this.expMultiplier = 1;
-        this.attackRange = 40;
+        this.attackRange = 80;
         this.critChance = 0;
         this.vampireHeal = 0;
         this.multiShot = 1;
@@ -211,18 +250,30 @@ class Player {
 
             targetsToAttack.forEach(({enemy}) => {
                 let damage = this.attack;
+                let isCrit = false;
 
                 // 暴击判定
                 if (Math.random() < this.critChance) {
                     damage *= 2;
+                    isCrit = true;
                 }
 
                 enemy.health -= damage;
+
+                // 创建攻击特效粒子
+                for (let i = 0; i < 5; i++) {
+                    game.particles.push(new Particle(enemy.x, enemy.y, isCrit ? '#ffff00' : this.color));
+                }
 
                 // 如果敌人死亡
                 if (enemy.health <= 0) {
                     this.gainExp(enemy.expValue);
                     game.killCount++;
+
+                    // 死亡粒子效果
+                    for (let i = 0; i < 10; i++) {
+                        game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
+                    }
 
                     // 吸血效果
                     if (this.vampireHeal > 0) {
@@ -254,11 +305,16 @@ class Player {
     }
 
     draw(ctx) {
-        // 绘制玩家
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
+        // 绘制玩家精灵
+        ctx.font = `${this.size * 2}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // 添加阴影效果
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 10;
+        ctx.fillText(this.sprite, this.x, this.y);
+        ctx.shadowBlur = 0;
 
         // 绘制攻击范围（半透明）
         ctx.strokeStyle = this.color + '30';
@@ -268,15 +324,15 @@ class Player {
         ctx.stroke();
 
         // 绘制生命条
-        const barWidth = 40;
-        const barHeight = 5;
+        const barWidth = 50;
+        const barHeight = 6;
         const healthPercent = this.health / this.maxHealth;
 
         ctx.fillStyle = '#333';
-        ctx.fillRect(this.x - barWidth/2, this.y - this.size - 10, barWidth, barHeight);
+        ctx.fillRect(this.x - barWidth/2, this.y - this.size - 15, barWidth, barHeight);
 
         ctx.fillStyle = '#00ff00';
-        ctx.fillRect(this.x - barWidth/2, this.y - this.size - 10, barWidth * healthPercent, barHeight);
+        ctx.fillRect(this.x - barWidth/2, this.y - this.size - 15, barWidth * healthPercent, barHeight);
     }
 }
 
@@ -296,6 +352,7 @@ class Enemy {
             this.damage = 10;
             this.expValue = 20;
             this.color = '#ff4757';
+            this.sprite = '👾';
         } else if (type === 'fast') {
             this.health = 20;
             this.maxHealth = 20;
@@ -303,6 +360,7 @@ class Enemy {
             this.damage = 8;
             this.expValue = 15;
             this.color = '#ffa502';
+            this.sprite = '⚡';
         } else if (type === 'tank') {
             this.health = 60;
             this.maxHealth = 60;
@@ -310,6 +368,7 @@ class Enemy {
             this.damage = 15;
             this.expValue = 30;
             this.color = '#2ed573';
+            this.sprite = '💀';
         }
     }
 
@@ -336,23 +395,28 @@ class Enemy {
     }
 
     draw(ctx) {
-        // 绘制敌人
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
+        // 绘制敌人精灵
+        ctx.font = `${this.size * 2}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // 添加阴影效果
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.fillText(this.sprite, this.x, this.y);
+        ctx.shadowBlur = 0;
 
         // 绘制生命条
         if (this.health < this.maxHealth) {
-            const barWidth = 30;
-            const barHeight = 4;
+            const barWidth = 35;
+            const barHeight = 5;
             const healthPercent = this.health / this.maxHealth;
 
             ctx.fillStyle = '#333';
-            ctx.fillRect(this.x - barWidth/2, this.y - this.size - 8, barWidth, barHeight);
+            ctx.fillRect(this.x - barWidth/2, this.y - this.size - 12, barWidth, barHeight);
 
             ctx.fillStyle = '#ff4757';
-            ctx.fillRect(this.x - barWidth/2, this.y - this.size - 8, barWidth * healthPercent, barHeight);
+            ctx.fillRect(this.x - barWidth/2, this.y - this.size - 12, barWidth * healthPercent, barHeight);
         }
     }
 }
@@ -478,22 +542,46 @@ function gameLoop(timestamp) {
         game.player.update(deltaTime);
 
         game.enemies.forEach(enemy => enemy.update());
+        game.particles.forEach(particle => particle.update());
 
-        // 移除死亡的敌人
+        // 移除死亡的敌人和粒子
         game.enemies = game.enemies.filter(enemy => enemy.health > 0);
+        game.particles = game.particles.filter(particle => !particle.isDead());
 
         // 生成敌人
         spawnEnemies();
 
-        // 绘制
+        // 更新UI
+        updateUI();
+    }
+
+    // 绘制（即使不在playing状态也绘制，保持画布清晰）
+    if (game.state === 'playing' || game.state === 'levelup') {
         game.ctx.fillStyle = '#1a1a2e';
         game.ctx.fillRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
 
+        // 绘制网格背景
+        game.ctx.strokeStyle = '#2a2a3e';
+        game.ctx.lineWidth = 1;
+        for (let x = 0; x < CONFIG.canvas.width; x += 50) {
+            game.ctx.beginPath();
+            game.ctx.moveTo(x, 0);
+            game.ctx.lineTo(x, CONFIG.canvas.height);
+            game.ctx.stroke();
+        }
+        for (let y = 0; y < CONFIG.canvas.height; y += 50) {
+            game.ctx.beginPath();
+            game.ctx.moveTo(0, y);
+            game.ctx.lineTo(CONFIG.canvas.width, y);
+            game.ctx.stroke();
+        }
+
+        // 绘制粒子
+        game.particles.forEach(particle => particle.draw(game.ctx));
+
+        // 绘制玩家和敌人
         game.player.draw(game.ctx);
         game.enemies.forEach(enemy => enemy.draw(game.ctx));
-
-        // 更新UI
-        updateUI();
     }
 
     requestAnimationFrame(gameLoop);
@@ -536,12 +624,16 @@ function startGame() {
 
     game.player = new Player(game.selectedClass);
     game.enemies = [];
+    game.particles = [];
     game.killCount = 0;
     game.gameTime = 0;
+    game.lastTime = 0; // 重置时间戳
     game.lastSpawnTime = Date.now();
+    game.spawnInterval = CONFIG.enemy.spawnInterval;
     game.state = 'playing';
 
-    gameLoop();
+    // 启动游戏循环
+    requestAnimationFrame(gameLoop);
 }
 
 // 页面加载完成后初始化
