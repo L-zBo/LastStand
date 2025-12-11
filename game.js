@@ -4,6 +4,10 @@ const CONFIG = {
         width: 1200,
         height: 800
     },
+    world: {
+        width: 4000,  // 大地图宽度
+        height: 3000  // 大地图高度
+    },
     player: {
         size: 25
     },
@@ -144,7 +148,8 @@ let game = {
     selectedClass: null,
     lastSpawnTime: 0,
     spawnInterval: CONFIG.enemy.spawnInterval,
-    spawnRate: CONFIG.enemy.spawnRate
+    spawnRate: CONFIG.enemy.spawnRate,
+    camera: { x: 0, y: 0 } // 摄像机位置
 };
 
 // 粒子类（用于视觉效果）
@@ -184,8 +189,8 @@ class Particle {
 class Player {
     constructor(classType) {
         const classConfig = CLASSES[classType];
-        this.x = CONFIG.canvas.width / 2;
-        this.y = CONFIG.canvas.height / 2;
+        this.x = CONFIG.world.width / 2;  // 在世界中心生成
+        this.y = CONFIG.world.height / 2;
         this.size = CONFIG.player.size;
         this.health = classConfig.health;
         this.maxHealth = classConfig.health;
@@ -223,9 +228,12 @@ class Player {
         this.x += dx * this.speed;
         this.y += dy * this.speed;
 
-        // 边界限制
-        this.x = Math.max(this.size, Math.min(CONFIG.canvas.width - this.size, this.x));
-        this.y = Math.max(this.size, Math.min(CONFIG.canvas.height - this.size, this.y));
+        // 边界限制（世界边界）
+        this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, this.x));
+        this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
+
+        // 更新摄像机位置（平滑跟随）
+        updateCamera();
 
         // 自动攻击最近的敌人
         this.autoAttack();
@@ -434,31 +442,39 @@ function spawnEnemies() {
             let x, y;
             const side = Math.floor(Math.random() * 4);
 
-            // 从屏幕边缘随机位置生成
+            // 从摄像机视野外围生成（在玩家周围，但屏幕外）
+            const playerX = game.player.x;
+            const playerY = game.player.y;
+            const spawnDistance = Math.max(CONFIG.canvas.width, CONFIG.canvas.height) / 2 + 100;
+
             switch(side) {
                 case 0: // 上
-                    x = Math.random() * CONFIG.canvas.width;
-                    y = -20;
+                    x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
+                    y = playerY - spawnDistance;
                     break;
                 case 1: // 右
-                    x = CONFIG.canvas.width + 20;
-                    y = Math.random() * CONFIG.canvas.height;
+                    x = playerX + spawnDistance;
+                    y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
                     break;
                 case 2: // 下
-                    x = Math.random() * CONFIG.canvas.width;
-                    y = CONFIG.canvas.height + 20;
+                    x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
+                    y = playerY + spawnDistance;
                     break;
                 case 3: // 左
-                    x = -20;
-                    y = Math.random() * CONFIG.canvas.height;
+                    x = playerX - spawnDistance;
+                    y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
                     break;
             }
+
+            // 确保在世界范围内
+            x = Math.max(50, Math.min(CONFIG.world.width - 50, x));
+            y = Math.max(50, Math.min(CONFIG.world.height - 50, y));
 
             // 随机敌人类型
             let type = 'normal';
             const rand = Math.random();
-            if (rand > 0.7) type = 'fast';
-            else if (rand > 0.85) type = 'tank';
+            if (rand > 0.85) type = 'tank';
+            else if (rand > 0.7) type = 'fast';
 
             game.enemies.push(new Enemy(x, y, type));
         }
@@ -468,6 +484,17 @@ function spawnEnemies() {
         // 随时间降低生成间隔（增加难度）
         game.spawnInterval = Math.max(1000, CONFIG.enemy.spawnInterval - timeFactor * 50);
     }
+}
+
+// 更新摄像机位置
+function updateCamera() {
+    // 摄像机跟随玩家，让玩家始终在屏幕中心
+    game.camera.x = game.player.x - CONFIG.canvas.width / 2;
+    game.camera.y = game.player.y - CONFIG.canvas.height / 2;
+
+    // 限制摄像机在世界边界内
+    game.camera.x = Math.max(0, Math.min(CONFIG.world.width - CONFIG.canvas.width, game.camera.x));
+    game.camera.y = Math.max(0, Math.min(CONFIG.world.height - CONFIG.canvas.height, game.camera.y));
 }
 
 // 更新UI
@@ -548,6 +575,12 @@ function gameLoop(timestamp) {
         game.enemies = game.enemies.filter(enemy => enemy.health > 0);
         game.particles = game.particles.filter(particle => !particle.isDead());
 
+        // 清理距离玩家太远的敌人（优化性能）
+        game.enemies = game.enemies.filter(enemy => {
+            const dist = Math.hypot(enemy.x - game.player.x, enemy.y - game.player.y);
+            return dist < Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * 2;
+        });
+
         // 生成敌人
         spawnEnemies();
 
@@ -557,34 +590,105 @@ function gameLoop(timestamp) {
 
     // 绘制（即使不在playing状态也绘制，保持画布清晰）
     if (game.state === 'playing' || game.state === 'levelup') {
+        // 清空画布
         game.ctx.fillStyle = '#1a1a2e';
         game.ctx.fillRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
 
-        // 绘制网格背景
+        // 保存当前状态
+        game.ctx.save();
+
+        // 应用摄像机变换
+        game.ctx.translate(-game.camera.x, -game.camera.y);
+
+        // 绘制世界网格背景
         game.ctx.strokeStyle = '#2a2a3e';
         game.ctx.lineWidth = 1;
-        for (let x = 0; x < CONFIG.canvas.width; x += 50) {
+
+        // 只绘制可见区域的网格
+        const startX = Math.floor(game.camera.x / 50) * 50;
+        const startY = Math.floor(game.camera.y / 50) * 50;
+        const endX = Math.ceil((game.camera.x + CONFIG.canvas.width) / 50) * 50;
+        const endY = Math.ceil((game.camera.y + CONFIG.canvas.height) / 50) * 50;
+
+        for (let x = startX; x <= endX; x += 50) {
             game.ctx.beginPath();
-            game.ctx.moveTo(x, 0);
-            game.ctx.lineTo(x, CONFIG.canvas.height);
+            game.ctx.moveTo(x, startY);
+            game.ctx.lineTo(x, endY);
             game.ctx.stroke();
         }
-        for (let y = 0; y < CONFIG.canvas.height; y += 50) {
+        for (let y = startY; y <= endY; y += 50) {
             game.ctx.beginPath();
-            game.ctx.moveTo(0, y);
-            game.ctx.lineTo(CONFIG.canvas.width, y);
+            game.ctx.moveTo(startX, y);
+            game.ctx.lineTo(endX, y);
             game.ctx.stroke();
         }
+
+        // 绘制世界边界
+        game.ctx.strokeStyle = '#ff4757';
+        game.ctx.lineWidth = 5;
+        game.ctx.strokeRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
         // 绘制粒子
         game.particles.forEach(particle => particle.draw(game.ctx));
 
         // 绘制玩家和敌人
-        game.player.draw(game.ctx);
         game.enemies.forEach(enemy => enemy.draw(game.ctx));
+        game.player.draw(game.ctx);
+
+        // 恢复状态
+        game.ctx.restore();
+
+        // 绘制小地图（在屏幕空间，不受摄像机影响）
+        drawMinimap();
     }
 
     requestAnimationFrame(gameLoop);
+}
+
+// 绘制小地图
+function drawMinimap() {
+    const minimapSize = 150;
+    const minimapX = CONFIG.canvas.width - minimapSize - 20;
+    const minimapY = 20;
+    const scaleX = minimapSize / CONFIG.world.width;
+    const scaleY = minimapSize / CONFIG.world.height;
+
+    // 半透明背景
+    game.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    game.ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
+
+    // 边框
+    game.ctx.strokeStyle = '#fff';
+    game.ctx.lineWidth = 2;
+    game.ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
+
+    // 绘制玩家位置
+    const playerMinimapX = minimapX + game.player.x * scaleX;
+    const playerMinimapY = minimapY + game.player.y * scaleY;
+
+    game.ctx.fillStyle = game.player.color;
+    game.ctx.beginPath();
+    game.ctx.arc(playerMinimapX, playerMinimapY, 3, 0, Math.PI * 2);
+    game.ctx.fill();
+
+    // 绘制敌人位置
+    game.enemies.forEach(enemy => {
+        const enemyMinimapX = minimapX + enemy.x * scaleX;
+        const enemyMinimapY = minimapY + enemy.y * scaleY;
+
+        game.ctx.fillStyle = enemy.color;
+        game.ctx.fillRect(enemyMinimapX - 1, enemyMinimapY - 1, 2, 2);
+    });
+
+    // 绘制可视区域
+    const viewX = minimapX + game.camera.x * scaleX;
+    const viewY = minimapY + game.camera.y * scaleY;
+    const viewW = CONFIG.canvas.width * scaleX;
+    const viewH = CONFIG.canvas.height * scaleY;
+
+    game.ctx.strokeStyle = '#00ff00';
+    game.ctx.lineWidth = 1;
+    game.ctx.strokeRect(viewX, viewY, viewW, viewH);
 }
 
 // 初始化游戏
