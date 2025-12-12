@@ -142,8 +142,224 @@ const BUFFS = [
         description: '同时攻击多个敌人',
         icon: '🎯',
         apply: (player) => player.multiShot = (player.multiShot || 1) + 1
+    },
+    {
+        id: 'attackSpeedUp',
+        name: '疾风',
+        description: '攻击速度 +20%',
+        icon: '⚡',
+        apply: (player) => player.attackCooldown = Math.max(100, player.attackCooldown * 0.8)
+    },
+    {
+        id: 'critDamage',
+        name: '暴击伤害',
+        description: '暴击伤害 +50%',
+        icon: '💢',
+        apply: (player) => player.critDamage = (player.critDamage || 2) + 0.5
+    },
+    {
+        id: 'healthRegen',
+        name: '生命恢复',
+        description: '每秒恢复 2 生命',
+        icon: '💖',
+        apply: (player) => player.healthRegen = (player.healthRegen || 0) + 2
     }
 ];
+
+// 武器配置
+const WEAPONS = {
+    // 基础武器
+    sword: {
+        id: 'sword',
+        name: '短剑',
+        description: '基础近战武器',
+        icon: '🗡️',
+        level: 1,
+        maxLevel: 5,
+        damage: 5,
+        type: 'melee',
+        evolvesWith: 'shield',
+        evolvesTo: 'holyBlade'
+    },
+    dagger: {
+        id: 'dagger',
+        name: '匕首',
+        description: '快速攻击',
+        icon: '🔪',
+        level: 1,
+        maxLevel: 5,
+        damage: 3,
+        attackSpeed: 0.3,
+        type: 'melee',
+        evolvesWith: 'cloak',
+        evolvesTo: 'shadowBlade'
+    },
+    bow: {
+        id: 'bow',
+        name: '短弓',
+        description: '远程攻击',
+        icon: '🏹',
+        level: 1,
+        maxLevel: 5,
+        damage: 4,
+        type: 'ranged',
+        evolvesWith: 'quiver',
+        evolvesTo: 'phoenixBow'
+    },
+    staff: {
+        id: 'staff',
+        name: '法杖',
+        description: '魔法攻击',
+        icon: '🪄',
+        level: 1,
+        maxLevel: 5,
+        damage: 6,
+        type: 'magic',
+        evolvesWith: 'tome',
+        evolvesTo: 'arcaneStaff'
+    },
+    axe: {
+        id: 'axe',
+        name: '战斧',
+        description: '高伤害近战',
+        icon: '🪓',
+        level: 1,
+        maxLevel: 5,
+        damage: 8,
+        type: 'melee',
+        evolvesWith: 'gauntlet',
+        evolvesTo: 'bloodAxe'
+    },
+    fireball: {
+        id: 'fireball',
+        name: '火球术',
+        description: '发射火球',
+        icon: '🔥',
+        level: 1,
+        maxLevel: 5,
+        damage: 7,
+        type: 'magic',
+        evolvesWith: 'ember',
+        evolvesTo: 'inferno'
+    },
+    // 辅助装备（用于合成）
+    shield: {
+        id: 'shield',
+        name: '盾牌',
+        description: '防御 +10',
+        icon: '🛡️',
+        level: 1,
+        maxLevel: 5,
+        defense: 10,
+        type: 'accessory'
+    },
+    cloak: {
+        id: 'cloak',
+        name: '斗篷',
+        description: '移动速度 +10%',
+        icon: '🧥',
+        level: 1,
+        maxLevel: 5,
+        speedBonus: 0.1,
+        type: 'accessory'
+    },
+    quiver: {
+        id: 'quiver',
+        name: '箭袋',
+        description: '攻击速度 +15%',
+        icon: '🎯',
+        level: 1,
+        maxLevel: 5,
+        attackSpeedBonus: 0.15,
+        type: 'accessory'
+    },
+    tome: {
+        id: 'tome',
+        name: '魔法书',
+        description: '魔法伤害 +20%',
+        icon: '📖',
+        level: 1,
+        maxLevel: 5,
+        magicBonus: 0.2,
+        type: 'accessory'
+    },
+    gauntlet: {
+        id: 'gauntlet',
+        name: '拳套',
+        description: '攻击力 +5',
+        icon: '🥊',
+        level: 1,
+        maxLevel: 5,
+        attackBonus: 5,
+        type: 'accessory'
+    },
+    ember: {
+        id: 'ember',
+        name: '余烬',
+        description: '火焰伤害 +15%',
+        icon: '✨',
+        level: 1,
+        maxLevel: 5,
+        fireBonus: 0.15,
+        type: 'accessory'
+    },
+    // 进化武器（满级合成后）
+    holyBlade: {
+        id: 'holyBlade',
+        name: '圣光之剑',
+        description: '神圣攻击，对敌人造成额外伤害',
+        icon: '⚔️',
+        damage: 25,
+        type: 'evolved',
+        special: '攻击附带圣光爆发'
+    },
+    shadowBlade: {
+        id: 'shadowBlade',
+        name: '暗影之刃',
+        description: '极速暗影攻击',
+        icon: '🌙',
+        damage: 15,
+        attackSpeed: 0.5,
+        type: 'evolved',
+        special: '攻击有几率造成双倍伤害'
+    },
+    phoenixBow: {
+        id: 'phoenixBow',
+        name: '凤凰弓',
+        description: '发射追踪火焰箭',
+        icon: '🔥',
+        damage: 20,
+        type: 'evolved',
+        special: '箭矢自动追踪敌人'
+    },
+    arcaneStaff: {
+        id: 'arcaneStaff',
+        name: '奥术法杖',
+        description: '强力魔法攻击',
+        icon: '🔮',
+        damage: 30,
+        type: 'evolved',
+        special: '魔法弹会弹射'
+    },
+    bloodAxe: {
+        id: 'bloodAxe',
+        name: '嗜血战斧',
+        description: '每次攻击吸取生命',
+        icon: '🪓',
+        damage: 35,
+        type: 'evolved',
+        special: '造成伤害的10%转化为生命'
+    },
+    inferno: {
+        id: 'inferno',
+        name: '炼狱之火',
+        description: '召唤火焰风暴',
+        icon: '🌋',
+        damage: 40,
+        type: 'evolved',
+        special: '对范围内所有敌人造成持续伤害'
+    }
+};
 
 // 游戏状态
 let game = {
