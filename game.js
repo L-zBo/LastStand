@@ -273,14 +273,11 @@ class Projectile {
             ctx.lineTo(4, 4);
             ctx.fill();
         } else if (this.type === 'magic') {
-            // 绘制魔法弹
+            // 绘制魔法弹（移除阴影效果以提升性能）
             ctx.fillStyle = this.color;
-            ctx.shadowColor = this.color;
-            ctx.shadowBlur = 10;
             ctx.beginPath();
             ctx.arc(0, 0, this.size, 0, Math.PI * 2);
             ctx.fill();
-            ctx.shadowBlur = 0;
         }
 
         ctx.restore();
@@ -338,9 +335,15 @@ class Player {
         const newX = this.x + dx * this.speed;
         const newY = this.y + dy * this.speed;
 
+        // 只检查附近的障碍物（性能优化）
+        const nearbyObstacles = game.obstacles.filter(obstacle => {
+            const dist = Math.hypot(obstacle.x - this.x, obstacle.y - this.y);
+            return dist < 200; // 只检查200像素内的障碍物
+        });
+
         // 检查与石头的碰撞
         let canMove = true;
-        for (const obstacle of game.obstacles) {
+        for (const obstacle of nearbyObstacles) {
             if (obstacle.blocking && obstacle.collidesWith(newX, newY, this.size)) {
                 canMove = false;
                 break;
@@ -356,9 +359,9 @@ class Player {
         this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, this.x));
         this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
 
-        // 检查是否在草丛中
+        // 检查是否在草丛中（只检查附近的障碍物）
         this.inBush = false;
-        for (const obstacle of game.obstacles) {
+        for (const obstacle of nearbyObstacles) {
             if (obstacle.type === 'bush' && obstacle.collidesWith(this.x, this.y, this.size)) {
                 this.inBush = true;
                 break;
@@ -411,8 +414,8 @@ class Player {
                     // 近战：直接造成伤害
                     enemy.health -= damage;
 
-                    // 创建近战特效
-                    for (let i = 0; i < 5; i++) {
+                    // 减少近战特效粒子（5 -> 3）
+                    for (let i = 0; i < 3; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, isCrit ? '#ffff00' : this.color));
                     }
                 } else if (this.attackType === 'ranged') {
@@ -440,8 +443,8 @@ class Player {
                     this.gainExp(enemy.expValue);
                     game.killCount++;
 
-                    // 死亡粒子效果
-                    for (let i = 0; i < 10; i++) {
+                    // 减少死亡粒子效果（10 -> 6）
+                    for (let i = 0; i < 6; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
                     }
 
@@ -482,16 +485,11 @@ class Player {
             ctx.globalAlpha = 0.3;
         }
 
-        // 绘制玩家精灵
+        // 绘制玩家精灵（移除阴影效果以提升性能）
         ctx.font = `${this.size * 2}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        // 添加阴影效果
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 10;
         ctx.fillText(this.sprite, this.x, this.y);
-        ctx.shadowBlur = 0;
 
         // 绘制攻击范围（半透明）
         ctx.strokeStyle = this.color + '30';
@@ -594,24 +592,17 @@ class Enemy {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // 精英怪有特殊光环
+        // 精英怪有特殊光环（简化绘制）
         if (this.isElite) {
-            ctx.shadowColor = this.color;
-            ctx.shadowBlur = 15;
-
-            // 绘制精英光环
+            // 只绘制光环，不绘制阴影（性能优化）
             ctx.strokeStyle = this.color;
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size + 10, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.size + 8, 0, Math.PI * 2);
             ctx.stroke();
-        } else {
-            ctx.shadowColor = this.color;
-            ctx.shadowBlur = 8;
         }
 
         ctx.fillText(this.sprite, this.x, this.y);
-        ctx.shadowBlur = 0;
 
         // 绘制生命条
         if (this.health < this.maxHealth) {
@@ -805,8 +796,8 @@ function gameLoop(timestamp) {
                     enemy.health -= projectile.damage;
                     projectile.hit = true; // 标记已击中
 
-                    // 击中特效
-                    for (let i = 0; i < 5; i++) {
+                    // 减少击中特效粒子（5 -> 2）
+                    for (let i = 0; i < 2; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, projectile.color));
                     }
 
@@ -815,8 +806,8 @@ function gameLoop(timestamp) {
                         game.player.gainExp(enemy.expValue);
                         game.killCount++;
 
-                        // 死亡粒子效果
-                        for (let i = 0; i < 10; i++) {
+                        // 减少死亡粒子效果（10 -> 6）
+                        for (let i = 0; i < 6; i++) {
                             game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
                         }
 
@@ -887,9 +878,17 @@ function gameLoop(timestamp) {
         game.ctx.lineWidth = 5;
         game.ctx.strokeRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
+        // 只绘制可见区域内的障碍物（性能优化）
+        const visibleObstacles = game.obstacles.filter(obstacle => {
+            return obstacle.x > game.camera.x - 100 &&
+                   obstacle.x < game.camera.x + CONFIG.canvas.width + 100 &&
+                   obstacle.y > game.camera.y - 100 &&
+                   obstacle.y < game.camera.y + CONFIG.canvas.height + 100;
+        });
+
         // 绘制障碍物（先绘制草丛，后绘制石头）
-        game.obstacles.filter(o => o.type === 'bush').forEach(obstacle => obstacle.draw(game.ctx));
-        game.obstacles.filter(o => o.type === 'rock').forEach(obstacle => obstacle.draw(game.ctx));
+        visibleObstacles.filter(o => o.type === 'bush').forEach(obstacle => obstacle.draw(game.ctx));
+        visibleObstacles.filter(o => o.type === 'rock').forEach(obstacle => obstacle.draw(game.ctx));
 
         // 绘制粒子
         game.particles.forEach(particle => particle.draw(game.ctx));
