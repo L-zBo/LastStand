@@ -822,6 +822,7 @@ class Enemy {
         this.size = CONFIG.enemy.size;
         this.type = type;
         this.isElite = false;
+        this.isBoss = false;
 
         // 根据类型设置属性
         if (type === 'normal') {
@@ -857,7 +858,20 @@ class Enemy {
             this.color = '#ff6348';
             this.sprite = '👹';
             this.isElite = true;
-            this.size = CONFIG.enemy.size * 1.5; // 精英怪更大
+            this.size = CONFIG.enemy.size * 1.5;
+        } else if (type === 'boss') {
+            // Boss属性根据波数增强
+            const bossLevel = Math.floor(game.wave.current / 10);
+            this.health = 500 + bossLevel * 200;
+            this.maxHealth = this.health;
+            this.speed = 1.2;
+            this.damage = 30 + bossLevel * 10;
+            this.expValue = 200 + bossLevel * 50;
+            this.color = '#9b59b6';
+            this.sprite = '👿';
+            this.isBoss = true;
+            this.isElite = true;
+            this.size = CONFIG.enemy.size * 2.5;
         }
     }
 
@@ -867,18 +881,20 @@ class Enemy {
         const dy = game.player.y - this.y;
         const distance = Math.hypot(dx, dy);
 
-        // 精英怪可以看到草丛中的玩家，普通怪看不到
-        const canSeePlayer = this.isElite || !game.player.hidden;
+        // 精英怪和Boss可以看到草丛中的玩家，普通怪看不到
+        const canSeePlayer = this.isElite || this.isBoss || !game.player.hidden;
 
         if (distance > 0 && canSeePlayer) {
             this.x += (dx / distance) * this.speed;
             this.y += (dy / distance) * this.speed;
         }
 
-        // 碰撞检测
+        // 碰撞检测（Boss不会碰撞消失）
         if (distance < this.size + game.player.size) {
             game.player.health -= this.damage;
-            this.health = 0; // 敌人也会消失
+            if (!this.isBoss) {
+                this.health = 0; // 普通敌人碰撞后消失
+            }
 
             if (game.player.health <= 0) {
                 gameOver();
@@ -892,9 +908,21 @@ class Enemy {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // 精英怪有特殊光环（简化绘制）
-        if (this.isElite) {
-            // 只绘制光环，不绘制阴影（性能优化）
+        // Boss特殊光环
+        if (this.isBoss) {
+            ctx.strokeStyle = '#9b59b6';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 15, 0, Math.PI * 2);
+            ctx.stroke();
+            // 内圈
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 8, 0, Math.PI * 2);
+            ctx.stroke();
+        } else if (this.isElite) {
+            // 精英怪光环
             ctx.strokeStyle = this.color;
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -906,8 +934,8 @@ class Enemy {
 
         // 绘制生命条
         if (this.health < this.maxHealth) {
-            const barWidth = this.isElite ? 45 : 35;
-            const barHeight = 5;
+            const barWidth = this.isBoss ? 80 : (this.isElite ? 45 : 35);
+            const barHeight = this.isBoss ? 8 : 5;
             const healthPercent = this.health / this.maxHealth;
 
             ctx.fillStyle = '#333';
@@ -919,62 +947,223 @@ class Enemy {
     }
 }
 
-// 生成敌人
-function spawnEnemies() {
+// 获取敌人生成位置
+function getSpawnPosition() {
+    const side = Math.floor(Math.random() * 4);
+    const playerX = game.player.x;
+    const playerY = game.player.y;
+    const spawnDistance = Math.max(CONFIG.canvas.width, CONFIG.canvas.height) / 2 + 100;
+    let x, y;
+
+    switch(side) {
+        case 0: // 上
+            x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
+            y = playerY - spawnDistance;
+            break;
+        case 1: // 右
+            x = playerX + spawnDistance;
+            y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
+            break;
+        case 2: // 下
+            x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
+            y = playerY + spawnDistance;
+            break;
+        case 3: // 左
+            x = playerX - spawnDistance;
+            y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
+            break;
+    }
+
+    // 确保在世界范围内
+    x = Math.max(50, Math.min(CONFIG.world.width - 50, x));
+    y = Math.max(50, Math.min(CONFIG.world.height - 50, y));
+
+    return { x, y };
+}
+
+// 开始新波次
+function startNewWave() {
+    const wave = game.wave;
+    wave.isSpawning = true;
+    wave.inBreak = false;
+    wave.eliteSpawned = false;
+    wave.bossSpawned = false;
+    wave.enemiesSpawned = 0;
+    wave.waveStartTime = Date.now();
+
+    // 计算本波敌人数量
+    wave.totalEnemies = CONFIG.wave.baseEnemyCount + (wave.current - 1) * CONFIG.wave.enemyIncrement;
+    wave.enemiesRemaining = wave.totalEnemies;
+
+    // Boss波次额外加敌人
+    if (wave.current % CONFIG.wave.bossWaveInterval === 0) {
+        wave.totalEnemies += 5;
+        wave.enemiesRemaining = wave.totalEnemies;
+    }
+
+    // 显示波次提示
+    showWaveNotification(wave.current);
+}
+
+// 波次敌人生成逻辑
+function updateWaveSpawning() {
     const now = Date.now();
+    const wave = game.wave;
 
-    if (now - game.lastSpawnTime >= game.spawnInterval) {
-        // 随着时间增加难度
-        const timeFactor = Math.floor(game.gameTime / 30); // 每30秒
-        const spawnCount = game.spawnRate + Math.floor(timeFactor / 2);
+    // 如果在休息时间
+    if (wave.inBreak) {
+        if (now - wave.waveStartTime >= CONFIG.wave.timeBetweenWaves) {
+            wave.current++;
+            startNewWave();
+        }
+        return;
+    }
 
-        for (let i = 0; i < spawnCount; i++) {
-            let x, y;
-            const side = Math.floor(Math.random() * 4);
+    // 如果不在生成状态，跳过
+    if (!wave.isSpawning) return;
 
-            // 从摄像机视野外围生成（在玩家周围，但屏幕外）
-            const playerX = game.player.x;
-            const playerY = game.player.y;
-            const spawnDistance = Math.max(CONFIG.canvas.width, CONFIG.canvas.height) / 2 + 100;
+    // 检查是否本波已生成完毕
+    if (wave.enemiesSpawned >= wave.totalEnemies) {
+        wave.isSpawning = false;
+        return;
+    }
 
-            switch(side) {
-                case 0: // 上
-                    x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
-                    y = playerY - spawnDistance;
-                    break;
-                case 1: // 右
-                    x = playerX + spawnDistance;
-                    y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
-                    break;
-                case 2: // 下
-                    x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
-                    y = playerY + spawnDistance;
-                    break;
-                case 3: // 左
-                    x = playerX - spawnDistance;
-                    y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
-                    break;
-            }
+    // 检查生成间隔
+    if (now - wave.lastSpawnTime < CONFIG.wave.timeBetweenSpawns) return;
 
-            // 确保在世界范围内
-            x = Math.max(50, Math.min(CONFIG.world.width - 50, x));
-            y = Math.max(50, Math.min(CONFIG.world.height - 50, y));
+    // 计算还需要生成多少普通敌人
+    const normalEnemiesNeeded = wave.totalEnemies - (wave.current % CONFIG.wave.bossWaveInterval === 0 ? 1 : 0) - 1; // 减去精英和可能的Boss
 
-            // 随机敌人类型（包括精英怪）
-            let type = 'normal';
-            const rand = Math.random();
-            if (rand > 0.95) type = 'elite'; // 5%几率精英怪
-            else if (rand > 0.85) type = 'tank';
-            else if (rand > 0.7) type = 'fast';
+    // 生成敌人
+    const pos = getSpawnPosition();
+    let type = 'normal';
 
-            game.enemies.push(new Enemy(x, y, type));
+    // 最后生成精英怪
+    if (wave.enemiesSpawned >= normalEnemiesNeeded && !wave.eliteSpawned) {
+        type = 'elite';
+        wave.eliteSpawned = true;
+    }
+    // Boss波次最后生成Boss
+    else if (wave.current % CONFIG.wave.bossWaveInterval === 0 &&
+             wave.enemiesSpawned >= wave.totalEnemies - 1 && !wave.bossSpawned) {
+        type = 'boss';
+        wave.bossSpawned = true;
+    }
+    // 普通敌人随机类型
+    else {
+        const rand = Math.random();
+        if (rand > 0.85) type = 'tank';
+        else if (rand > 0.7) type = 'fast';
+    }
+
+    game.enemies.push(new Enemy(pos.x, pos.y, type));
+    wave.enemiesSpawned++;
+    wave.lastSpawnTime = now;
+}
+
+// 检查波次完成
+function checkWaveComplete() {
+    const wave = game.wave;
+
+    // 如果还在生成或休息中，不检查
+    if (wave.isSpawning || wave.inBreak) return;
+
+    // 检查是否所有敌人都被消灭
+    if (game.enemies.length === 0 && wave.enemiesSpawned >= wave.totalEnemies) {
+        // 波次完成！
+        wave.inBreak = true;
+        wave.waveStartTime = Date.now();
+
+        // 显示波次完成奖励选择
+        game.state = 'waveComplete';
+        showWaveCompleteScreen();
+    }
+}
+
+// 显示波次提示
+function showWaveNotification(waveNum) {
+    const isBossWave = waveNum % CONFIG.wave.bossWaveInterval === 0;
+    const notification = document.createElement('div');
+    notification.className = 'wave-notification' + (isBossWave ? ' boss-wave' : '');
+    notification.innerHTML = `
+        <h2>${isBossWave ? 'BOSS 波次!' : '第 ' + waveNum + ' 波'}</h2>
+        <p>${isBossWave ? '击败Boss!' : '消灭所有敌人!'}</p>
+    `;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 500);
+    }, 2000);
+}
+
+// 显示波次完成奖励界面
+function showWaveCompleteScreen() {
+    const overlay = document.getElementById('levelUpOverlay');
+    const title = document.querySelector('#levelUpOverlay h2');
+    title.textContent = `第 ${game.wave.current} 波完成!`;
+
+    const buffOptions = document.getElementById('buffOptions');
+    buffOptions.innerHTML = '';
+
+    // 随机3个奖励选项（武器或Buff）
+    const options = [];
+
+    // 50%武器，50%Buff
+    for (let i = 0; i < 3; i++) {
+        if (Math.random() > 0.5) {
+            // 武器选项
+            const weapons = Object.values(WEAPONS).filter(w =>
+                w.type !== 'evolved' && w.type !== 'accessory'
+            );
+            const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+            options.push({ type: 'weapon', data: weapon });
+        } else {
+            // Buff选项
+            const buff = BUFFS[Math.floor(Math.random() * BUFFS.length)];
+            options.push({ type: 'buff', data: buff });
+        }
+    }
+
+    options.forEach(option => {
+        const card = document.createElement('div');
+        card.className = 'buff-card';
+
+        if (option.type === 'weapon') {
+            const weapon = option.data;
+            const existingWeapon = game.player.weapons.find(w => w.id === weapon.id);
+            const level = existingWeapon ? existingWeapon.level : 0;
+
+            card.innerHTML = `
+                <span class="buff-icon">${weapon.icon}</span>
+                <h3>${weapon.name} ${level > 0 ? 'Lv.' + (level + 1) : ''}</h3>
+                <p>${weapon.description}</p>
+            `;
+            card.onclick = () => {
+                game.player.addWeapon(weapon.id);
+                document.querySelector('#levelUpOverlay h2').textContent = '选择强化';
+                overlay.classList.remove('active');
+                game.state = 'playing';
+            };
+        } else {
+            const buff = option.data;
+            card.innerHTML = `
+                <span class="buff-icon">${buff.icon}</span>
+                <h3>${buff.name}</h3>
+                <p>${buff.description}</p>
+            `;
+            card.onclick = () => {
+                buff.apply(game.player);
+                document.querySelector('#levelUpOverlay h2').textContent = '选择强化';
+                overlay.classList.remove('active');
+                game.state = 'playing';
+            };
         }
 
-        game.lastSpawnTime = now;
+        buffOptions.appendChild(card);
+    });
 
-        // 随时间降低生成间隔（增加难度）
-        game.spawnInterval = Math.max(1000, CONFIG.enemy.spawnInterval - timeFactor * 50);
-    }
+    overlay.classList.add('active');
 }
 
 // 生成障碍物
@@ -1281,15 +1470,22 @@ function gameLoop(timestamp) {
             return dist < Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * 2;
         });
 
-        // 生成敌人
-        spawnEnemies();
+        // 波次系统更新
+        updateWaveSpawning();
+        checkWaveComplete();
+
+        // 武器自动攻击
+        updateWeaponAttacks();
+
+        // 更新武器投射物
+        updateWeaponProjectiles();
 
         // 更新UI
         updateUI();
     }
 
     // 绘制（即使不在playing状态也绘制，保持画布清晰）
-    if (game.state === 'playing' || game.state === 'levelup') {
+    if (game.state === 'playing' || game.state === 'levelup' || game.state === 'waveComplete') {
         // 清空画布
         game.ctx.fillStyle = '#1a1a2e';
         game.ctx.fillRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
@@ -1345,6 +1541,9 @@ function gameLoop(timestamp) {
 
         // 绘制投射物
         game.projectiles.forEach(projectile => projectile.draw(game.ctx));
+
+        // 绘制武器投射物
+        game.weaponProjectiles.forEach(projectile => projectile.draw(game.ctx));
 
         // 绘制玩家和敌人
         game.enemies.forEach(enemy => enemy.draw(game.ctx));
