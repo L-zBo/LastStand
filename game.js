@@ -12,13 +12,18 @@ const CONFIG = {
         size: 25
     },
     enemy: {
-        size: 18,
-        spawnInterval: 2000, // 2秒生成一波
-        spawnRate: 3 // 每波生成3个
+        size: 18
     },
     obstacles: {
-        rockCount: 80,  // 减少石头数量（150 -> 80）
-        bushCount: 100   // 减少草丛数量（200 -> 100）
+        rockCount: 80,
+        bushCount: 100
+    },
+    wave: {
+        baseEnemyCount: 5,      // 每波基础敌人数
+        enemyIncrement: 2,      // 每波增加的敌人
+        timeBetweenSpawns: 800, // 每个敌人生成间隔（毫秒）
+        timeBetweenWaves: 3000, // 波次间休息时间
+        bossWaveInterval: 10    // 每10波出Boss
     }
 };
 
@@ -363,23 +368,34 @@ const WEAPONS = {
 
 // 游戏状态
 let game = {
-    state: 'start', // start, playing, levelup, gameover
+    state: 'start', // start, playing, levelup, waveComplete, gameover
     canvas: null,
     ctx: null,
     player: null,
     enemies: [],
-    particles: [], // 粒子效果
-    projectiles: [], // 投射物（箭、魔法弹）
-    obstacles: [], // 障碍物
+    particles: [],
+    projectiles: [],
+    weaponProjectiles: [], // 武器发射的投射物
+    obstacles: [],
     keys: {},
     lastTime: 0,
     gameTime: 0,
     killCount: 0,
     selectedClass: null,
-    lastSpawnTime: 0,
-    spawnInterval: CONFIG.enemy.spawnInterval,
-    spawnRate: CONFIG.enemy.spawnRate,
-    camera: { x: 0, y: 0 } // 摄像机位置
+    camera: { x: 0, y: 0 },
+    // 波数系统
+    wave: {
+        current: 1,           // 当前波数
+        enemiesRemaining: 0,  // 本波剩余敌人数
+        enemiesSpawned: 0,    // 本波已生成敌人数
+        totalEnemies: 0,      // 本波总敌人数
+        lastSpawnTime: 0,     // 上次生成时间
+        isSpawning: false,    // 是否正在生成
+        eliteSpawned: false,  // 精英是否已生成
+        bossSpawned: false,   // Boss是否已生成
+        waveStartTime: 0,     // 波次开始时间
+        inBreak: false        // 是否在波次间休息
+    }
 };
 
 // 粒子类（用于视觉效果）
