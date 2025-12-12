@@ -525,12 +525,19 @@ class Player {
         this.maxExp = 100;
         this.expMultiplier = 1;
         this.critChance = 0;
+        this.critDamage = 2; // 默认暴击伤害2倍
         this.vampireHeal = 0;
         this.multiShot = 1;
         this.lastAttackTime = 0;
         this.attackCooldown = 500; // 0.5秒攻击间隔
         this.inBush = false; // 是否在草丛中
         this.hidden = false; // 是否隐身
+        this.healthRegen = 0; // 每秒生命恢复
+        this.lastRegenTime = Date.now();
+
+        // 武器系统
+        this.weapons = []; // 已获得的武器
+        this.maxWeapons = 6; // 最多6个武器
     }
 
     update(deltaTime) {
@@ -591,6 +598,13 @@ class Player {
             this.hidden = false;
         }
 
+        // 生命恢复
+        const now = Date.now();
+        if (this.healthRegen > 0 && now - this.lastRegenTime >= 1000) {
+            this.health = Math.min(this.health + this.healthRegen, this.maxHealth);
+            this.lastRegenTime = now;
+        }
+
         // 更新摄像机位置（平滑跟随）
         updateCamera();
 
@@ -619,9 +633,14 @@ class Player {
                 let damage = this.attack;
                 let isCrit = false;
 
-                // 暴击判定
+                // 计算武器加成伤害
+                this.weapons.forEach(weapon => {
+                    damage += weapon.damage * weapon.level;
+                });
+
+                // 暴击判定（使用critDamage属性）
                 if (Math.random() < this.critChance) {
-                    damage *= 2;
+                    damage *= this.critDamage;
                     isCrit = true;
                 }
 
@@ -693,6 +712,55 @@ class Player {
         // 显示升级选择界面
         game.state = 'levelup';
         showLevelUpScreen();
+    }
+
+    // 添加武器
+    addWeapon(weaponId) {
+        const existingWeapon = this.weapons.find(w => w.id === weaponId);
+        if (existingWeapon) {
+            // 已有该武器，升级
+            if (existingWeapon.level < existingWeapon.maxLevel) {
+                existingWeapon.level++;
+                // 检查是否可以进化
+                this.checkWeaponEvolution(existingWeapon);
+            }
+        } else if (this.weapons.length < this.maxWeapons) {
+            // 新武器
+            const weaponData = WEAPONS[weaponId];
+            this.weapons.push({
+                ...weaponData,
+                level: 1
+            });
+        }
+    }
+
+    // 检查武器进化
+    checkWeaponEvolution(weapon) {
+        if (weapon.level >= weapon.maxLevel && weapon.evolvesWith) {
+            const partnerWeapon = this.weapons.find(w => w.id === weapon.evolvesWith && w.level >= w.maxLevel);
+            if (partnerWeapon) {
+                // 可以进化！
+                this.evolveWeapon(weapon, partnerWeapon);
+            }
+        }
+    }
+
+    // 武器进化
+    evolveWeapon(weapon1, weapon2) {
+        const evolvedWeaponId = weapon1.evolvesTo;
+        const evolvedWeaponData = WEAPONS[evolvedWeaponId];
+
+        // 移除原来的两个武器
+        this.weapons = this.weapons.filter(w => w.id !== weapon1.id && w.id !== weapon2.id);
+
+        // 添加进化后的武器
+        this.weapons.push({
+            ...evolvedWeaponData,
+            level: 1
+        });
+
+        // 显示进化提示
+        showEvolutionNotification(weapon1.name, weapon2.name, evolvedWeaponData.name, evolvedWeaponData.icon);
     }
 
     draw(ctx) {
@@ -940,6 +1008,60 @@ function updateUI() {
     document.getElementById('playerSpeed').textContent = game.player.speed.toFixed(1);
     document.getElementById('killCount').textContent = game.killCount;
     document.getElementById('gameTime').textContent = Math.floor(game.gameTime);
+
+    // 更新武器栏显示
+    updateWeaponBar();
+}
+
+// 更新武器栏
+function updateWeaponBar() {
+    const weaponBar = document.getElementById('weaponBar');
+    weaponBar.innerHTML = '';
+
+    // 显示所有武器槽位（最多6个）
+    for (let i = 0; i < game.player.maxWeapons; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'weapon-slot';
+
+        if (game.player.weapons[i]) {
+            const weapon = game.player.weapons[i];
+            // 进化武器特殊样式
+            if (weapon.type === 'evolved') {
+                slot.classList.add('evolved');
+            }
+            slot.innerHTML = `
+                <span class="weapon-icon">${weapon.icon}</span>
+                ${weapon.level ? `<span class="weapon-level">${weapon.level}</span>` : ''}
+            `;
+            slot.title = `${weapon.name}\n${weapon.description || weapon.special || ''}`;
+        } else {
+            slot.innerHTML = '<span class="weapon-empty">+</span>';
+        }
+
+        weaponBar.appendChild(slot);
+    }
+}
+
+// 显示武器进化提示
+function showEvolutionNotification(weapon1Name, weapon2Name, evolvedName, evolvedIcon) {
+    // 创建提示元素
+    const notification = document.createElement('div');
+    notification.className = 'evolution-notification';
+    notification.innerHTML = `
+        <div class="evolution-icon">${evolvedIcon}</div>
+        <div class="evolution-text">
+            <h3>武器进化!</h3>
+            <p>${weapon1Name} + ${weapon2Name}</p>
+            <p class="evolved-name">= ${evolvedName}</p>
+        </div>
+    `;
+    document.body.appendChild(notification);
+
+    // 3秒后移除
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 500);
+    }, 2500);
 }
 
 // 显示升级选择界面
@@ -947,7 +1069,93 @@ function showLevelUpScreen() {
     const buffOptions = document.getElementById('buffOptions');
     buffOptions.innerHTML = '';
 
-    // 随机选择3个buff
+    // 50%几率显示武器，50%几率显示Buff
+    const showWeapons = Math.random() > 0.5;
+
+    if (showWeapons) {
+        // 显示武器选项
+        const availableWeapons = Object.values(WEAPONS).filter(w =>
+            w.type !== 'evolved' && w.type !== 'accessory'
+        );
+
+        // 添加已有武器的升级选项
+        const playerWeaponIds = game.player.weapons.map(w => w.id);
+        const upgradeableWeapons = game.player.weapons.filter(w => w.level < w.maxLevel);
+
+        // 也显示配件（用于合成）
+        const accessories = Object.values(WEAPONS).filter(w => w.type === 'accessory');
+
+        // 合并选项
+        let allOptions = [];
+
+        // 添加可升级的武器
+        upgradeableWeapons.forEach(w => {
+            allOptions.push({
+                type: 'upgrade',
+                weapon: w,
+                name: `${w.name} 升级`,
+                description: `Lv.${w.level} → Lv.${w.level + 1}`,
+                icon: w.icon
+            });
+        });
+
+        // 添加新武器
+        availableWeapons.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
+            allOptions.push({
+                type: 'new',
+                weapon: w,
+                name: w.name,
+                description: w.description,
+                icon: w.icon
+            });
+        });
+
+        // 添加配件
+        accessories.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
+            allOptions.push({
+                type: 'new',
+                weapon: w,
+                name: w.name,
+                description: w.description,
+                icon: w.icon
+            });
+        });
+
+        // 随机选择3个
+        const selectedOptions = [];
+        for (let i = 0; i < 3 && allOptions.length > 0; i++) {
+            const index = Math.floor(Math.random() * allOptions.length);
+            selectedOptions.push(allOptions[index]);
+            allOptions.splice(index, 1);
+        }
+
+        // 如果没有武器选项，显示Buff
+        if (selectedOptions.length === 0) {
+            showBuffOptions(buffOptions);
+            return;
+        }
+
+        selectedOptions.forEach(option => {
+            const card = document.createElement('div');
+            card.className = 'buff-card weapon-card';
+            card.innerHTML = `
+                <div class="buff-icon">${option.icon}</div>
+                <h3>${option.name}</h3>
+                <p>${option.description}</p>
+            `;
+            card.onclick = () => selectWeapon(option);
+            buffOptions.appendChild(card);
+        });
+    } else {
+        // 显示Buff选项
+        showBuffOptions(buffOptions);
+    }
+
+    document.getElementById('levelUpScreen').classList.remove('hidden');
+}
+
+// 显示Buff选项
+function showBuffOptions(container) {
     const availableBuffs = [...BUFFS];
     const selectedBuffs = [];
 
@@ -966,10 +1174,20 @@ function showLevelUpScreen() {
             <p>${buff.description}</p>
         `;
         buffCard.onclick = () => selectBuff(buff);
-        buffOptions.appendChild(buffCard);
+        container.appendChild(buffCard);
     });
+}
 
-    document.getElementById('levelUpScreen').classList.remove('hidden');
+// 选择武器
+function selectWeapon(option) {
+    if (option.type === 'upgrade') {
+        option.weapon.level++;
+        game.player.checkWeaponEvolution(option.weapon);
+    } else {
+        game.player.addWeapon(option.weapon.id);
+    }
+    document.getElementById('levelUpScreen').classList.add('hidden');
+    game.state = 'playing';
 }
 
 // 选择buff
