@@ -520,6 +520,318 @@ class Projectile {
     }
 }
 
+// 武器投射物类
+class WeaponProjectile {
+    constructor(x, y, targetX, targetY, weapon, player) {
+        this.x = x;
+        this.y = y;
+        this.weapon = weapon;
+        this.player = player;
+        this.damage = weapon.damage * (weapon.level || 1) + player.attack * 0.2;
+        this.hit = false;
+        this.hitEnemies = [];
+
+        switch(weapon.id) {
+            case 'sword':
+            case 'holyBlade':
+                this.type = 'slash';
+                this.size = 60;
+                this.duration = 200;
+                this.startTime = Date.now();
+                this.angle = Math.atan2(targetY - y, targetX - x);
+                break;
+            case 'dagger':
+            case 'shadowBlade':
+                this.type = 'stab';
+                this.size = 40;
+                this.duration = 150;
+                this.startTime = Date.now();
+                this.angle = Math.atan2(targetY - y, targetX - x);
+                break;
+            case 'axe':
+            case 'bloodAxe':
+                this.type = 'spin';
+                this.size = 80;
+                this.duration = 300;
+                this.startTime = Date.now();
+                this.rotation = 0;
+                break;
+            case 'bow':
+            case 'phoenixBow':
+                this.type = 'arrow';
+                this.speed = 10;
+                this.size = 8;
+                const angle1 = Math.atan2(targetY - y, targetX - x);
+                this.vx = Math.cos(angle1) * this.speed;
+                this.vy = Math.sin(angle1) * this.speed;
+                this.rotation = angle1;
+                this.distance = 0;
+                this.maxDistance = 500;
+                this.tracking = weapon.id === 'phoenixBow';
+                break;
+            case 'staff':
+            case 'arcaneStaff':
+                this.type = 'magic';
+                this.speed = 7;
+                this.size = 12;
+                const angle2 = Math.atan2(targetY - y, targetX - x);
+                this.vx = Math.cos(angle2) * this.speed;
+                this.vy = Math.sin(angle2) * this.speed;
+                this.distance = 0;
+                this.maxDistance = 400;
+                this.bounce = weapon.id === 'arcaneStaff' ? 3 : 0;
+                break;
+            case 'fireball':
+            case 'inferno':
+                this.type = 'fireball';
+                this.speed = 6;
+                this.size = weapon.id === 'inferno' ? 25 : 15;
+                const angle3 = Math.atan2(targetY - y, targetX - x);
+                this.vx = Math.cos(angle3) * this.speed;
+                this.vy = Math.sin(angle3) * this.speed;
+                this.distance = 0;
+                this.maxDistance = 350;
+                this.aoe = weapon.id === 'inferno';
+                break;
+            default:
+                this.type = 'slash';
+                this.size = 50;
+                this.duration = 200;
+                this.startTime = Date.now();
+                this.angle = Math.atan2(targetY - y, targetX - x);
+        }
+    }
+
+    update() {
+        switch(this.type) {
+            case 'spin':
+                this.rotation += 0.3;
+                break;
+            case 'arrow':
+                if (this.tracking && game.enemies.length > 0) {
+                    const nearest = game.enemies.reduce((closest, enemy) => {
+                        const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                        return dist < closest.dist ? { enemy, dist } : closest;
+                    }, { enemy: null, dist: Infinity });
+                    if (nearest.enemy && nearest.dist < 300) {
+                        const targetAngle = Math.atan2(nearest.enemy.y - this.y, nearest.enemy.x - this.x);
+                        const angleDiff = targetAngle - this.rotation;
+                        this.rotation += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.1);
+                        this.vx = Math.cos(this.rotation) * this.speed;
+                        this.vy = Math.sin(this.rotation) * this.speed;
+                    }
+                }
+                this.x += this.vx;
+                this.y += this.vy;
+                this.distance += this.speed;
+                break;
+            case 'magic':
+            case 'fireball':
+                this.x += this.vx;
+                this.y += this.vy;
+                this.distance += this.speed;
+                break;
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        switch(this.type) {
+            case 'slash':
+                ctx.translate(this.player.x, this.player.y);
+                ctx.rotate(this.angle);
+                ctx.strokeStyle = this.weapon.id === 'holyBlade' ? '#ffd700' : '#fff';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, -0.8, 0.8);
+                ctx.stroke();
+                break;
+            case 'stab':
+                ctx.translate(this.player.x, this.player.y);
+                ctx.rotate(this.angle);
+                ctx.fillStyle = this.weapon.id === 'shadowBlade' ? '#9b59b6' : '#c0c0c0';
+                ctx.fillRect(10, -3, this.size, 6);
+                break;
+            case 'spin':
+                ctx.translate(this.player.x, this.player.y);
+                ctx.rotate(this.rotation);
+                ctx.strokeStyle = this.weapon.id === 'bloodAxe' ? '#e74c3c' : '#c0c0c0';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(-this.size/2, 0);
+                ctx.lineTo(this.size/2, 0);
+                ctx.stroke();
+                break;
+            case 'arrow':
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = this.weapon.id === 'phoenixBow' ? '#ff6b35' : '#8B4513';
+                ctx.beginPath();
+                ctx.moveTo(12, 0);
+                ctx.lineTo(-8, -5);
+                ctx.lineTo(-8, 5);
+                ctx.fill();
+                break;
+            case 'magic':
+                ctx.fillStyle = this.weapon.id === 'arcaneStaff' ? '#9b59b6' : '#4ecdc4';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'fireball':
+                ctx.fillStyle = this.weapon.id === 'inferno' ? '#ff4500' : '#ff6b35';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+        }
+        ctx.restore();
+    }
+
+    isDead() {
+        const now = Date.now();
+        switch(this.type) {
+            case 'slash':
+            case 'stab':
+            case 'spin':
+                return now - this.startTime >= this.duration;
+            case 'arrow':
+            case 'magic':
+            case 'fireball':
+                return this.distance >= this.maxDistance || this.hit;
+            default:
+                return true;
+        }
+    }
+
+    checkHit(enemy) {
+        if (this.hitEnemies.includes(enemy)) return false;
+        switch(this.type) {
+            case 'slash':
+            case 'spin':
+                const distToPlayer = Math.hypot(enemy.x - this.player.x, enemy.y - this.player.y);
+                if (distToPlayer < this.size + enemy.size) {
+                    this.hitEnemies.push(enemy);
+                    return true;
+                }
+                break;
+            case 'stab':
+                const dx = enemy.x - this.player.x;
+                const dy = enemy.y - this.player.y;
+                const dist = Math.hypot(dx, dy);
+                const enemyAngle = Math.atan2(dy, dx);
+                const angleDiff = Math.abs(enemyAngle - this.angle);
+                if (dist < this.size + 20 && angleDiff < 0.5) {
+                    this.hitEnemies.push(enemy);
+                    return true;
+                }
+                break;
+            case 'arrow':
+            case 'magic':
+            case 'fireball':
+                const projDist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                if (projDist < this.size + enemy.size) {
+                    if (this.aoe) {
+                        this.hitEnemies.push(enemy);
+                        return true;
+                    }
+                    if (this.bounce > 0) {
+                        this.bounce--;
+                        this.hitEnemies.push(enemy);
+                        const nextTarget = game.enemies.find(e => !this.hitEnemies.includes(e));
+                        if (nextTarget) {
+                            const newAngle = Math.atan2(nextTarget.y - this.y, nextTarget.x - this.x);
+                            this.vx = Math.cos(newAngle) * this.speed;
+                            this.vy = Math.sin(newAngle) * this.speed;
+                            this.distance = 0;
+                        }
+                        return true;
+                    }
+                    this.hit = true;
+                    return true;
+                }
+                break;
+        }
+        return false;
+    }
+}
+
+// 武器攻击更新
+function updateWeaponAttacks() {
+    const now = Date.now();
+    const player = game.player;
+
+    player.weapons.forEach(weapon => {
+        if (!weapon.lastAttackTime) weapon.lastAttackTime = 0;
+
+        let cooldown = 1000;
+        switch(weapon.id) {
+            case 'dagger': case 'shadowBlade': cooldown = 400; break;
+            case 'sword': case 'holyBlade': cooldown = 800; break;
+            case 'axe': case 'bloodAxe': cooldown = 1200; break;
+            case 'bow': case 'phoenixBow': cooldown = 600; break;
+            case 'staff': case 'arcaneStaff': cooldown = 900; break;
+            case 'fireball': case 'inferno': cooldown = 1100; break;
+        }
+        cooldown *= (player.attackCooldown / 500);
+
+        if (now - weapon.lastAttackTime < cooldown) return;
+
+        const nearestEnemy = game.enemies.reduce((closest, enemy) => {
+            const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
+            return dist < closest.dist ? { enemy, dist } : closest;
+        }, { enemy: null, dist: Infinity });
+
+        let attackRange = weapon.type === 'melee' ? 100 : (weapon.type === 'evolved' ? 350 : 300);
+
+        if (nearestEnemy.enemy && nearestEnemy.dist < attackRange) {
+            game.weaponProjectiles.push(new WeaponProjectile(
+                player.x, player.y,
+                nearestEnemy.enemy.x, nearestEnemy.enemy.y,
+                weapon, player
+            ));
+            weapon.lastAttackTime = now;
+        }
+    });
+}
+
+// 更新武器投射物
+function updateWeaponProjectiles() {
+    game.weaponProjectiles.forEach(proj => {
+        proj.update();
+        game.enemies.forEach(enemy => {
+            if (proj.checkHit(enemy)) {
+                let damage = proj.damage;
+                if (Math.random() < game.player.critChance) {
+                    damage *= game.player.critDamage;
+                }
+                if (proj.weapon.id === 'shadowBlade' && Math.random() < 0.3) {
+                    damage *= 2;
+                }
+                if (proj.weapon.id === 'bloodAxe') {
+                    game.player.health = Math.min(game.player.health + damage * 0.1, game.player.maxHealth);
+                }
+                enemy.health -= damage;
+                for (let i = 0; i < 2; i++) {
+                    game.particles.push(new Particle(enemy.x, enemy.y, '#fff'));
+                }
+                if (enemy.health <= 0) {
+                    game.player.gainExp(enemy.expValue);
+                    game.killCount++;
+                    if (game.player.vampireHeal > 0) {
+                        game.player.health = Math.min(game.player.health + game.player.vampireHeal, game.player.maxHealth);
+                    }
+                }
+            }
+        });
+    });
+    game.weaponProjectiles = game.weaponProjectiles.filter(p => !p.isDead());
+}
+
 // 玩家类
 class Player {
     constructor(classType) {
@@ -1210,7 +1522,7 @@ function updateUI() {
     document.getElementById('playerExp').textContent = game.player.exp;
     document.getElementById('playerMaxExp').textContent = game.player.maxExp;
     document.getElementById('playerAttack').textContent = game.player.attack;
-    document.getElementById('playerSpeed').textContent = game.player.speed.toFixed(1);
+    document.getElementById('waveCount').textContent = game.wave.current;
     document.getElementById('killCount').textContent = game.killCount;
     document.getElementById('gameTime').textContent = Math.floor(game.gameTime);
 
@@ -1647,12 +1959,28 @@ function startGame() {
     game.enemies = [];
     game.particles = [];
     game.projectiles = [];
+    game.weaponProjectiles = [];
     game.killCount = 0;
     game.gameTime = 0;
-    game.lastTime = 0; // 重置时间戳
-    game.lastSpawnTime = Date.now();
-    game.spawnInterval = CONFIG.enemy.spawnInterval;
+    game.lastTime = 0;
     game.state = 'playing';
+
+    // 初始化波次系统
+    game.wave = {
+        current: 1,
+        enemiesRemaining: 0,
+        enemiesSpawned: 0,
+        totalEnemies: 0,
+        lastSpawnTime: 0,
+        isSpawning: false,
+        eliteSpawned: false,
+        bossSpawned: false,
+        waveStartTime: 0,
+        inBreak: false
+    };
+
+    // 开始第一波
+    startNewWave();
 
     // 启动游戏循环
     requestAnimationFrame(gameLoop);

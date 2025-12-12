@@ -412,3 +412,75 @@ body {
         transform: translate(-50%, -50%) scale(1.2);
     }
 }
+
+/* 波次提示 */
+.wave-notification {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #4ecdc4;
+    border-radius: 15px;
+    padding: 20px 50px;
+    text-align: center;
+    z-index: 1500;
+    animation: waveAppear 0.5s ease-out;
+}
+
+.wave-notification.boss-wave {
+    border-color: #e74c3c;
+    box-shadow: 0 0 30px rgba(231, 76, 60, 0.5);
+}
+
+.wave-notification h2 {
+    color: #4ecdc4;
+    font-size: 2em;
+    margin: 0 0 10px 0;
+}
+
+.wave-notification.boss-wave h2 {
+    color: #e74c3c;
+    animation: bossGlow 0.5s infinite alternate;
+}
+
+.wave-notification p {
+    color: #fff;
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.wave-notification.fade-out {
+    animation: waveFadeOut 0.5s ease-out forwards;
+}
+
+@keyframes waveAppear {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes waveFadeOut {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-30px);
+    }
+}
+
+@keyframes bossGlow {
+    0% {
+        text-shadow: 0 0 10px #e74c3c;
+    }
+    100% {
+        text-shadow: 0 0 30px #e74c3c, 0 0 50px #e74c3c;
+    }
+}
