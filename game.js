@@ -5,8 +5,8 @@ const CONFIG = {
         height: 800
     },
     world: {
-        width: 4000,  // 大地图宽度
-        height: 3000  // 大地图高度
+        width: 8000,  // 大地图宽度
+        height: 6000  // 大地图高度
     },
     player: {
         size: 25
@@ -15,6 +15,10 @@ const CONFIG = {
         size: 18,
         spawnInterval: 2000, // 2秒生成一波
         spawnRate: 3 // 每波生成3个
+    },
+    obstacles: {
+        rockCount: 150,  // 石头数量
+        bushCount: 200   // 草丛数量
     }
 };
 
@@ -26,7 +30,9 @@ const CLASSES = {
         attack: 15,
         speed: 3,
         color: '#ff6b6b',
-        sprite: '🛡️'
+        sprite: '🛡️',
+        attackType: 'melee',  // 近战
+        attackRange: 50
     },
     mage: {
         name: '法师',
@@ -34,7 +40,9 @@ const CLASSES = {
         attack: 25,
         speed: 3.5,
         color: '#4ecdc4',
-        sprite: '🧙'
+        sprite: '🧙',
+        attackType: 'magic',  // 魔法
+        attackRange: 150
     },
     assassin: {
         name: '刺客',
@@ -42,7 +50,9 @@ const CLASSES = {
         attack: 20,
         speed: 5,
         color: '#95e1d3',
-        sprite: '🥷'
+        sprite: '🥷',
+        attackType: 'melee',  // 近战
+        attackRange: 45
     },
     ranger: {
         name: '游侠',
@@ -50,7 +60,9 @@ const CLASSES = {
         attack: 18,
         speed: 4,
         color: '#f38181',
-        sprite: '🏹'
+        sprite: '🏹',
+        attackType: 'ranged',  // 远程弓箭
+        attackRange: 200
     }
 };
 
@@ -141,6 +153,8 @@ let game = {
     player: null,
     enemies: [],
     particles: [], // 粒子效果
+    projectiles: [], // 投射物（箭、魔法弹）
+    obstacles: [], // 障碍物
     keys: {},
     lastTime: 0,
     gameTime: 0,
@@ -185,6 +199,98 @@ class Particle {
     }
 }
 
+// 障碍物类
+class Obstacle {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type; // 'rock' 或 'bush'
+
+        if (type === 'rock') {
+            this.size = 20 + Math.random() * 20;
+            this.sprite = '🪨';
+            this.blocking = true; // 阻挡移动
+        } else if (type === 'bush') {
+            this.size = 30 + Math.random() * 20;
+            this.sprite = '🌿';
+            this.blocking = false; // 不阻挡移动
+        }
+    }
+
+    draw(ctx) {
+        ctx.font = `${this.size * 1.5}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.sprite, this.x, this.y);
+    }
+
+    collidesWith(x, y, size) {
+        const dist = Math.hypot(this.x - x, this.y - y);
+        return dist < this.size + size;
+    }
+}
+
+// 投射物类（箭、魔法弹）
+class Projectile {
+    constructor(x, y, targetX, targetY, damage, type, color) {
+        this.x = x;
+        this.y = y;
+        this.damage = damage;
+        this.type = type; // 'arrow', 'magic'
+        this.color = color;
+        this.speed = 8;
+        this.size = 5;
+
+        // 计算方向
+        const angle = Math.atan2(targetY - y, targetX - x);
+        this.vx = Math.cos(angle) * this.speed;
+        this.vy = Math.sin(angle) * this.speed;
+        this.rotation = angle;
+
+        this.distance = 0;
+        this.maxDistance = 400;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.distance += this.speed;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        if (this.type === 'arrow') {
+            // 绘制箭
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-8, -2, 16, 4);
+            ctx.fillStyle = '#C0C0C0';
+            ctx.beginPath();
+            ctx.moveTo(8, 0);
+            ctx.lineTo(4, -4);
+            ctx.lineTo(4, 4);
+            ctx.fill();
+        } else if (this.type === 'magic') {
+            // 绘制魔法弹
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.restore();
+    }
+
+    isDead() {
+        return this.distance >= this.maxDistance;
+    }
+}
+
 // 玩家类
 class Player {
     constructor(classType) {
@@ -199,25 +305,28 @@ class Player {
         this.color = classConfig.color;
         this.sprite = classConfig.sprite;
         this.classType = classType;
+        this.attackType = classConfig.attackType;
+        this.attackRange = classConfig.attackRange;
         this.level = 1;
         this.exp = 0;
         this.maxExp = 100;
         this.expMultiplier = 1;
-        this.attackRange = 80;
         this.critChance = 0;
         this.vampireHeal = 0;
         this.multiShot = 1;
         this.lastAttackTime = 0;
         this.attackCooldown = 500; // 0.5秒攻击间隔
+        this.inBush = false; // 是否在草丛中
+        this.hidden = false; // 是否隐身
     }
 
     update(deltaTime) {
         // 移动
         let dx = 0, dy = 0;
-        if (game.keys['ArrowLeft'] || game.keys['a']) dx -= 1;
-        if (game.keys['ArrowRight'] || game.keys['d']) dx += 1;
-        if (game.keys['ArrowUp'] || game.keys['w']) dy -= 1;
-        if (game.keys['ArrowDown'] || game.keys['s']) dy += 1;
+        if (game.keys['ArrowLeft'] || game.keys['a'] || game.keys['A']) dx -= 1;
+        if (game.keys['ArrowRight'] || game.keys['d'] || game.keys['D']) dx += 1;
+        if (game.keys['ArrowUp'] || game.keys['w'] || game.keys['W']) dy -= 1;
+        if (game.keys['ArrowDown'] || game.keys['s'] || game.keys['S']) dy += 1;
 
         // 归一化对角线移动
         if (dx !== 0 && dy !== 0) {
@@ -225,12 +334,43 @@ class Player {
             dy *= 0.707;
         }
 
-        this.x += dx * this.speed;
-        this.y += dy * this.speed;
+        // 计算新位置
+        const newX = this.x + dx * this.speed;
+        const newY = this.y + dy * this.speed;
+
+        // 检查与石头的碰撞
+        let canMove = true;
+        for (const obstacle of game.obstacles) {
+            if (obstacle.blocking && obstacle.collidesWith(newX, newY, this.size)) {
+                canMove = false;
+                break;
+            }
+        }
+
+        if (canMove) {
+            this.x = newX;
+            this.y = newY;
+        }
 
         // 边界限制（世界边界）
         this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, this.x));
         this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
+
+        // 检查是否在草丛中
+        this.inBush = false;
+        for (const obstacle of game.obstacles) {
+            if (obstacle.type === 'bush' && obstacle.collidesWith(this.x, this.y, this.size)) {
+                this.inBush = true;
+                break;
+            }
+        }
+
+        // 更新隐身状态（在草丛中且没有攻击）
+        if (this.inBush && !this.justAttacked) {
+            this.hidden = true;
+        } else {
+            this.hidden = false;
+        }
 
         // 更新摄像机位置（平滑跟随）
         updateCamera();
@@ -266,15 +406,37 @@ class Player {
                     isCrit = true;
                 }
 
-                enemy.health -= damage;
+                // 根据攻击类型处理
+                if (this.attackType === 'melee') {
+                    // 近战：直接造成伤害
+                    enemy.health -= damage;
 
-                // 创建攻击特效粒子
-                for (let i = 0; i < 5; i++) {
-                    game.particles.push(new Particle(enemy.x, enemy.y, isCrit ? '#ffff00' : this.color));
+                    // 创建近战特效
+                    for (let i = 0; i < 5; i++) {
+                        game.particles.push(new Particle(enemy.x, enemy.y, isCrit ? '#ffff00' : this.color));
+                    }
+                } else if (this.attackType === 'ranged') {
+                    // 远程：发射箭
+                    game.projectiles.push(new Projectile(
+                        this.x, this.y,
+                        enemy.x, enemy.y,
+                        damage,
+                        'arrow',
+                        this.color
+                    ));
+                } else if (this.attackType === 'magic') {
+                    // 魔法：发射魔法弹
+                    game.projectiles.push(new Projectile(
+                        this.x, this.y,
+                        enemy.x, enemy.y,
+                        damage,
+                        'magic',
+                        this.color
+                    ));
                 }
 
-                // 如果敌人死亡
-                if (enemy.health <= 0) {
+                // 近战直接检查击杀
+                if (this.attackType === 'melee' && enemy.health <= 0) {
                     this.gainExp(enemy.expValue);
                     game.killCount++;
 
@@ -291,6 +453,8 @@ class Player {
             });
 
             this.lastAttackTime = now;
+            this.justAttacked = true; // 攻击后显形
+            setTimeout(() => this.justAttacked = false, 1000); // 1秒后可以再次隐身
         }
     }
 
@@ -313,6 +477,11 @@ class Player {
     }
 
     draw(ctx) {
+        // 如果隐身，设置半透明
+        if (this.hidden) {
+            ctx.globalAlpha = 0.3;
+        }
+
         // 绘制玩家精灵
         ctx.font = `${this.size * 2}px Arial`;
         ctx.textAlign = 'center';
@@ -341,6 +510,9 @@ class Player {
 
         ctx.fillStyle = '#00ff00';
         ctx.fillRect(this.x - barWidth/2, this.y - this.size - 15, barWidth * healthPercent, barHeight);
+
+        // 恢复透明度
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -351,6 +523,7 @@ class Enemy {
         this.y = y;
         this.size = CONFIG.enemy.size;
         this.type = type;
+        this.isElite = false;
 
         // 根据类型设置属性
         if (type === 'normal') {
@@ -377,6 +550,16 @@ class Enemy {
             this.expValue = 30;
             this.color = '#2ed573';
             this.sprite = '💀';
+        } else if (type === 'elite') {
+            this.health = 100;
+            this.maxHealth = 100;
+            this.speed = 2;
+            this.damage = 20;
+            this.expValue = 50;
+            this.color = '#ff6348';
+            this.sprite = '👹';
+            this.isElite = true;
+            this.size = CONFIG.enemy.size * 1.5; // 精英怪更大
         }
     }
 
@@ -386,7 +569,10 @@ class Enemy {
         const dy = game.player.y - this.y;
         const distance = Math.hypot(dx, dy);
 
-        if (distance > 0) {
+        // 精英怪可以看到草丛中的玩家，普通怪看不到
+        const canSeePlayer = this.isElite || !game.player.hidden;
+
+        if (distance > 0 && canSeePlayer) {
             this.x += (dx / distance) * this.speed;
             this.y += (dy / distance) * this.speed;
         }
@@ -408,22 +594,35 @@ class Enemy {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // 添加阴影效果
-        ctx.shadowColor = this.color;
-        ctx.shadowBlur = 8;
+        // 精英怪有特殊光环
+        if (this.isElite) {
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+
+            // 绘制精英光环
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 10, 0, Math.PI * 2);
+            ctx.stroke();
+        } else {
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 8;
+        }
+
         ctx.fillText(this.sprite, this.x, this.y);
         ctx.shadowBlur = 0;
 
         // 绘制生命条
         if (this.health < this.maxHealth) {
-            const barWidth = 35;
+            const barWidth = this.isElite ? 45 : 35;
             const barHeight = 5;
             const healthPercent = this.health / this.maxHealth;
 
             ctx.fillStyle = '#333';
             ctx.fillRect(this.x - barWidth/2, this.y - this.size - 12, barWidth, barHeight);
 
-            ctx.fillStyle = '#ff4757';
+            ctx.fillStyle = this.isElite ? '#ff6348' : '#ff4757';
             ctx.fillRect(this.x - barWidth/2, this.y - this.size - 12, barWidth * healthPercent, barHeight);
         }
     }
@@ -470,10 +669,11 @@ function spawnEnemies() {
             x = Math.max(50, Math.min(CONFIG.world.width - 50, x));
             y = Math.max(50, Math.min(CONFIG.world.height - 50, y));
 
-            // 随机敌人类型
+            // 随机敌人类型（包括精英怪）
             let type = 'normal';
             const rand = Math.random();
-            if (rand > 0.85) type = 'tank';
+            if (rand > 0.95) type = 'elite'; // 5%几率精英怪
+            else if (rand > 0.85) type = 'tank';
             else if (rand > 0.7) type = 'fast';
 
             game.enemies.push(new Enemy(x, y, type));
@@ -483,6 +683,31 @@ function spawnEnemies() {
 
         // 随时间降低生成间隔（增加难度）
         game.spawnInterval = Math.max(1000, CONFIG.enemy.spawnInterval - timeFactor * 50);
+    }
+}
+
+// 生成障碍物
+function generateObstacles() {
+    game.obstacles = [];
+
+    // 生成石头
+    for (let i = 0; i < CONFIG.obstacles.rockCount; i++) {
+        const x = Math.random() * (CONFIG.world.width - 100) + 50;
+        const y = Math.random() * (CONFIG.world.height - 100) + 50;
+
+        // 确保不在出生点附近
+        const distFromCenter = Math.hypot(x - CONFIG.world.width / 2, y - CONFIG.world.height / 2);
+        if (distFromCenter > 200) {
+            game.obstacles.push(new Obstacle(x, y, 'rock'));
+        }
+    }
+
+    // 生成草丛
+    for (let i = 0; i < CONFIG.obstacles.bushCount; i++) {
+        const x = Math.random() * (CONFIG.world.width - 100) + 50;
+        const y = Math.random() * (CONFIG.world.height - 100) + 50;
+
+        game.obstacles.push(new Obstacle(x, y, 'bush'));
     }
 }
 
@@ -570,10 +795,44 @@ function gameLoop(timestamp) {
 
         game.enemies.forEach(enemy => enemy.update());
         game.particles.forEach(particle => particle.update());
+        game.projectiles.forEach(projectile => projectile.update());
 
-        // 移除死亡的敌人和粒子
+        // 投射物击中检测
+        game.projectiles.forEach(projectile => {
+            game.enemies.forEach(enemy => {
+                const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
+                if (dist < enemy.size && !projectile.hit) {
+                    enemy.health -= projectile.damage;
+                    projectile.hit = true; // 标记已击中
+
+                    // 击中特效
+                    for (let i = 0; i < 5; i++) {
+                        game.particles.push(new Particle(enemy.x, enemy.y, projectile.color));
+                    }
+
+                    // 检查击杀
+                    if (enemy.health <= 0) {
+                        game.player.gainExp(enemy.expValue);
+                        game.killCount++;
+
+                        // 死亡粒子效果
+                        for (let i = 0; i < 10; i++) {
+                            game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
+                        }
+
+                        // 吸血效果
+                        if (game.player.vampireHeal > 0) {
+                            game.player.health = Math.min(game.player.health + game.player.vampireHeal, game.player.maxHealth);
+                        }
+                    }
+                }
+            });
+        });
+
+        // 移除死亡的敌人、粒子和投射物
         game.enemies = game.enemies.filter(enemy => enemy.health > 0);
         game.particles = game.particles.filter(particle => !particle.isDead());
+        game.projectiles = game.projectiles.filter(p => !p.isDead() && !p.hit);
 
         // 清理距离玩家太远的敌人（优化性能）
         game.enemies = game.enemies.filter(enemy => {
@@ -628,8 +887,15 @@ function gameLoop(timestamp) {
         game.ctx.lineWidth = 5;
         game.ctx.strokeRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
+        // 绘制障碍物（先绘制草丛，后绘制石头）
+        game.obstacles.filter(o => o.type === 'bush').forEach(obstacle => obstacle.draw(game.ctx));
+        game.obstacles.filter(o => o.type === 'rock').forEach(obstacle => obstacle.draw(game.ctx));
+
         // 绘制粒子
         game.particles.forEach(particle => particle.draw(game.ctx));
+
+        // 绘制投射物
+        game.projectiles.forEach(projectile => projectile.draw(game.ctx));
 
         // 绘制玩家和敌人
         game.enemies.forEach(enemy => enemy.draw(game.ctx));
@@ -726,9 +992,13 @@ function startGame() {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
 
+    // 生成障碍物
+    generateObstacles();
+
     game.player = new Player(game.selectedClass);
     game.enemies = [];
     game.particles = [];
+    game.projectiles = [];
     game.killCount = 0;
     game.gameTime = 0;
     game.lastTime = 0; // 重置时间戳
