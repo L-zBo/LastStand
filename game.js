@@ -17,8 +17,8 @@ const CONFIG = {
         spawnRate: 3 // 每波生成3个
     },
     obstacles: {
-        rockCount: 150,  // 石头数量
-        bushCount: 200   // 草丛数量
+        rockCount: 80,  // 减少石头数量（150 -> 80）
+        bushCount: 100   // 减少草丛数量（200 -> 100）
     }
 };
 
@@ -173,8 +173,8 @@ class Particle {
         this.y = y;
         this.vx = (Math.random() - 0.5) * 4;
         this.vy = (Math.random() - 0.5) * 4;
-        this.life = 1;
-        this.decay = 0.02;
+        this.life = 0.8; // 减少生命周期（1 -> 0.8）
+        this.decay = 0.04; // 加快消失速度（0.02 -> 0.04）
         this.size = Math.random() * 3 + 2;
         this.color = color;
     }
