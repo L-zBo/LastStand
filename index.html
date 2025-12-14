@@ -81,6 +81,14 @@
                     <span>⭐ 等级: <span id="playerLevel">1</span></span>
                     <span>📊 经验: <span id="playerExp">0</span>/<span id="playerMaxExp">100</span></span>
                 </div>
+                <div class="stat-bar">
+                    <span>⚔️ 攻击: <span id="playerAttack">10</span></span>
+                    <span>🏃 速度: <span id="playerSpeed">3</span></span>
+                </div>
+                <div class="stat-bar">
+                    <span>💖 回血: <span id="playerRegen">0</span>/s</span>
+                    <span>💥 暴击: <span id="playerCrit">0</span>%</span>
+                </div>
             </div>
             <div class="ui-center">
                 <div class="ui-section">
@@ -99,23 +107,63 @@
             <div class="ui-right">
                 <div class="stat-bar">
                     <span>🌊 波次: <span id="waveCount">1</span></span>
-                    <span>⚔️ 攻击: <span id="playerAttack">10</span></span>
+                    <span>💀 击杀: <span id="killCount">0</span></span>
                 </div>
                 <div class="stat-bar">
-                    <span>💀 击杀: <span id="killCount">0</span></span>
                     <span>⏱️ 时间: <span id="gameTime">0</span>s</span>
                 </div>
             </div>
         </div>
 
-        <!-- 游戏画布 -->
-        <canvas id="gameCanvas"></canvas>
+        <!-- 游戏主区域（画布+右侧控制面板） -->
+        <div class="game-main-area">
+            <!-- 游戏画布 -->
+            <canvas id="gameCanvas"></canvas>
 
-        <!-- 控制按钮 -->
-        <div class="game-controls">
-            <button id="pauseBtn" class="control-btn">⏸️ 暂停</button>
-            <button id="saveBtn" class="control-btn">💾 保存</button>
-            <button id="inGameRestartBtn" class="control-btn restart">🔄 重新开始</button>
+            <!-- 右侧控制面板 -->
+            <div class="side-panel">
+                <div class="panel-section">
+                    <h3>🎮 控制</h3>
+                    <button id="pauseBtn" class="panel-btn">⏸️ 暂停 (ESC)</button>
+                    <button id="saveBtn" class="panel-btn save">💾 保存游戏</button>
+                    <button id="inGameRestartBtn" class="panel-btn restart">🔄 重新开始</button>
+                </div>
+                <div class="panel-section">
+                    <h3>📊 详细属性</h3>
+                    <div class="detail-stats">
+                        <div class="detail-stat">
+                            <span class="stat-label">🩸 吸血</span>
+                            <span class="stat-value" id="playerVampire">0</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="stat-label">💢 暴伤</span>
+                            <span class="stat-value" id="playerCritDmg">200%</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="stat-label">📍 攻击范围</span>
+                            <span class="stat-value" id="playerRange">50</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="stat-label">⚡ 攻速</span>
+                            <span class="stat-value" id="playerAtkSpeed">500ms</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="stat-label">🎯 多重攻击</span>
+                            <span class="stat-value" id="playerMultishot">1</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="stat-label">⭐ 经验加成</span>
+                            <span class="stat-value" id="playerExpBonus">100%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-section tips">
+                    <h3>💡 提示</h3>
+                    <p>• WASD/方向键移动</p>
+                    <p>• ESC暂停/继续</p>
+                    <p>• 草丛可隐身</p>
+                </div>
+            </div>
         </div>
     </div>
 

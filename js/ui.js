@@ -18,6 +18,19 @@ function updateUI() {
     document.getElementById('killCount').textContent = game.killCount;
     document.getElementById('gameTime').textContent = Math.floor(game.gameTime);
 
+    // 顶部UI新增属性
+    document.getElementById('playerSpeed').textContent = game.player.speed.toFixed(1);
+    document.getElementById('playerRegen').textContent = game.player.healthRegen || 0;
+    document.getElementById('playerCrit').textContent = Math.floor((game.player.critChance || 0) * 100);
+
+    // 右侧面板详细属性
+    document.getElementById('playerVampire').textContent = game.player.vampireHeal || 0;
+    document.getElementById('playerCritDmg').textContent = Math.floor((game.player.critDamage || 2) * 100) + '%';
+    document.getElementById('playerRange').textContent = Math.floor(game.player.attackRange || 50);
+    document.getElementById('playerAtkSpeed').textContent = game.player.attackCooldown + 'ms';
+    document.getElementById('playerMultishot').textContent = game.player.multiShot || 1;
+    document.getElementById('playerExpBonus').textContent = Math.floor((game.player.expMultiplier || 1) * 100) + '%';
+
     // 只在数据变化时更新武器栏和被动栏
     updateWeaponBarIfNeeded();
     updatePassiveBarIfNeeded();

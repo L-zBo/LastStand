@@ -276,6 +276,106 @@ body {
     box-sizing: border-box;
 }
 
+/* 游戏主区域 - 画布和右侧面板 */
+.game-main-area {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+/* 右侧控制面板 */
+.side-panel {
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    padding: 15px;
+    width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.panel-section h3 {
+    font-size: 0.9em;
+    color: #ffd700;
+    margin: 0 0 5px 0;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.panel-btn {
+    padding: 10px 15px;
+    background: rgba(52, 152, 219, 0.8);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.panel-btn:hover {
+    background: rgba(52, 152, 219, 1);
+    transform: translateX(3px);
+}
+
+.panel-btn.save {
+    background: rgba(46, 204, 113, 0.8);
+}
+
+.panel-btn.save:hover {
+    background: rgba(46, 204, 113, 1);
+}
+
+.panel-btn.restart {
+    background: rgba(231, 76, 60, 0.8);
+}
+
+.panel-btn.restart:hover {
+    background: rgba(231, 76, 60, 1);
+}
+
+/* 详细属性 */
+.detail-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.detail-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8em;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+}
+
+.detail-stat .stat-label {
+    color: #aaa;
+}
+
+.detail-stat .stat-value {
+    color: #4ecdc4;
+    font-weight: bold;
+}
+
+/* 提示区域 */
+.panel-section.tips p {
+    font-size: 0.75em;
+    color: #888;
+    margin: 3px 0;
+}
+
 #ui {
     background: rgba(0, 0, 0, 0.7);
     padding: 15px 30px;
@@ -310,37 +410,6 @@ body {
 .section-label {
     font-size: 0.85em;
     color: #aaa;
-}
-
-/* 游戏控制按钮 */
-.game-controls {
-    display: flex;
-    gap: 15px;
-    margin-top: 10px;
-}
-
-.control-btn {
-    padding: 10px 25px;
-    background: rgba(52, 152, 219, 0.8);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 1em;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.control-btn:hover {
-    background: rgba(52, 152, 219, 1);
-    transform: scale(1.05);
-}
-
-.control-btn.restart {
-    background: rgba(231, 76, 60, 0.8);
-}
-
-.control-btn.restart:hover {
-    background: rgba(231, 76, 60, 1);
 }
 
 /* 暂停界面 */
