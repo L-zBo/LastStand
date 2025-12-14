@@ -14,8 +14,25 @@
             <button id="newGameBtn" class="menu-btn">🎮 新游戏</button>
             <button id="loadGameBtn" class="menu-btn" disabled>📂 读取存档</button>
         </div>
+        <!-- 人数选择 -->
+        <div id="playerCountSelection" class="player-count-selection hidden">
+            <h2>选择游戏人数</h2>
+            <div class="player-count-buttons">
+                <button class="player-count-btn" data-count="1">
+                    <span class="count-icon">👤</span>
+                    <span class="count-text">单人模式</span>
+                    <span class="count-hint">WASD 或 方向键</span>
+                </button>
+                <button class="player-count-btn" data-count="2">
+                    <span class="count-icon">👥</span>
+                    <span class="count-text">双人模式</span>
+                    <span class="count-hint">P1: WASD | P2: 方向键</span>
+                </button>
+            </div>
+        </div>
+        <!-- 职业选择 -->
         <div id="classSelection" class="class-selection hidden">
-            <h2>选择你的职业</h2>
+            <h2 id="classSelectionTitle">选择你的职业</h2>
             <div class="class-cards">
                 <div class="class-card" data-class="warrior">
                     <h3>🛡️ 战士</h3>
@@ -73,7 +90,9 @@
     <div id="gameScreen" class="screen hidden">
         <!-- UI面板 -->
         <div id="ui">
+            <!-- P1状态 -->
             <div class="ui-left">
+                <div class="player-label">P1</div>
                 <div class="stat-bar">
                     <span>❤️ 生命: <span id="playerHealth">100</span>/<span id="playerMaxHealth">100</span></span>
                 </div>
@@ -90,15 +109,30 @@
                     <span>💥 暴击: <span id="playerCrit">0</span>%</span>
                 </div>
             </div>
+            <!-- P2状态（双人模式显示） -->
+            <div class="ui-left p2-ui hidden" id="p2UI">
+                <div class="player-label p2">P2</div>
+                <div class="stat-bar">
+                    <span>❤️ 生命: <span id="player2Health">100</span>/<span id="player2MaxHealth">100</span></span>
+                </div>
+                <div class="stat-bar">
+                    <span>⭐ 等级: <span id="player2Level">1</span></span>
+                    <span>📊 经验: <span id="player2Exp">0</span>/<span id="player2MaxExp">100</span></span>
+                </div>
+                <div class="stat-bar">
+                    <span>⚔️ 攻击: <span id="player2Attack">10</span></span>
+                    <span>🏃 速度: <span id="player2Speed">3</span></span>
+                </div>
+            </div>
             <div class="ui-center">
                 <div class="ui-section">
-                    <span class="section-label">🗡️ 武器</span>
+                    <span class="section-label">🗡️ P1武器</span>
                     <div class="weapon-bar" id="weaponBar">
                         <!-- 武器显示区域 -->
                     </div>
                 </div>
                 <div class="ui-section">
-                    <span class="section-label">💎 被动</span>
+                    <span class="section-label">💎 P1被动</span>
                     <div class="passive-bar" id="passiveBar">
                         <!-- 被动技能显示区域 -->
                     </div>

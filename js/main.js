@@ -6,6 +6,10 @@ let game = {
     canvas: null,
     ctx: null,
     player: null,
+    player2: null,  // 第二个玩家
+    playerCount: 1, // 玩家数量
+    selectedClass: null,
+    selectedClass2: null, // P2职业
     enemies: [],
     particles: [],
     projectiles: [],
@@ -16,7 +20,6 @@ let game = {
     lastTime: 0,
     gameTime: 0,
     killCount: 0,
-    selectedClass: null,
     camera: { x: 0, y: 0 },
     // 存档系统
     currentSaveSlot: null,
@@ -64,17 +67,28 @@ function generateObstacles() {
 
 // 更新摄像机位置
 function updateCamera() {
-    game.camera.x = game.player.x - CONFIG.canvas.width / 2;
-    game.camera.y = game.player.y - CONFIG.canvas.height / 2;
+    let targetX, targetY;
+
+    if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+        // 双人模式：追踪两个玩家的中心点
+        targetX = (game.player.x + game.player2.x) / 2;
+        targetY = (game.player.y + game.player2.y) / 2;
+    } else {
+        // 单人模式或P2已死亡：追踪P1
+        targetX = game.player.x;
+        targetY = game.player.y;
+    }
+
+    game.camera.x = targetX - CONFIG.canvas.width / 2;
+    game.camera.y = targetY - CONFIG.canvas.height / 2;
 
     game.camera.x = Math.max(0, Math.min(CONFIG.world.width - CONFIG.canvas.width, game.camera.x));
     game.camera.y = Math.max(0, Math.min(CONFIG.world.height - CONFIG.canvas.height, game.camera.y));
 }
 
-// 武器攻击更新
-function updateWeaponAttacks() {
+// 武器攻击更新（支持指定玩家）
+function updateWeaponAttacksForPlayer(player) {
     const now = Date.now();
-    const player = game.player;
 
     player.weapons.forEach(weapon => {
         if (!weapon.lastAttackTime) weapon.lastAttackTime = 0;
@@ -110,31 +124,40 @@ function updateWeaponAttacks() {
     });
 }
 
+// 武器攻击更新（所有玩家）
+function updateWeaponAttacks() {
+    updateWeaponAttacksForPlayer(game.player);
+    if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+        updateWeaponAttacksForPlayer(game.player2);
+    }
+}
+
 // 更新武器投射物
 function updateWeaponProjectiles() {
     game.weaponProjectiles.forEach(proj => {
         proj.update();
         game.enemies.forEach(enemy => {
             if (proj.checkHit(enemy)) {
+                const owner = proj.player;
                 let damage = proj.damage;
-                if (Math.random() < game.player.critChance) {
-                    damage *= game.player.critDamage;
+                if (Math.random() < owner.critChance) {
+                    damage *= owner.critDamage;
                 }
                 if (proj.weapon.id === 'shadowBlade' && Math.random() < 0.3) {
                     damage *= 2;
                 }
                 if (proj.weapon.id === 'bloodAxe') {
-                    game.player.health = Math.min(game.player.health + damage * 0.1, game.player.maxHealth);
+                    owner.health = Math.min(owner.health + damage * 0.1, owner.maxHealth);
                 }
                 enemy.health -= damage;
                 for (let i = 0; i < 2; i++) {
                     game.particles.push(new Particle(enemy.x, enemy.y, '#fff'));
                 }
                 if (enemy.health <= 0) {
-                    game.player.gainExp(enemy.expValue);
+                    owner.gainExp(enemy.expValue);
                     game.killCount++;
-                    if (game.player.vampireHeal > 0) {
-                        game.player.health = Math.min(game.player.health + game.player.vampireHeal, game.player.maxHealth);
+                    if (owner.vampireHeal > 0) {
+                        owner.health = Math.min(owner.health + owner.vampireHeal, owner.maxHealth);
                     }
                 }
             }

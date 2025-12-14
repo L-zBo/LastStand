@@ -474,10 +474,19 @@ class WeaponProjectile {
 
 // 玩家类
 class Player {
-    constructor(classType) {
+    constructor(classType, playerIndex = 1) {
         const classConfig = CLASSES[classType];
-        this.x = CONFIG.world.width / 2;
-        this.y = CONFIG.world.height / 2;
+        this.playerIndex = playerIndex; // 1 = P1, 2 = P2
+
+        // 根据玩家编号设置初始位置
+        if (playerIndex === 1) {
+            this.x = CONFIG.world.width / 2 - 50;
+            this.y = CONFIG.world.height / 2;
+        } else {
+            this.x = CONFIG.world.width / 2 + 50;
+            this.y = CONFIG.world.height / 2;
+        }
+
         this.size = CONFIG.player.size;
         this.health = classConfig.health;
         this.maxHealth = classConfig.health;
@@ -514,15 +523,55 @@ class Player {
         this.maxSummons = classConfig.maxSummons || 0;
         this.lastSummonTime = 0;
         this.summonCooldown = 5000;
+
+        // 设置控制键
+        this.setupControls();
+    }
+
+    // 设置控制键
+    setupControls() {
+        if (game.playerCount === 1) {
+            // 单人模式：两种控制方式都可用
+            this.controls = {
+                left: ['ArrowLeft', 'a', 'A'],
+                right: ['ArrowRight', 'd', 'D'],
+                up: ['ArrowUp', 'w', 'W'],
+                down: ['ArrowDown', 's', 'S']
+            };
+        } else {
+            // 双人模式
+            if (this.playerIndex === 1) {
+                // P1: WASD
+                this.controls = {
+                    left: ['a', 'A'],
+                    right: ['d', 'D'],
+                    up: ['w', 'W'],
+                    down: ['s', 'S']
+                };
+            } else {
+                // P2: 方向键
+                this.controls = {
+                    left: ['ArrowLeft'],
+                    right: ['ArrowRight'],
+                    up: ['ArrowUp'],
+                    down: ['ArrowDown']
+                };
+            }
+        }
+    }
+
+    // 检查按键是否按下
+    isKeyPressed(keys) {
+        return keys.some(key => game.keys[key]);
     }
 
     update(deltaTime) {
         // 移动
         let dx = 0, dy = 0;
-        if (game.keys['ArrowLeft'] || game.keys['a'] || game.keys['A']) dx -= 1;
-        if (game.keys['ArrowRight'] || game.keys['d'] || game.keys['D']) dx += 1;
-        if (game.keys['ArrowUp'] || game.keys['w'] || game.keys['W']) dy -= 1;
-        if (game.keys['ArrowDown'] || game.keys['s'] || game.keys['S']) dy += 1;
+        if (this.isKeyPressed(this.controls.left)) dx -= 1;
+        if (this.isKeyPressed(this.controls.right)) dx += 1;
+        if (this.isKeyPressed(this.controls.up)) dy -= 1;
+        if (this.isKeyPressed(this.controls.down)) dy += 1;
 
         // 归一化对角线移动
         if (dx !== 0 && dy !== 0) {
@@ -581,8 +630,10 @@ class Player {
             this.lastRegenTime = now;
         }
 
-        // 更新摄像机位置（平滑跟随）
-        updateCamera();
+        // 更新摄像机位置（只有P1或单人模式才更新摄像机）
+        if (this.playerIndex === 1) {
+            updateCamera();
+        }
 
         // 自动攻击最近的敌人
         this.autoAttack();
