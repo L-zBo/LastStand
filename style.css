@@ -111,6 +111,27 @@ body {
     justify-content: center;
 }
 
+/* 游戏内重新开始按钮 */
+.ingame-restart-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 8px 15px;
+    background: rgba(231, 76, 60, 0.8);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ingame-restart-btn:hover {
+    background: rgba(231, 76, 60, 1);
+    transform: translateY(-50%) scale(1.05);
+}
+
 .weapon-bar {
     display: flex;
     gap: 8px;

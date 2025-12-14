@@ -36,7 +36,7 @@ const CLASSES = {
         speed: 3,
         color: '#ff6b6b',
         sprite: '🛡️',
-        attackType: 'melee',  // 近战
+        attackType: 'melee',
         attackRange: 50
     },
     mage: {
@@ -46,7 +46,7 @@ const CLASSES = {
         speed: 3.5,
         color: '#4ecdc4',
         sprite: '🧙',
-        attackType: 'magic',  // 魔法
+        attackType: 'magic',
         attackRange: 150
     },
     assassin: {
@@ -56,7 +56,7 @@ const CLASSES = {
         speed: 5,
         color: '#95e1d3',
         sprite: '🥷',
-        attackType: 'melee',  // 近战
+        attackType: 'melee',
         attackRange: 45
     },
     ranger: {
@@ -66,8 +66,19 @@ const CLASSES = {
         speed: 4,
         color: '#f38181',
         sprite: '🏹',
-        attackType: 'ranged',  // 远程弓箭
+        attackType: 'ranged',
         attackRange: 200
+    },
+    summoner: {
+        name: '召唤师',
+        health: 90,
+        attack: 12,
+        speed: 3.2,
+        color: '#9b59b6',
+        sprite: '🔮',
+        attackType: 'summon',
+        attackRange: 180,
+        maxSummons: 3
     }
 };
 
@@ -375,7 +386,8 @@ let game = {
     enemies: [],
     particles: [],
     projectiles: [],
-    weaponProjectiles: [], // 武器发射的投射物
+    weaponProjectiles: [],
+    summons: [], // 召唤物
     obstacles: [],
     keys: {},
     lastTime: 0,
@@ -385,16 +397,16 @@ let game = {
     camera: { x: 0, y: 0 },
     // 波数系统
     wave: {
-        current: 1,           // 当前波数
-        enemiesRemaining: 0,  // 本波剩余敌人数
-        enemiesSpawned: 0,    // 本波已生成敌人数
-        totalEnemies: 0,      // 本波总敌人数
-        lastSpawnTime: 0,     // 上次生成时间
-        isSpawning: false,    // 是否正在生成
-        eliteSpawned: false,  // 精英是否已生成
-        bossSpawned: false,   // Boss是否已生成
-        waveStartTime: 0,     // 波次开始时间
-        inBreak: false        // 是否在波次间休息
+        current: 1,
+        enemiesRemaining: 0,
+        enemiesSpawned: 0,
+        totalEnemies: 0,
+        lastSpawnTime: 0,
+        isSpawning: false,
+        eliteSpawned: false,
+        bossSpawned: false,
+        waveStartTime: 0,
+        inBreak: false
     }
 };
 
@@ -517,6 +529,113 @@ class Projectile {
 
     isDead() {
         return this.distance >= this.maxDistance;
+    }
+}
+
+// 召唤物类
+class Summon {
+    constructor(x, y, owner) {
+        this.x = x;
+        this.y = y;
+        this.owner = owner;
+        this.size = 15;
+        this.health = 50 + owner.level * 10;
+        this.maxHealth = this.health;
+        this.attack = owner.attack * 0.5;
+        this.speed = 3;
+        this.attackRange = 60;
+        this.attackCooldown = 800;
+        this.lastAttackTime = 0;
+        this.color = '#9b59b6';
+        this.sprite = '👻';
+        this.lifeTime = 30000; // 30秒存活时间
+        this.spawnTime = Date.now();
+    }
+
+    update() {
+        // 检查存活时间
+        if (Date.now() - this.spawnTime > this.lifeTime) {
+            this.health = 0;
+            return;
+        }
+
+        // 找最近的敌人
+        let target = null;
+        let minDist = Infinity;
+        game.enemies.forEach(enemy => {
+            const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+            if (dist < minDist) {
+                minDist = dist;
+                target = enemy;
+            }
+        });
+
+        // 移动向敌人
+        if (target) {
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > this.attackRange) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            } else {
+                // 攻击
+                const now = Date.now();
+                if (now - this.lastAttackTime >= this.attackCooldown) {
+                    target.health -= this.attack;
+                    this.lastAttackTime = now;
+
+                    // 粒子效果
+                    for (let i = 0; i < 2; i++) {
+                        game.particles.push(new Particle(target.x, target.y, this.color));
+                    }
+
+                    // 检查击杀
+                    if (target.health <= 0) {
+                        game.player.gainExp(target.expValue);
+                        game.killCount++;
+                    }
+                }
+            }
+        } else {
+            // 没有敌人时跟随玩家
+            const dx = this.owner.x - this.x;
+            const dy = this.owner.y - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > 100) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            }
+        }
+
+        // 边界限制
+        this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, this.x));
+        this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
+    }
+
+    draw(ctx) {
+        // 绘制召唤物
+        ctx.font = `${this.size * 2}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.sprite, this.x, this.y);
+
+        // 绘制生命条
+        const barWidth = 25;
+        const barHeight = 4;
+        const healthPercent = this.health / this.maxHealth;
+
+        ctx.fillStyle = '#333';
+        ctx.fillRect(this.x - barWidth/2, this.y - this.size - 10, barWidth, barHeight);
+
+        ctx.fillStyle = '#9b59b6';
+        ctx.fillRect(this.x - barWidth/2, this.y - this.size - 10, barWidth * healthPercent, barHeight);
+    }
+
+    isDead() {
+        return this.health <= 0;
     }
 }
 
@@ -864,8 +983,13 @@ class Player {
         this.lastRegenTime = Date.now();
 
         // 武器系统
-        this.weapons = []; // 已获得的武器
-        this.maxWeapons = 6; // 最多6个武器
+        this.weapons = [];
+        this.maxWeapons = 6;
+
+        // 召唤师系统
+        this.maxSummons = classConfig.maxSummons || 0;
+        this.lastSummonTime = 0;
+        this.summonCooldown = 5000; // 5秒召唤间隔
     }
 
     update(deltaTime) {
@@ -942,6 +1066,52 @@ class Player {
 
     autoAttack() {
         const now = Date.now();
+
+        // 召唤师召唤逻辑
+        if (this.attackType === 'summon') {
+            // 自动召唤
+            if (game.summons.length < this.maxSummons && now - this.lastSummonTime >= this.summonCooldown) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 30;
+                const summonX = this.x + Math.cos(angle) * dist;
+                const summonY = this.y + Math.sin(angle) * dist;
+                game.summons.push(new Summon(summonX, summonY, this));
+                this.lastSummonTime = now;
+
+                // 召唤特效
+                for (let i = 0; i < 5; i++) {
+                    game.particles.push(new Particle(summonX, summonY, this.color));
+                }
+            }
+
+            // 召唤师也可以发射魔法弹攻击
+            if (now - this.lastAttackTime < this.attackCooldown) return;
+
+            const enemiesInRange = game.enemies
+                .map(enemy => ({
+                    enemy,
+                    distance: Math.hypot(enemy.x - this.x, enemy.y - this.y)
+                }))
+                .filter(e => e.distance <= this.attackRange)
+                .sort((a, b) => a.distance - b.distance);
+
+            if (enemiesInRange.length > 0) {
+                const { enemy } = enemiesInRange[0];
+                const damage = this.attack;
+
+                game.projectiles.push(new Projectile(
+                    this.x, this.y,
+                    enemy.x, enemy.y,
+                    damage,
+                    'magic',
+                    this.color
+                ));
+
+                this.lastAttackTime = now;
+            }
+            return;
+        }
+
         if (now - this.lastAttackTime < this.attackCooldown) return;
 
         // 找到范围内最近的敌人
@@ -1136,37 +1306,40 @@ class Enemy {
         this.isElite = false;
         this.isBoss = false;
 
+        // 波数增强系数（每波增加5%属性）
+        const waveMultiplier = 1 + (game.wave.current - 1) * 0.05;
+
         // 根据类型设置属性
         if (type === 'normal') {
-            this.health = 30;
-            this.maxHealth = 30;
-            this.speed = 1.5;
-            this.damage = 10;
-            this.expValue = 20;
+            this.health = Math.floor(30 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(1.5 + (game.wave.current - 1) * 0.02, 3);
+            this.damage = Math.floor(10 * waveMultiplier);
+            this.expValue = Math.floor(20 * waveMultiplier);
             this.color = '#ff4757';
             this.sprite = '👾';
         } else if (type === 'fast') {
-            this.health = 20;
-            this.maxHealth = 20;
-            this.speed = 3;
-            this.damage = 8;
-            this.expValue = 15;
+            this.health = Math.floor(20 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(3 + (game.wave.current - 1) * 0.03, 5);
+            this.damage = Math.floor(8 * waveMultiplier);
+            this.expValue = Math.floor(15 * waveMultiplier);
             this.color = '#ffa502';
             this.sprite = '⚡';
         } else if (type === 'tank') {
-            this.health = 60;
-            this.maxHealth = 60;
-            this.speed = 1;
-            this.damage = 15;
-            this.expValue = 30;
+            this.health = Math.floor(60 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(1 + (game.wave.current - 1) * 0.01, 2);
+            this.damage = Math.floor(15 * waveMultiplier);
+            this.expValue = Math.floor(30 * waveMultiplier);
             this.color = '#2ed573';
             this.sprite = '💀';
         } else if (type === 'elite') {
-            this.health = 100;
-            this.maxHealth = 100;
-            this.speed = 2;
-            this.damage = 20;
-            this.expValue = 50;
+            this.health = Math.floor(100 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(2 + (game.wave.current - 1) * 0.02, 3.5);
+            this.damage = Math.floor(20 * waveMultiplier);
+            this.expValue = Math.floor(50 * waveMultiplier);
             this.color = '#ff6348';
             this.sprite = '👹';
             this.isElite = true;
@@ -1174,7 +1347,7 @@ class Enemy {
         } else if (type === 'boss') {
             // Boss属性根据波数增强
             const bossLevel = Math.floor(game.wave.current / 10);
-            this.health = 500 + bossLevel * 200;
+            this.health = Math.floor((500 + bossLevel * 200) * waveMultiplier);
             this.maxHealth = this.health;
             this.speed = 1.2;
             this.damage = 30 + bossLevel * 10;
@@ -1738,6 +1911,7 @@ function gameLoop(timestamp) {
         game.enemies.forEach(enemy => enemy.update());
         game.particles.forEach(particle => particle.update());
         game.projectiles.forEach(projectile => projectile.update());
+        game.summons.forEach(summon => summon.update());
 
         // 投射物击中检测
         game.projectiles.forEach(projectile => {
@@ -1775,6 +1949,7 @@ function gameLoop(timestamp) {
         game.enemies = game.enemies.filter(enemy => enemy.health > 0);
         game.particles = game.particles.filter(particle => !particle.isDead());
         game.projectiles = game.projectiles.filter(p => !p.isDead() && !p.hit);
+        game.summons = game.summons.filter(summon => !summon.isDead());
 
         // 清理距离玩家太远的敌人（优化性能）
         game.enemies = game.enemies.filter(enemy => {
@@ -1856,6 +2031,9 @@ function gameLoop(timestamp) {
 
         // 绘制武器投射物
         game.weaponProjectiles.forEach(projectile => projectile.draw(game.ctx));
+
+        // 绘制召唤物
+        game.summons.forEach(summon => summon.draw(game.ctx));
 
         // 绘制玩家和敌人
         game.enemies.forEach(enemy => enemy.draw(game.ctx));
@@ -1945,6 +2123,11 @@ function initGame() {
     document.getElementById('restartBtn').addEventListener('click', () => {
         location.reload();
     });
+
+    // 游戏内重新开始按钮
+    document.getElementById('inGameRestartBtn').addEventListener('click', () => {
+        location.reload();
+    });
 }
 
 // 开始游戏
@@ -1960,6 +2143,7 @@ function startGame() {
     game.particles = [];
     game.projectiles = [];
     game.weaponProjectiles = [];
+    game.summons = [];
     game.killCount = 0;
     game.gameTime = 0;
     game.lastTime = 0;
