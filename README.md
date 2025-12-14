@@ -61,9 +61,19 @@
 ```
 roge game/
 ├── index.html      # 主页面，包含所有UI结构
-├── style.css       # 样式表，UI外观定义
+├── style.css       # 主样式入口（导入所有CSS模块）
 ├── README.md       # 本文档
-└── js/
+├── css/            # CSS模块目录
+│   ├── base.css        # 基础样式（重置、全局）
+│   ├── menu.css        # 开始菜单、职业选择样式
+│   ├── game-layout.css # 游戏界面布局（面板、画布）
+│   ├── equipment.css   # 武器栏、被动技能栏样式
+│   ├── modals.css      # 模态框、暂停界面样式
+│   ├── levelup.css     # 升级界面、强化卡片样式
+│   ├── save-system.css # 存档系统样式
+│   ├── notifications.css # 通知、动画效果
+│   └── responsive.css  # 响应式设计
+└── js/             # JavaScript模块目录
     ├── config.js   # 游戏配置（画布大小、世界大小、波次参数等）
     ├── data.js     # 游戏数据（职业、武器、Buff、敌人类型）
     ├── entities.js # 游戏实体类（玩家、敌人、投射物、召唤物等）
@@ -84,11 +94,65 @@ roge game/
 - 升级选择界面
 - 游戏结束界面
 
-### style.css
-完整的CSS样式定义，包含：
-- 响应式布局
-- 动画效果
-- 各种UI组件样式
+### CSS文件
+
+#### style.css（主入口）
+导入所有CSS模块文件，统一管理样式。
+
+#### css/base.css
+基础样式：
+- CSS重置
+- 全局字体和颜色
+- 通用类（.hidden等）
+
+#### css/menu.css
+菜单相关样式：
+- 开始界面
+- 人数选择按钮
+- 职业选择卡片
+
+#### css/game-layout.css
+游戏界面布局：
+- 左侧属性面板
+- 游戏画布
+- 右侧控制面板
+- 玩家状态显示
+
+#### css/equipment.css
+装备相关样式：
+- 武器栏
+- 被动技能栏
+- 装备提示框
+
+#### css/modals.css
+弹窗样式：
+- 通用模态框
+- 武器详情弹窗
+- 暂停界面
+- 倒计时界面
+
+#### css/levelup.css
+升级界面样式：
+- 强化卡片
+- 类型标签
+- 游戏结束界面
+
+#### css/save-system.css
+存档系统样式：
+- 存档槽
+- 存档信息显示
+
+#### css/notifications.css
+通知和动画：
+- 武器进化通知
+- 波次提示
+- 保存成功提示
+- 动画关键帧
+
+#### css/responsive.css
+响应式设计：
+- 不同屏幕尺寸适配
+- 移动端优化
 
 ### js/config.js
 游戏配置常量：
