@@ -60,8 +60,7 @@
 
 ```
 roge game/
-├── index.html      # 主页面，包含所有UI结构
-├── style.css       # 主样式入口（导入所有CSS模块）
+├── index.html      # 主页面，包含所有UI结构和CSS引用
 ├── README.md       # 本文档
 ├── css/            # CSS模块目录
 │   ├── base.css        # 基础样式（重置、全局）
@@ -96,8 +95,7 @@ roge game/
 
 ### CSS文件
 
-#### style.css（主入口）
-导入所有CSS模块文件，统一管理样式。
+所有CSS模块文件直接在index.html中引用。
 
 #### css/base.css
 基础样式：
