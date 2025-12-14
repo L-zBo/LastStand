@@ -1191,6 +1191,9 @@ class Player {
         this.weapons = [];
         this.maxWeapons = 6;
 
+        // 被动技能系统
+        this.passives = [];
+
         // 召唤师系统
         this.maxSummons = classConfig.maxSummons || 0;
         this.lastSummonTime = 0;
@@ -1949,6 +1952,8 @@ function updateUI() {
 
     // 更新武器栏显示
     updateWeaponBar();
+    // 更新被动栏显示
+    updatePassiveBar();
 }
 
 // 更新武器栏
@@ -1979,6 +1984,68 @@ function updateWeaponBar() {
 
         weaponBar.appendChild(slot);
     }
+}
+
+// 更新被动栏
+function updatePassiveBar() {
+    const passiveBar = document.getElementById('passiveBar');
+    if (!passiveBar) return;
+    passiveBar.innerHTML = '';
+
+    // 获取玩家的被动效果
+    const passives = game.player.passives || [];
+
+    if (passives.length === 0) {
+        passiveBar.innerHTML = '<span style="color: #666; font-size: 0.8em;">暂无被动</span>';
+        return;
+    }
+
+    passives.forEach(passive => {
+        const slot = document.createElement('div');
+        slot.className = 'passive-slot' + (passive.classOnly ? ' class-passive' : '');
+        slot.innerHTML = `
+            <span>${passive.icon}</span>
+            <div class="passive-tooltip">
+                <h4>${passive.name}</h4>
+                <p>${passive.description}</p>
+                <p class="passive-type">${passive.type || '通用强化'}</p>
+            </div>
+        `;
+        passiveBar.appendChild(slot);
+    });
+}
+
+// 显示武器详情弹窗
+function showWeaponDetail(weapon) {
+    const modal = document.getElementById('weaponDetailModal');
+    document.getElementById('weaponDetailIcon').textContent = weapon.icon;
+    document.getElementById('weaponDetailName').textContent = weapon.name;
+    document.getElementById('weaponDetailLevel').textContent = `Lv.${weapon.level || 1}/${weapon.maxLevel || 5}`;
+    document.getElementById('weaponDetailDesc').textContent = weapon.description;
+
+    // 计算实际伤害
+    const actualDamage = weapon.damage * (weapon.level || 1);
+    document.getElementById('weaponDetailDamage').textContent = actualDamage;
+
+    const typeNames = { melee: '近战', ranged: '远程', magic: '魔法', accessory: '配件', evolved: '进化' };
+    document.getElementById('weaponDetailType').textContent = typeNames[weapon.type] || weapon.type;
+
+    // 显示进化信息
+    const evolveInfo = document.getElementById('weaponEvolveInfo');
+    if (weapon.evolvesWith && weapon.evolvesTo) {
+        const partner = WEAPONS[weapon.evolvesWith];
+        const evolved = WEAPONS[weapon.evolvesTo];
+        document.getElementById('evolvePartner').textContent = `${partner.icon} ${partner.name}`;
+        document.getElementById('evolveResult').textContent = `${evolved.icon} ${evolved.name}`;
+        evolveInfo.style.display = 'block';
+    } else if (weapon.type === 'evolved') {
+        evolveInfo.innerHTML = `<h4>✨ 已进化武器</h4><p>这是一把进化后的强力武器！</p>`;
+        evolveInfo.style.display = 'block';
+    } else {
+        evolveInfo.style.display = 'none';
+    }
+
+    modal.classList.remove('hidden');
 }
 
 // 显示武器进化提示
@@ -2067,11 +2134,12 @@ function showWeaponOptions(container) {
         const card = document.createElement('div');
         card.className = 'buff-card weapon-card';
 
+        // 进化信息
         let evolveInfo = '';
         if (w.evolvesWith && w.evolvesTo) {
             const partner = WEAPONS[w.evolvesWith];
             const evolved = WEAPONS[w.evolvesTo];
-            evolveInfo = `<div class="evolve-hint">🔄 满级后 + ${partner.icon}${partner.name} → ${evolved.icon}${evolved.name}</div>`;
+            evolveInfo = `<div class="evolve-hint">🔄 满级 + ${partner.icon}${partner.name} → ${evolved.icon}${evolved.name}</div>`;
         }
 
         const typeNames = { melee: '近战', ranged: '远程', magic: '魔法', accessory: '配件' };
@@ -2083,6 +2151,29 @@ function showWeaponOptions(container) {
         const tagClass = option.isAccessory ? 'tag-accessory' : 'tag-weapon';
         const tagText = option.isAccessory ? '配件装备' : '武器';
 
+        // 构建详细属性显示
+        let statsHtml = '<div class="weapon-stats-detail">';
+        if (option.isAccessory) {
+            // 配件属性
+            if (w.effect) statsHtml += `<span class="stat-item">✨ ${w.effect}</span>`;
+        } else {
+            // 武器属性
+            const currentDamage = w.damage * (option.type === 'upgrade' ? w.level : 1);
+            const nextDamage = w.damage * (option.type === 'upgrade' ? w.level + 1 : 1);
+
+            if (option.type === 'upgrade') {
+                statsHtml += `<span class="stat-item">⚔️ 伤害: ${currentDamage} → <span class="stat-up">${nextDamage}</span></span>`;
+            } else {
+                statsHtml += `<span class="stat-item">⚔️ 伤害: ${w.damage}</span>`;
+            }
+            if (w.attackSpeed) statsHtml += `<span class="stat-item">⚡ 攻速: ${w.attackSpeed}s</span>`;
+            if (w.range) statsHtml += `<span class="stat-item">📏 范围: ${w.range}</span>`;
+            if (w.projectileCount) statsHtml += `<span class="stat-item">🎯 投射物: ${w.projectileCount}</span>`;
+            if (w.piercing) statsHtml += `<span class="stat-item">💫 穿透</span>`;
+        }
+        statsHtml += `<span class="stat-item">📊 最高Lv: ${w.maxLevel || 5}</span>`;
+        statsHtml += '</div>';
+
         card.innerHTML = `
             <span class="option-type-tag ${tagClass}">${tagText}</span>
             <div class="buff-card-header">
@@ -2093,7 +2184,7 @@ function showWeaponOptions(container) {
                 </div>
             </div>
             <p class="buff-desc">${w.description}</p>
-            <div class="buff-effect">⚔️ 伤害: ${w.damage || 0} | 最高等级: ${w.maxLevel || 5}</div>
+            ${statsHtml}
             ${evolveInfo}
         `;
         card.onclick = () => selectWeapon(option);
@@ -2204,6 +2295,17 @@ function selectWeapon(option) {
 // 选择buff
 function selectBuff(buff) {
     buff.apply(game.player);
+    // 添加到被动栏显示
+    if (!game.player.passives.find(p => p.id === buff.id)) {
+        game.player.passives.push({
+            id: buff.id,
+            name: buff.name,
+            icon: buff.icon,
+            description: buff.description,
+            type: buff.type || '通用强化',
+            classOnly: buff.classOnly
+        });
+    }
     document.getElementById('levelUpScreen').classList.add('hidden');
     game.state = 'playing';
 }
@@ -2815,6 +2917,8 @@ function saveGameToSlot(slotIndex) {
             exp: game.player.exp,
             maxExp: game.player.maxExp,
             weapons: game.player.weapons.map(w => ({ id: w.id, level: w.level })),
+            // 保存被动技能
+            passives: game.player.passives,
             // 保存额外属性
             critChance: game.player.critChance,
             critDamage: game.player.critDamage,
@@ -2890,6 +2994,9 @@ function applyLoadedSaveData(saveData) {
     game.player.healthRegen = saveData.player.healthRegen || 0;
     game.player.multiShot = saveData.player.multiShot || 1;
     game.player.maxSummons = saveData.player.maxSummons || CLASSES[game.selectedClass].maxSummons || 0;
+
+    // 恢复被动技能
+    game.player.passives = saveData.player.passives || [];
 
     // 恢复武器
     game.player.weapons = [];
