@@ -1584,8 +1584,8 @@ function showWaveNotification(waveNum) {
 
 // 显示波次完成奖励界面
 function showWaveCompleteScreen() {
-    const overlay = document.getElementById('levelUpOverlay');
-    const title = document.querySelector('#levelUpOverlay h2');
+    const screen = document.getElementById('levelUpScreen');
+    const title = document.querySelector('#levelUpScreen h2');
     title.textContent = `第 ${game.wave.current} 波完成!`;
 
     const buffOptions = document.getElementById('buffOptions');
@@ -1626,9 +1626,11 @@ function showWaveCompleteScreen() {
             `;
             card.onclick = () => {
                 game.player.addWeapon(weapon.id);
-                document.querySelector('#levelUpOverlay h2').textContent = '选择强化';
-                overlay.classList.remove('active');
+                document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
+                screen.classList.add('hidden');
                 game.state = 'playing';
+                // 开始下一波
+                startNewWave();
             };
         } else {
             const buff = option.data;
@@ -1639,16 +1641,18 @@ function showWaveCompleteScreen() {
             `;
             card.onclick = () => {
                 buff.apply(game.player);
-                document.querySelector('#levelUpOverlay h2').textContent = '选择强化';
-                overlay.classList.remove('active');
+                document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
+                screen.classList.add('hidden');
                 game.state = 'playing';
+                // 开始下一波
+                startNewWave();
             };
         }
 
         buffOptions.appendChild(card);
     });
 
-    overlay.classList.add('active');
+    screen.classList.remove('hidden');
 }
 
 // 生成障碍物
