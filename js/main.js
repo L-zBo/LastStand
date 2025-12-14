@@ -181,13 +181,23 @@ function drawMinimap() {
     game.ctx.lineWidth = 2;
     game.ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
 
+    // P1在小地图上
     const playerMinimapX = minimapX + game.player.x * scaleX;
     const playerMinimapY = minimapY + game.player.y * scaleY;
-
     game.ctx.fillStyle = game.player.color;
     game.ctx.beginPath();
     game.ctx.arc(playerMinimapX, playerMinimapY, 3, 0, Math.PI * 2);
     game.ctx.fill();
+
+    // P2在小地图上
+    if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+        const p2MinimapX = minimapX + game.player2.x * scaleX;
+        const p2MinimapY = minimapY + game.player2.y * scaleY;
+        game.ctx.fillStyle = game.player2.color;
+        game.ctx.beginPath();
+        game.ctx.arc(p2MinimapX, p2MinimapY, 3, 0, Math.PI * 2);
+        game.ctx.fill();
+    }
 
     game.enemies.forEach(enemy => {
         const enemyMinimapX = minimapX + enemy.x * scaleX;
@@ -212,10 +222,32 @@ function gameOver() {
     game.state = 'gameover';
     document.getElementById('finalTime').textContent = Math.floor(game.gameTime);
     document.getElementById('finalKills').textContent = game.killCount;
-    document.getElementById('finalLevel').textContent = game.player.level;
+    // 显示最高等级的玩家
+    let finalLevel = game.player.level;
+    if (game.playerCount === 2 && game.player2) {
+        finalLevel = Math.max(game.player.level, game.player2.level);
+    }
+    document.getElementById('finalLevel').textContent = finalLevel;
     document.getElementById('finalWave').textContent = game.wave.current;
     document.getElementById('gameOverScreen').classList.remove('hidden');
     clearSaveData();
+}
+
+// 检查游戏是否结束
+function checkGameOver() {
+    if (game.playerCount === 1) {
+        if (game.player.health <= 0) {
+            gameOver();
+            return true;
+        }
+    } else {
+        // 双人模式：两个玩家都死亡才结束
+        if (game.player.health <= 0 && (!game.player2 || game.player2.health <= 0)) {
+            gameOver();
+            return true;
+        }
+    }
+    return false;
 }
 
 // 游戏循环
@@ -233,8 +265,13 @@ function gameLoop(timestamp) {
     if (game.state === 'playing') {
         game.gameTime += deltaTime / 1000;
 
-        // 更新
+        // 更新P1
         game.player.update(deltaTime);
+
+        // 更新P2
+        if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+            game.player2.update(deltaTime);
+        }
 
         game.enemies.forEach(enemy => enemy.update());
         game.particles.forEach(particle => particle.update());
@@ -254,15 +291,17 @@ function gameLoop(timestamp) {
                     }
 
                     if (enemy.health <= 0) {
-                        game.player.gainExp(enemy.expValue);
+                        // 经验给投射物的所有者
+                        const owner = projectile.owner || game.player;
+                        owner.gainExp(enemy.expValue);
                         game.killCount++;
 
                         for (let i = 0; i < 6; i++) {
                             game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
                         }
 
-                        if (game.player.vampireHeal > 0) {
-                            game.player.health = Math.min(game.player.health + game.player.vampireHeal, game.player.maxHealth);
+                        if (owner.vampireHeal > 0) {
+                            owner.health = Math.min(owner.health + owner.vampireHeal, owner.maxHealth);
                         }
                     }
                 }
@@ -275,11 +314,22 @@ function gameLoop(timestamp) {
         game.projectiles = game.projectiles.filter(p => !p.isDead() && !p.hit);
         game.summons = game.summons.filter(summon => !summon.isDead());
 
-        // 清理距离玩家太远的敌人
+        // 清理距离玩家太远的敌人（考虑双人模式）
         game.enemies = game.enemies.filter(enemy => {
-            const dist = Math.hypot(enemy.x - game.player.x, enemy.y - game.player.y);
-            return dist < Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * 2;
+            const distP1 = Math.hypot(enemy.x - game.player.x, enemy.y - game.player.y);
+            let minDist = distP1;
+            if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+                const distP2 = Math.hypot(enemy.x - game.player2.x, enemy.y - game.player2.y);
+                minDist = Math.min(distP1, distP2);
+            }
+            return minDist < Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * 2;
         });
+
+        // 检查游戏结束
+        if (checkGameOver()) {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
 
         // 波次系统更新
         updateWaveSpawning();
@@ -290,6 +340,9 @@ function gameLoop(timestamp) {
 
         // 更新武器投射物
         updateWeaponProjectiles();
+
+        // 更新摄像机
+        updateCamera();
 
         // 更新UI
         updateUI();
@@ -346,7 +399,14 @@ function gameLoop(timestamp) {
         game.weaponProjectiles.forEach(projectile => projectile.draw(game.ctx));
         game.summons.forEach(summon => summon.draw(game.ctx));
         game.enemies.forEach(enemy => enemy.draw(game.ctx));
+
+        // 绘制P1
         game.player.draw(game.ctx);
+
+        // 绘制P2
+        if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+            game.player2.draw(game.ctx);
+        }
 
         game.ctx.restore();
 
@@ -468,7 +528,26 @@ function startGame() {
     // 生成障碍物
     generateObstacles();
 
-    game.player = new Player(game.selectedClass);
+    // 创建P1
+    game.player = new Player(game.selectedClass, 1);
+
+    // 设置P1职业名称显示
+    const classNames = {
+        warrior: '战士', mage: '法师', assassin: '刺客',
+        ranger: '游侠', summoner: '召唤师'
+    };
+    document.getElementById('p1ClassName').textContent = classNames[game.selectedClass] || game.selectedClass;
+
+    // 双人模式创建P2
+    if (game.playerCount === 2 && game.selectedClass2) {
+        game.player2 = new Player(game.selectedClass2, 2);
+        document.getElementById('p2UI').classList.remove('hidden');
+        document.getElementById('p2ClassName').textContent = classNames[game.selectedClass2] || game.selectedClass2;
+    } else {
+        game.player2 = null;
+        document.getElementById('p2UI').classList.add('hidden');
+    }
+
     game.enemies = [];
     game.particles = [];
     game.projectiles = [];
@@ -566,11 +645,46 @@ function initGame() {
     // 存档位界面返回按钮
     document.getElementById('saveSlotBackBtn').addEventListener('click', backToStartScreen);
 
+    // 人数选择按钮
+    document.querySelectorAll('.player-count-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            game.playerCount = parseInt(btn.dataset.count);
+            document.getElementById('playerCountSelection').classList.add('hidden');
+
+            if (game.playerCount === 1) {
+                // 单人模式：直接显示职业选择
+                document.getElementById('classSelectionTitle').textContent = '选择你的职业';
+                document.getElementById('classSelection').classList.remove('hidden');
+            } else {
+                // 双人模式：先选P1职业
+                document.getElementById('classSelectionTitle').textContent = 'P1 选择职业 (WASD控制)';
+                document.getElementById('classSelection').classList.remove('hidden');
+            }
+        });
+    });
+
     // 职业选择
     document.querySelectorAll('.class-card').forEach(card => {
         card.addEventListener('click', () => {
-            game.selectedClass = card.dataset.class;
-            startGame();
+            if (game.playerCount === 1) {
+                // 单人模式
+                game.selectedClass = card.dataset.class;
+                startGame();
+            } else {
+                // 双人模式
+                if (!game.selectedClass) {
+                    // P1选择职业
+                    game.selectedClass = card.dataset.class;
+                    document.getElementById('classSelectionTitle').textContent = 'P2 选择职业 (方向键控制)';
+                    // 添加已选中效果
+                    document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                } else {
+                    // P2选择职业
+                    game.selectedClass2 = card.dataset.class;
+                    startGame();
+                }
+            }
         });
     });
 

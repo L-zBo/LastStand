@@ -929,28 +929,59 @@ class Enemy {
     }
 
     update() {
-        // 追踪玩家
-        const dx = game.player.x - this.x;
-        const dy = game.player.y - this.y;
+        // 找到最近的存活玩家追踪
+        let targetPlayer = game.player;
+        let minDist = Math.hypot(game.player.x - this.x, game.player.y - this.y);
+
+        if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+            const distToP2 = Math.hypot(game.player2.x - this.x, game.player2.y - this.y);
+            // 如果P1已死亡或P2更近，追踪P2
+            if (game.player.health <= 0 || distToP2 < minDist) {
+                targetPlayer = game.player2;
+                minDist = distToP2;
+            }
+        }
+
+        // 如果目标玩家已死亡，尝试找另一个
+        if (targetPlayer.health <= 0) {
+            if (targetPlayer === game.player && game.player2 && game.player2.health > 0) {
+                targetPlayer = game.player2;
+            } else if (targetPlayer === game.player2 && game.player.health > 0) {
+                targetPlayer = game.player;
+            }
+        }
+
+        const dx = targetPlayer.x - this.x;
+        const dy = targetPlayer.y - this.y;
         const distance = Math.hypot(dx, dy);
 
         // 精英怪和Boss可以看到草丛中的玩家，普通怪看不到
-        const canSeePlayer = this.isElite || this.isBoss || !game.player.hidden;
+        const canSeePlayer = this.isElite || this.isBoss || !targetPlayer.hidden;
 
         if (distance > 0 && canSeePlayer) {
             this.x += (dx / distance) * this.speed;
             this.y += (dy / distance) * this.speed;
         }
 
-        // 碰撞检测（Boss不会碰撞消失）
-        if (distance < this.size + game.player.size) {
-            game.player.health -= this.damage;
-            if (!this.isBoss) {
-                this.health = 0;
+        // 碰撞检测（检查P1）
+        if (game.player.health > 0) {
+            const distP1 = Math.hypot(this.x - game.player.x, this.y - game.player.y);
+            if (distP1 < this.size + game.player.size) {
+                game.player.health -= this.damage;
+                if (!this.isBoss) {
+                    this.health = 0;
+                }
             }
+        }
 
-            if (game.player.health <= 0) {
-                gameOver();
+        // 碰撞检测（检查P2）
+        if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+            const distP2 = Math.hypot(this.x - game.player2.x, this.y - game.player2.y);
+            if (distP2 < this.size + game.player2.size) {
+                game.player2.health -= this.damage;
+                if (!this.isBoss) {
+                    this.health = 0;
+                }
             }
         }
     }

@@ -177,7 +177,14 @@ function showOverwriteModal() {
 
 function showClassSelection() {
     document.getElementById('startScreen').classList.remove('hidden');
-    document.getElementById('classSelection').classList.remove('hidden');
+    // 先显示人数选择
+    document.getElementById('playerCountSelection').classList.remove('hidden');
+    document.getElementById('classSelection').classList.add('hidden');
+    // 重置选择状态
+    game.selectedClass = null;
+    game.selectedClass2 = null;
+    game.playerCount = 1;
+    document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
 }
 
 // 保存游戏到指定存档位

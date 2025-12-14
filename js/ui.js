@@ -8,6 +8,7 @@ let lastPassiveBarState = '';
 
 // 更新UI
 function updateUI() {
+    // P1 UI
     document.getElementById('playerHealth').textContent = Math.max(0, Math.floor(game.player.health));
     document.getElementById('playerMaxHealth').textContent = game.player.maxHealth;
     document.getElementById('playerLevel').textContent = game.player.level;
@@ -30,6 +31,17 @@ function updateUI() {
     document.getElementById('playerAtkSpeed').textContent = game.player.attackCooldown + 'ms';
     document.getElementById('playerMultishot').textContent = game.player.multiShot || 1;
     document.getElementById('playerExpBonus').textContent = Math.floor((game.player.expMultiplier || 1) * 100) + '%';
+
+    // P2 UI（双人模式）
+    if (game.playerCount === 2 && game.player2) {
+        document.getElementById('player2Health').textContent = Math.max(0, Math.floor(game.player2.health));
+        document.getElementById('player2MaxHealth').textContent = game.player2.maxHealth;
+        document.getElementById('player2Level').textContent = game.player2.level;
+        document.getElementById('player2Exp').textContent = game.player2.exp;
+        document.getElementById('player2MaxExp').textContent = game.player2.maxExp;
+        document.getElementById('player2Attack').textContent = game.player2.attack;
+        document.getElementById('player2Speed').textContent = game.player2.speed.toFixed(1);
+    }
 
     // 只在数据变化时更新武器栏和被动栏
     updateWeaponBarIfNeeded();
