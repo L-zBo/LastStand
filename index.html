@@ -106,9 +106,16 @@
             <div class="pause-buttons">
                 <button id="resumeBtn" class="pause-btn">▶️ 继续游戏</button>
                 <button id="pauseSaveBtn" class="pause-btn">💾 保存并退出</button>
-                <button id="pauseRestartBtn" class="pause-btn danger">🔄 重新开始</button>
+                <button id="pauseRestartWaveBtn" class="pause-btn">🔄 重新开始本波</button>
+                <button id="pauseReturnMenuBtn" class="pause-btn danger">🏠 返回主菜单</button>
             </div>
         </div>
+    </div>
+
+    <!-- 倒计时界面 -->
+    <div id="countdownScreen" class="screen hidden">
+        <div class="countdown-number" id="countdownNumber">3</div>
+        <p class="countdown-text">游戏即将开始...</p>
     </div>
 
     <!-- 武器详情弹窗 -->

@@ -1799,22 +1799,49 @@ function showWaveCompleteScreen() {
     const buffOptions = document.getElementById('buffOptions');
     buffOptions.innerHTML = '';
 
-    // 随机3个奖励选项（武器或Buff）
+    // 随机5个奖励选项（武器或Buff），确保不重复
     const options = [];
+    const usedWeaponIds = new Set();
+    const usedBuffIds = new Set();
 
-    // 50%武器，50%Buff
-    for (let i = 0; i < 3; i++) {
+    // 50%武器，50%Buff，生成5个不重复选项
+    for (let i = 0; i < 5; i++) {
         if (Math.random() > 0.5) {
             // 武器选项
             const weapons = Object.values(WEAPONS).filter(w =>
-                w.type !== 'evolved' && w.type !== 'accessory'
+                w.type !== 'evolved' && w.type !== 'accessory' && !usedWeaponIds.has(w.id)
             );
-            const weapon = weapons[Math.floor(Math.random() * weapons.length)];
-            options.push({ type: 'weapon', data: weapon });
+            if (weapons.length > 0) {
+                const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+                usedWeaponIds.add(weapon.id);
+                options.push({ type: 'weapon', data: weapon });
+            } else {
+                // 武器用完了，选Buff
+                const availableBuffs = BUFFS.filter(b => !usedBuffIds.has(b.id));
+                if (availableBuffs.length > 0) {
+                    const buff = availableBuffs[Math.floor(Math.random() * availableBuffs.length)];
+                    usedBuffIds.add(buff.id);
+                    options.push({ type: 'buff', data: buff });
+                }
+            }
         } else {
             // Buff选项
-            const buff = BUFFS[Math.floor(Math.random() * BUFFS.length)];
-            options.push({ type: 'buff', data: buff });
+            const availableBuffs = BUFFS.filter(b => !usedBuffIds.has(b.id));
+            if (availableBuffs.length > 0) {
+                const buff = availableBuffs[Math.floor(Math.random() * availableBuffs.length)];
+                usedBuffIds.add(buff.id);
+                options.push({ type: 'buff', data: buff });
+            } else {
+                // Buff用完了，选武器
+                const weapons = Object.values(WEAPONS).filter(w =>
+                    w.type !== 'evolved' && w.type !== 'accessory' && !usedWeaponIds.has(w.id)
+                );
+                if (weapons.length > 0) {
+                    const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+                    usedWeaponIds.add(weapon.id);
+                    options.push({ type: 'weapon', data: weapon });
+                }
+            }
         }
     }
 
@@ -1828,6 +1855,7 @@ function showWaveCompleteScreen() {
             const level = existingWeapon ? existingWeapon.level : 0;
 
             card.innerHTML = `
+                <span class="option-type-tag tag-weapon">武器</span>
                 <span class="buff-icon">${weapon.icon}</span>
                 <h3>${weapon.name} ${level > 0 ? 'Lv.' + (level + 1) : ''}</h3>
                 <p>${weapon.description}</p>
@@ -1844,6 +1872,7 @@ function showWaveCompleteScreen() {
         } else {
             const buff = option.data;
             card.innerHTML = `
+                <span class="option-type-tag tag-buff">属性强化</span>
                 <span class="buff-icon">${buff.icon}</span>
                 <h3>${buff.name}</h3>
                 <p>${buff.description}</p>
@@ -2012,12 +2041,12 @@ function showWeaponOptions(container) {
 
     // 添加配件
     accessories.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
-        allOptions.push({ type: 'new', weapon: w });
+        allOptions.push({ type: 'new', weapon: w, isAccessory: true });
     });
 
-    // 随机选择3个
+    // 随机选择5个不重复的选项
     const selectedOptions = [];
-    for (let i = 0; i < 3 && allOptions.length > 0; i++) {
+    for (let i = 0; i < 5 && allOptions.length > 0; i++) {
         const index = Math.floor(Math.random() * allOptions.length);
         selectedOptions.push(allOptions[index]);
         allOptions.splice(index, 1);
@@ -2045,7 +2074,12 @@ function showWeaponOptions(container) {
             ? `Lv.${w.level} → Lv.${w.level + 1}`
             : 'Lv.1';
 
+        // 确定类型标签
+        const tagClass = option.isAccessory ? 'tag-accessory' : 'tag-weapon';
+        const tagText = option.isAccessory ? '配件装备' : '武器';
+
         card.innerHTML = `
+            <span class="option-type-tag ${tagClass}">${tagText}</span>
             <div class="buff-card-header">
                 <span class="buff-icon">${w.icon}</span>
                 <div>
@@ -2067,16 +2101,18 @@ function showBuffOptionsDetailed(container) {
     const availableBuffs = [...BUFFS];
     const selectedBuffs = [];
 
-    for (let i = 0; i < 3 && availableBuffs.length > 0; i++) {
+    // 选择5个不重复的buff
+    for (let i = 0; i < 5 && availableBuffs.length > 0; i++) {
         const index = Math.floor(Math.random() * availableBuffs.length);
         selectedBuffs.push(availableBuffs[index]);
-        availableBuffs.splice(index, 1);
+        availableBuffs.splice(index, 1); // 移除已选择的，防止重复
     }
 
     selectedBuffs.forEach(buff => {
         const card = document.createElement('div');
         card.className = 'buff-card';
         card.innerHTML = `
+            <span class="option-type-tag tag-buff">属性强化</span>
             <div class="buff-card-header">
                 <span class="buff-icon">${buff.icon}</span>
                 <div>
@@ -2102,24 +2138,31 @@ function showClassBuffOptions(container) {
         return;
     }
 
-    // 随机选择2个职业专属 + 1个通用
+    // 随机选择3个职业专属 + 2个通用，确保不重复
     const availableClassBuffs = [...classBuffs];
+    const availableGeneralBuffs = [...BUFFS];
     const selectedOptions = [];
 
-    for (let i = 0; i < 2 && availableClassBuffs.length > 0; i++) {
+    // 选择职业专属buff（最多3个）
+    for (let i = 0; i < 3 && availableClassBuffs.length > 0; i++) {
         const index = Math.floor(Math.random() * availableClassBuffs.length);
         selectedOptions.push(availableClassBuffs[index]);
         availableClassBuffs.splice(index, 1);
     }
 
-    // 添加一个通用Buff
-    const generalBuff = BUFFS[Math.floor(Math.random() * BUFFS.length)];
-    selectedOptions.push(generalBuff);
+    // 添加2个通用Buff
+    for (let i = 0; i < 2 && availableGeneralBuffs.length > 0; i++) {
+        const index = Math.floor(Math.random() * availableGeneralBuffs.length);
+        selectedOptions.push(availableGeneralBuffs[index]);
+        availableGeneralBuffs.splice(index, 1);
+    }
 
     selectedOptions.forEach(buff => {
         const card = document.createElement('div');
-        card.className = 'buff-card' + (buff.classOnly ? ' class-buff' : '');
+        const isClassBuff = buff.classOnly;
+        card.className = 'buff-card' + (isClassBuff ? ' class-buff' : '');
         card.innerHTML = `
+            <span class="option-type-tag ${isClassBuff ? 'tag-class' : 'tag-buff'}">${isClassBuff ? '职业专属' : '属性强化'}</span>
             <div class="buff-card-header">
                 <span class="buff-icon">${buff.icon}</span>
                 <div>
@@ -2129,7 +2172,7 @@ function showClassBuffOptions(container) {
             </div>
             <p class="buff-desc">${buff.description}</p>
             <div class="buff-effect">${buff.detail || buff.description}</div>
-            ${buff.classOnly ? '<p class="class-exclusive">★ 职业专属</p>' : ''}
+            ${isClassBuff ? '<p class="class-exclusive">★ 职业专属</p>' : ''}
         `;
         card.onclick = () => selectBuff(buff);
         container.appendChild(card);
@@ -2451,10 +2494,11 @@ function initGame() {
         returnToMenu();
     });
 
-    // 暂停界面-重新开始
-    document.getElementById('pauseRestartBtn').addEventListener('click', () => {
-        location.reload();
-    });
+    // 暂停界面-重新开始本波
+    document.getElementById('pauseRestartWaveBtn').addEventListener('click', restartCurrentWave);
+
+    // 暂停界面-返回主菜单
+    document.getElementById('pauseReturnMenuBtn').addEventListener('click', returnToMenu);
 
     // 重新开始按钮
     document.getElementById('restartBtn').addEventListener('click', () => {
@@ -2464,9 +2508,9 @@ function initGame() {
     // 返回主菜单
     document.getElementById('returnMenuBtn').addEventListener('click', returnToMenu);
 
-    // 游戏内重新开始按钮
+    // 游戏内重新开始按钮（重新开始本波）
     document.getElementById('inGameRestartBtn').addEventListener('click', () => {
-        location.reload();
+        restartCurrentWave();
     });
 
     // 武器详情弹窗关闭
@@ -2533,9 +2577,21 @@ function loadGame() {
     const saveData = JSON.parse(localStorage.getItem('roguelikeSave'));
     if (!saveData) return;
 
-    game.selectedClass = saveData.selectedClass;
+    // 保存存档数据供倒计时后使用
+    game.pendingSaveData = saveData;
+
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
+
+    // 显示倒计时
+    showCountdown(() => {
+        applyLoadedSaveData(game.pendingSaveData);
+    });
+}
+
+// 应用读取的存档数据
+function applyLoadedSaveData(saveData) {
+    game.selectedClass = saveData.selectedClass;
 
     generateObstacles();
 
@@ -2594,6 +2650,31 @@ function loadGame() {
     requestAnimationFrame(gameLoop);
 }
 
+// 显示倒计时
+function showCountdown(callback) {
+    const countdownScreen = document.getElementById('countdownScreen');
+    const countdownNumber = document.getElementById('countdownNumber');
+    countdownScreen.classList.remove('hidden');
+
+    let count = 3;
+    countdownNumber.textContent = count;
+
+    const countdownInterval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            countdownNumber.textContent = count;
+            // 重新触发动画
+            countdownNumber.style.animation = 'none';
+            countdownNumber.offsetHeight; // 触发重排
+            countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+        } else {
+            clearInterval(countdownInterval);
+            countdownScreen.classList.add('hidden');
+            if (callback) callback();
+        }
+    }, 1000);
+}
+
 function clearSaveData() {
     localStorage.removeItem('roguelikeSave');
 }
@@ -2610,6 +2691,41 @@ function resumeGame() {
     game.state = 'playing';
     document.getElementById('pauseScreen').classList.add('hidden');
     game.lastTime = 0; // 重置时间以避免大的deltaTime
+    requestAnimationFrame(gameLoop);
+}
+
+// 重新开始当前波
+function restartCurrentWave() {
+    document.getElementById('pauseScreen').classList.add('hidden');
+
+    // 清空敌人和投射物
+    game.enemies = [];
+    game.particles = [];
+    game.projectiles = [];
+    game.weaponProjectiles = [];
+    game.summons = [];
+
+    // 重置波次状态但保持当前波数
+    game.wave.enemiesSpawned = 0;
+    game.wave.totalEnemies = 0;
+    game.wave.lastSpawnTime = 0;
+    game.wave.isSpawning = false;
+    game.wave.eliteSpawned = false;
+    game.wave.bossSpawned = false;
+    game.wave.inBreak = false;
+
+    // 恢复玩家位置到地图中心
+    game.player.x = CONFIG.world.width / 2;
+    game.player.y = CONFIG.world.height / 2;
+
+    // 恢复一定生命值
+    game.player.health = Math.min(game.player.health + game.player.maxHealth * 0.3, game.player.maxHealth);
+
+    game.state = 'playing';
+    game.lastTime = 0;
+
+    // 重新开始本波
+    startNewWave();
     requestAnimationFrame(gameLoop);
 }
 
