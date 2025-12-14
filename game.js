@@ -88,21 +88,27 @@ const BUFFS = [
         id: 'attackUp',
         name: '力量提升',
         description: '攻击力 +5',
+        detail: '永久提升基础攻击力，对所有伤害计算生效',
         icon: '⚔️',
+        type: '通用',
         apply: (player) => player.attack += 5
     },
     {
         id: 'speedUp',
         name: '迅捷之靴',
         description: '移动速度 +0.5',
+        detail: '提升移动速度，更容易躲避敌人攻击',
         icon: '💨',
+        type: '通用',
         apply: (player) => player.speed += 0.5
     },
     {
         id: 'healthUp',
         name: '生命强化',
         description: '最大生命 +30',
+        detail: '永久提升生命上限，同时恢复等量生命',
         icon: '❤️',
+        type: '通用',
         apply: (player) => {
             player.maxHealth += 30;
             player.health += 30;
@@ -112,7 +118,9 @@ const BUFFS = [
         id: 'healUp',
         name: '治疗',
         description: '回复 50% 生命值',
+        detail: '立即回复当前最大生命值的50%',
         icon: '💚',
+        type: '通用',
         apply: (player) => {
             player.health = Math.min(player.health + player.maxHealth * 0.5, player.maxHealth);
         }
@@ -121,66 +129,258 @@ const BUFFS = [
         id: 'damageBoost',
         name: '狂暴',
         description: '攻击力 +15%',
+        detail: '百分比提升攻击力，与其他加成叠加计算',
         icon: '🔥',
+        type: '通用',
         apply: (player) => player.attack = Math.floor(player.attack * 1.15)
     },
     {
         id: 'expBoost',
         name: '经验加成',
         description: '获得经验 +20%',
+        detail: '提升击杀敌人获得的经验值，加速升级',
         icon: '⭐',
+        type: '通用',
         apply: (player) => player.expMultiplier = (player.expMultiplier || 1) * 1.2
     },
     {
         id: 'attackRange',
         name: '攻击范围扩大',
         description: '攻击范围 +20%',
+        detail: '扩大武器攻击范围，更容易击中敌人',
         icon: '📍',
+        type: '通用',
         apply: (player) => player.attackRange = (player.attackRange || 40) * 1.2
     },
     {
         id: 'critChance',
         name: '致命一击',
         description: '暴击率 +10%',
+        detail: '提升暴击几率，暴击时造成双倍伤害',
         icon: '💥',
+        type: '通用',
         apply: (player) => player.critChance = (player.critChance || 0) + 0.1
     },
     {
         id: 'vampire',
         name: '吸血',
         description: '击杀恢复 5 生命',
+        detail: '每次击杀敌人恢复生命，提升续航能力',
         icon: '🩸',
+        type: '通用',
         apply: (player) => player.vampireHeal = (player.vampireHeal || 0) + 5
     },
     {
         id: 'multiShot',
         name: '多重射击',
         description: '同时攻击多个敌人',
+        detail: '自动攻击可同时锁定多个目标',
         icon: '🎯',
+        type: '通用',
         apply: (player) => player.multiShot = (player.multiShot || 1) + 1
     },
     {
         id: 'attackSpeedUp',
         name: '疾风',
         description: '攻击速度 +20%',
+        detail: '减少攻击冷却时间，提升输出频率',
         icon: '⚡',
+        type: '通用',
         apply: (player) => player.attackCooldown = Math.max(100, player.attackCooldown * 0.8)
     },
     {
         id: 'critDamage',
         name: '暴击伤害',
         description: '暴击伤害 +50%',
+        detail: '提升暴击时的伤害倍率',
         icon: '💢',
+        type: '通用',
         apply: (player) => player.critDamage = (player.critDamage || 2) + 0.5
     },
     {
         id: 'healthRegen',
         name: '生命恢复',
         description: '每秒恢复 2 生命',
+        detail: '持续恢复生命值，提升生存能力',
         icon: '💖',
+        type: '通用',
         apply: (player) => player.healthRegen = (player.healthRegen || 0) + 2
     }
 ];
+
+// 职业专属强化
+const CLASS_BUFFS = {
+    warrior: [
+        {
+            id: 'ironSkin',
+            name: '铁壁',
+            description: '受到伤害减少 15%',
+            detail: '战士专属：提升防御，减少所有受到的伤害',
+            icon: '🛡️',
+            type: '战士专属',
+            classOnly: 'warrior',
+            apply: (player) => player.damageReduction = (player.damageReduction || 0) + 0.15
+        },
+        {
+            id: 'berserker',
+            name: '狂战士',
+            description: '生命越低攻击越高(最高+50%)',
+            detail: '战士专属：生命值越低，攻击力加成越高',
+            icon: '😤',
+            type: '战士专属',
+            classOnly: 'warrior',
+            apply: (player) => player.berserkerMode = true
+        },
+        {
+            id: 'shieldBash',
+            name: '盾击',
+            description: '攻击有几率击退敌人',
+            detail: '战士专属：近战攻击有30%几率将敌人击退',
+            icon: '💪',
+            type: '战士专属',
+            classOnly: 'warrior',
+            apply: (player) => player.knockbackChance = (player.knockbackChance || 0) + 0.3
+        }
+    ],
+    mage: [
+        {
+            id: 'arcaneIntelligence',
+            name: '奥术智慧',
+            description: '魔法伤害 +25%',
+            detail: '法师专属：大幅提升魔法类武器伤害',
+            icon: '🔮',
+            type: '法师专属',
+            classOnly: 'mage',
+            apply: (player) => player.magicDamageBonus = (player.magicDamageBonus || 1) * 1.25
+        },
+        {
+            id: 'manaShield',
+            name: '法力护盾',
+            description: '每10秒获得一个护盾',
+            detail: '法师专属：护盾可抵消一次伤害',
+            icon: '🛡️',
+            type: '法师专属',
+            classOnly: 'mage',
+            apply: (player) => player.manaShield = true
+        },
+        {
+            id: 'spellEcho',
+            name: '法术回响',
+            description: '魔法攻击有几率触发两次',
+            detail: '法师专属：30%几率额外释放一次魔法攻击',
+            icon: '✨',
+            type: '法师专属',
+            classOnly: 'mage',
+            apply: (player) => player.spellEcho = (player.spellEcho || 0) + 0.3
+        }
+    ],
+    assassin: [
+        {
+            id: 'shadowStep',
+            name: '暗影步',
+            description: '移动速度 +30%',
+            detail: '刺客专属：大幅提升移动速度',
+            icon: '👤',
+            type: '刺客专属',
+            classOnly: 'assassin',
+            apply: (player) => player.speed *= 1.3
+        },
+        {
+            id: 'backstab',
+            name: '背刺',
+            description: '首次攻击伤害 +100%',
+            detail: '刺客专属：对满血敌人造成双倍伤害',
+            icon: '🗡️',
+            type: '刺客专属',
+            classOnly: 'assassin',
+            apply: (player) => player.backstab = true
+        },
+        {
+            id: 'deadlyPoison',
+            name: '致命毒素',
+            description: '攻击附带持续伤害',
+            detail: '刺客专属：每次攻击使敌人中毒3秒',
+            icon: '☠️',
+            type: '刺客专属',
+            classOnly: 'assassin',
+            apply: (player) => player.poisonDamage = (player.poisonDamage || 0) + 3
+        }
+    ],
+    ranger: [
+        {
+            id: 'eagleEye',
+            name: '鹰眼',
+            description: '攻击范围 +50%',
+            detail: '游侠专属：大幅提升远程攻击距离',
+            icon: '🦅',
+            type: '游侠专属',
+            classOnly: 'ranger',
+            apply: (player) => player.attackRange *= 1.5
+        },
+        {
+            id: 'multiArrow',
+            name: '多重箭',
+            description: '每次攻击发射3支箭',
+            detail: '游侠专属：攻击时向扇形方向发射多支箭矢',
+            icon: '🏹',
+            type: '游侠专属',
+            classOnly: 'ranger',
+            apply: (player) => player.arrowCount = (player.arrowCount || 1) + 2
+        },
+        {
+            id: 'hunterMark',
+            name: '猎人印记',
+            description: '标记敌人受到额外伤害',
+            detail: '游侠专属：被攻击的敌人受到的伤害+20%',
+            icon: '🎯',
+            type: '游侠专属',
+            classOnly: 'ranger',
+            apply: (player) => player.hunterMark = true
+        }
+    ],
+    summoner: [
+        {
+            id: 'summonMastery',
+            name: '召唤精通',
+            description: '召唤物上限 +2',
+            detail: '召唤师专属：最多可同时召唤5个随从',
+            icon: '👻',
+            type: '召唤师专属',
+            classOnly: 'summoner',
+            apply: (player) => player.maxSummons += 2
+        },
+        {
+            id: 'summonStrength',
+            name: '召唤强化',
+            description: '召唤物攻击力 +50%',
+            detail: '召唤师专属：大幅提升召唤物的攻击力',
+            icon: '💀',
+            type: '召唤师专属',
+            classOnly: 'summoner',
+            apply: (player) => player.summonDamageBonus = (player.summonDamageBonus || 1) * 1.5
+        },
+        {
+            id: 'soulLink',
+            name: '灵魂链接',
+            description: '召唤物击杀恢复生命',
+            detail: '召唤师专属：召唤物击杀敌人时主人恢复10点生命',
+            icon: '💫',
+            type: '召唤师专属',
+            classOnly: 'summoner',
+            apply: (player) => player.soulLink = (player.soulLink || 0) + 10
+        },
+        {
+            id: 'summonDuration',
+            name: '永恒召唤',
+            description: '召唤物持续时间 +100%',
+            detail: '召唤师专属：召唤物存活时间延长一倍',
+            icon: '⏰',
+            type: '召唤师专属',
+            classOnly: 'summoner',
+            apply: (player) => player.summonDurationBonus = (player.summonDurationBonus || 1) * 2
+        }
+    ]
+};
 
 // 武器配置
 const WEAPONS = {
@@ -379,7 +579,7 @@ const WEAPONS = {
 
 // 游戏状态
 let game = {
-    state: 'start', // start, playing, levelup, waveComplete, gameover
+    state: 'start', // start, playing, levelup, waveComplete, paused, gameover
     canvas: null,
     ctx: null,
     player: null,
@@ -1434,35 +1634,43 @@ class Enemy {
 
 // 获取敌人生成位置
 function getSpawnPosition() {
-    const side = Math.floor(Math.random() * 4);
-    const playerX = game.player.x;
-    const playerY = game.player.y;
-    const spawnDistance = Math.max(CONFIG.canvas.width, CONFIG.canvas.height) / 2 + 100;
-    let x, y;
+    // 在全局地图范围内随机生成，但避开玩家附近
+    const minDistFromPlayer = 400; // 最小距离玩家400像素
+    const maxAttempts = 20;
 
-    switch(side) {
-        case 0: // 上
-            x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
-            y = playerY - spawnDistance;
-            break;
-        case 1: // 右
-            x = playerX + spawnDistance;
-            y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
-            break;
-        case 2: // 下
-            x = playerX + (Math.random() - 0.5) * CONFIG.canvas.width;
-            y = playerY + spawnDistance;
-            break;
-        case 3: // 左
-            x = playerX - spawnDistance;
-            y = playerY + (Math.random() - 0.5) * CONFIG.canvas.height;
-            break;
+    for (let i = 0; i < maxAttempts; i++) {
+        // 在整个地图范围内随机位置
+        const x = 100 + Math.random() * (CONFIG.world.width - 200);
+        const y = 100 + Math.random() * (CONFIG.world.height - 200);
+
+        // 检查是否离玩家足够远
+        const distToPlayer = Math.hypot(x - game.player.x, y - game.player.y);
+        if (distToPlayer >= minDistFromPlayer) {
+            return { x, y };
+        }
     }
 
-    // 确保在世界范围内
-    x = Math.max(50, Math.min(CONFIG.world.width - 50, x));
-    y = Math.max(50, Math.min(CONFIG.world.height - 50, y));
-
+    // 如果多次尝试都失败，在地图边缘随机生成
+    const side = Math.floor(Math.random() * 4);
+    let x, y;
+    switch(side) {
+        case 0: // 上边缘
+            x = 100 + Math.random() * (CONFIG.world.width - 200);
+            y = 100;
+            break;
+        case 1: // 右边缘
+            x = CONFIG.world.width - 100;
+            y = 100 + Math.random() * (CONFIG.world.height - 200);
+            break;
+        case 2: // 下边缘
+            x = 100 + Math.random() * (CONFIG.world.width - 200);
+            y = CONFIG.world.height - 100;
+            break;
+        case 3: // 左边缘
+            x = 100;
+            y = 100 + Math.random() * (CONFIG.world.height - 200);
+            break;
+    }
     return { x, y };
 }
 
@@ -1729,7 +1937,8 @@ function updateWeaponBar() {
                 <span class="weapon-icon">${weapon.icon}</span>
                 ${weapon.level ? `<span class="weapon-level">${weapon.level}</span>` : ''}
             `;
-            slot.title = `${weapon.name}\n${weapon.description || weapon.special || ''}`;
+            // 点击显示武器详情
+            slot.onclick = () => showWeaponDetail(weapon);
         } else {
             slot.innerHTML = '<span class="weapon-empty">+</span>';
         }
@@ -1764,94 +1973,97 @@ function showEvolutionNotification(weapon1Name, weapon2Name, evolvedName, evolve
 function showLevelUpScreen() {
     const buffOptions = document.getElementById('buffOptions');
     buffOptions.innerHTML = '';
+    document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
 
-    // 50%几率显示武器，50%几率显示Buff
-    const showWeapons = Math.random() > 0.5;
+    // 40%武器，30%通用Buff，30%职业专属
+    const rand = Math.random();
 
-    if (showWeapons) {
-        // 显示武器选项
-        const availableWeapons = Object.values(WEAPONS).filter(w =>
-            w.type !== 'evolved' && w.type !== 'accessory'
-        );
-
-        // 添加已有武器的升级选项
-        const playerWeaponIds = game.player.weapons.map(w => w.id);
-        const upgradeableWeapons = game.player.weapons.filter(w => w.level < w.maxLevel);
-
-        // 也显示配件（用于合成）
-        const accessories = Object.values(WEAPONS).filter(w => w.type === 'accessory');
-
-        // 合并选项
-        let allOptions = [];
-
-        // 添加可升级的武器
-        upgradeableWeapons.forEach(w => {
-            allOptions.push({
-                type: 'upgrade',
-                weapon: w,
-                name: `${w.name} 升级`,
-                description: `Lv.${w.level} → Lv.${w.level + 1}`,
-                icon: w.icon
-            });
-        });
-
-        // 添加新武器
-        availableWeapons.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
-            allOptions.push({
-                type: 'new',
-                weapon: w,
-                name: w.name,
-                description: w.description,
-                icon: w.icon
-            });
-        });
-
-        // 添加配件
-        accessories.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
-            allOptions.push({
-                type: 'new',
-                weapon: w,
-                name: w.name,
-                description: w.description,
-                icon: w.icon
-            });
-        });
-
-        // 随机选择3个
-        const selectedOptions = [];
-        for (let i = 0; i < 3 && allOptions.length > 0; i++) {
-            const index = Math.floor(Math.random() * allOptions.length);
-            selectedOptions.push(allOptions[index]);
-            allOptions.splice(index, 1);
-        }
-
-        // 如果没有武器选项，显示Buff
-        if (selectedOptions.length === 0) {
-            showBuffOptions(buffOptions);
-            return;
-        }
-
-        selectedOptions.forEach(option => {
-            const card = document.createElement('div');
-            card.className = 'buff-card weapon-card';
-            card.innerHTML = `
-                <div class="buff-icon">${option.icon}</div>
-                <h3>${option.name}</h3>
-                <p>${option.description}</p>
-            `;
-            card.onclick = () => selectWeapon(option);
-            buffOptions.appendChild(card);
-        });
+    if (rand < 0.4) {
+        showWeaponOptions(buffOptions);
+    } else if (rand < 0.7) {
+        showBuffOptionsDetailed(buffOptions);
     } else {
-        // 显示Buff选项
-        showBuffOptions(buffOptions);
+        showClassBuffOptions(buffOptions);
     }
 
     document.getElementById('levelUpScreen').classList.remove('hidden');
 }
 
-// 显示Buff选项
-function showBuffOptions(container) {
+// 显示武器选项（详细版）
+function showWeaponOptions(container) {
+    const availableWeapons = Object.values(WEAPONS).filter(w =>
+        w.type !== 'evolved' && w.type !== 'accessory'
+    );
+    const playerWeaponIds = game.player.weapons.map(w => w.id);
+    const upgradeableWeapons = game.player.weapons.filter(w => w.level < w.maxLevel);
+    const accessories = Object.values(WEAPONS).filter(w => w.type === 'accessory');
+
+    let allOptions = [];
+
+    // 添加可升级的武器
+    upgradeableWeapons.forEach(w => {
+        allOptions.push({ type: 'upgrade', weapon: w });
+    });
+
+    // 添加新武器
+    availableWeapons.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
+        allOptions.push({ type: 'new', weapon: w });
+    });
+
+    // 添加配件
+    accessories.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
+        allOptions.push({ type: 'new', weapon: w });
+    });
+
+    // 随机选择3个
+    const selectedOptions = [];
+    for (let i = 0; i < 3 && allOptions.length > 0; i++) {
+        const index = Math.floor(Math.random() * allOptions.length);
+        selectedOptions.push(allOptions[index]);
+        allOptions.splice(index, 1);
+    }
+
+    if (selectedOptions.length === 0) {
+        showBuffOptionsDetailed(container);
+        return;
+    }
+
+    selectedOptions.forEach(option => {
+        const w = option.weapon;
+        const card = document.createElement('div');
+        card.className = 'buff-card weapon-card';
+
+        let evolveInfo = '';
+        if (w.evolvesWith && w.evolvesTo) {
+            const partner = WEAPONS[w.evolvesWith];
+            const evolved = WEAPONS[w.evolvesTo];
+            evolveInfo = `<div class="evolve-hint">🔄 满级后 + ${partner.icon}${partner.name} → ${evolved.icon}${evolved.name}</div>`;
+        }
+
+        const typeNames = { melee: '近战', ranged: '远程', magic: '魔法', accessory: '配件' };
+        const levelInfo = option.type === 'upgrade'
+            ? `Lv.${w.level} → Lv.${w.level + 1}`
+            : 'Lv.1';
+
+        card.innerHTML = `
+            <div class="buff-card-header">
+                <span class="buff-icon">${w.icon}</span>
+                <div>
+                    <h3>${w.name}${option.type === 'upgrade' ? ' 升级' : ''}</h3>
+                    <span class="buff-type">${typeNames[w.type] || w.type} | ${levelInfo}</span>
+                </div>
+            </div>
+            <p class="buff-desc">${w.description}</p>
+            <div class="buff-effect">⚔️ 伤害: ${w.damage || 0} | 最高等级: ${w.maxLevel || 5}</div>
+            ${evolveInfo}
+        `;
+        card.onclick = () => selectWeapon(option);
+        container.appendChild(card);
+    });
+}
+
+// 显示Buff选项（详细版）
+function showBuffOptionsDetailed(container) {
     const availableBuffs = [...BUFFS];
     const selectedBuffs = [];
 
@@ -1862,16 +2074,71 @@ function showBuffOptions(container) {
     }
 
     selectedBuffs.forEach(buff => {
-        const buffCard = document.createElement('div');
-        buffCard.className = 'buff-card';
-        buffCard.innerHTML = `
-            <div class="buff-icon">${buff.icon}</div>
-            <h3>${buff.name}</h3>
-            <p>${buff.description}</p>
+        const card = document.createElement('div');
+        card.className = 'buff-card';
+        card.innerHTML = `
+            <div class="buff-card-header">
+                <span class="buff-icon">${buff.icon}</span>
+                <div>
+                    <h3>${buff.name}</h3>
+                    <span class="buff-type">${buff.type || '通用'}</span>
+                </div>
+            </div>
+            <p class="buff-desc">${buff.description}</p>
+            <div class="buff-effect">${buff.detail || buff.description}</div>
         `;
-        buffCard.onclick = () => selectBuff(buff);
-        container.appendChild(buffCard);
+        card.onclick = () => selectBuff(buff);
+        container.appendChild(card);
     });
+}
+
+// 显示职业专属强化选项
+function showClassBuffOptions(container) {
+    const playerClass = game.selectedClass;
+    const classBuffs = CLASS_BUFFS[playerClass] || [];
+
+    if (classBuffs.length === 0) {
+        showBuffOptionsDetailed(container);
+        return;
+    }
+
+    // 随机选择2个职业专属 + 1个通用
+    const availableClassBuffs = [...classBuffs];
+    const selectedOptions = [];
+
+    for (let i = 0; i < 2 && availableClassBuffs.length > 0; i++) {
+        const index = Math.floor(Math.random() * availableClassBuffs.length);
+        selectedOptions.push(availableClassBuffs[index]);
+        availableClassBuffs.splice(index, 1);
+    }
+
+    // 添加一个通用Buff
+    const generalBuff = BUFFS[Math.floor(Math.random() * BUFFS.length)];
+    selectedOptions.push(generalBuff);
+
+    selectedOptions.forEach(buff => {
+        const card = document.createElement('div');
+        card.className = 'buff-card' + (buff.classOnly ? ' class-buff' : '');
+        card.innerHTML = `
+            <div class="buff-card-header">
+                <span class="buff-icon">${buff.icon}</span>
+                <div>
+                    <h3>${buff.name}</h3>
+                    <span class="buff-type">${buff.type || '通用'}</span>
+                </div>
+            </div>
+            <p class="buff-desc">${buff.description}</p>
+            <div class="buff-effect">${buff.detail || buff.description}</div>
+            ${buff.classOnly ? '<p class="class-exclusive">★ 职业专属</p>' : ''}
+        `;
+        card.onclick = () => selectBuff(buff);
+        container.appendChild(card);
+    });
+}
+
+// 显示Buff选项（旧版兼容）
+function showBuffOptions(container) {
+    showBuffOptionsDetailed(container);
 }
 
 // 选择武器
@@ -1899,11 +2166,20 @@ function gameOver() {
     document.getElementById('finalTime').textContent = Math.floor(game.gameTime);
     document.getElementById('finalKills').textContent = game.killCount;
     document.getElementById('finalLevel').textContent = game.player.level;
+    document.getElementById('finalWave').textContent = game.wave.current;
     document.getElementById('gameOverScreen').classList.remove('hidden');
+    // 清除存档
+    clearSaveData();
 }
 
 // 游戏循环
 function gameLoop(timestamp) {
+    // 暂停时不更新
+    if (game.state === 'paused') {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+
     if (!game.lastTime) game.lastTime = timestamp;
     const deltaTime = timestamp - game.lastTime;
     game.lastTime = timestamp;
@@ -1978,7 +2254,7 @@ function gameLoop(timestamp) {
     }
 
     // 绘制（即使不在playing状态也绘制，保持画布清晰）
-    if (game.state === 'playing' || game.state === 'levelup' || game.state === 'waveComplete') {
+    if (game.state === 'playing' || game.state === 'levelup' || game.state === 'waveComplete' || game.state === 'paused') {
         // 清空画布
         game.ctx.fillStyle = '#1a1a2e';
         game.ctx.fillRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
@@ -2108,13 +2384,45 @@ function initGame() {
     game.canvas.width = CONFIG.canvas.width;
     game.canvas.height = CONFIG.canvas.height;
 
+    // 检查是否有存档
+    checkSaveData();
+
     // 键盘事件
     window.addEventListener('keydown', (e) => {
         game.keys[e.key] = true;
+        // ESC键暂停
+        if (e.key === 'Escape' && game.state === 'playing') {
+            pauseGame();
+        }
     });
 
     window.addEventListener('keyup', (e) => {
         game.keys[e.key] = false;
+    });
+
+    // 新游戏按钮
+    document.getElementById('newGameBtn').addEventListener('click', () => {
+        if (hasSaveData()) {
+            showOverwriteModal();
+        } else {
+            showClassSelection();
+        }
+    });
+
+    // 读取存档按钮
+    document.getElementById('loadGameBtn').addEventListener('click', () => {
+        loadGame();
+    });
+
+    // 存档覆盖确认
+    document.getElementById('overwriteYes').addEventListener('click', () => {
+        document.getElementById('overwriteModal').classList.add('hidden');
+        clearSaveData();
+        showClassSelection();
+    });
+
+    document.getElementById('overwriteNo').addEventListener('click', () => {
+        document.getElementById('overwriteModal').classList.add('hidden');
     });
 
     // 职业选择
@@ -2125,15 +2433,227 @@ function initGame() {
         });
     });
 
+    // 暂停按钮
+    document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+
+    // 继续游戏按钮
+    document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+
+    // 保存按钮
+    document.getElementById('saveBtn').addEventListener('click', () => {
+        saveGame();
+        showSaveNotification();
+    });
+
+    // 暂停界面-保存并退出
+    document.getElementById('pauseSaveBtn').addEventListener('click', () => {
+        saveGame();
+        returnToMenu();
+    });
+
+    // 暂停界面-重新开始
+    document.getElementById('pauseRestartBtn').addEventListener('click', () => {
+        location.reload();
+    });
+
     // 重新开始按钮
     document.getElementById('restartBtn').addEventListener('click', () => {
         location.reload();
     });
 
+    // 返回主菜单
+    document.getElementById('returnMenuBtn').addEventListener('click', returnToMenu);
+
     // 游戏内重新开始按钮
     document.getElementById('inGameRestartBtn').addEventListener('click', () => {
         location.reload();
     });
+
+    // 武器详情弹窗关闭
+    document.querySelector('#weaponDetailModal .modal-close').addEventListener('click', () => {
+        document.getElementById('weaponDetailModal').classList.add('hidden');
+    });
+}
+
+// 检查存档
+function checkSaveData() {
+    const loadBtn = document.getElementById('loadGameBtn');
+    if (hasSaveData()) {
+        loadBtn.disabled = false;
+    } else {
+        loadBtn.disabled = true;
+    }
+}
+
+function hasSaveData() {
+    return localStorage.getItem('roguelikeSave') !== null;
+}
+
+function showOverwriteModal() {
+    document.getElementById('overwriteModal').classList.remove('hidden');
+}
+
+function showClassSelection() {
+    document.getElementById('classSelection').classList.remove('hidden');
+}
+
+// 保存游戏
+function saveGame() {
+    const saveData = {
+        selectedClass: game.selectedClass,
+        player: {
+            x: game.player.x,
+            y: game.player.y,
+            health: game.player.health,
+            maxHealth: game.player.maxHealth,
+            attack: game.player.attack,
+            speed: game.player.speed,
+            level: game.player.level,
+            exp: game.player.exp,
+            maxExp: game.player.maxExp,
+            weapons: game.player.weapons.map(w => ({ id: w.id, level: w.level })),
+            // 保存额外属性
+            critChance: game.player.critChance,
+            critDamage: game.player.critDamage,
+            vampireHeal: game.player.vampireHeal,
+            expMultiplier: game.player.expMultiplier,
+            healthRegen: game.player.healthRegen,
+            multiShot: game.player.multiShot,
+            maxSummons: game.player.maxSummons
+        },
+        wave: game.wave.current,
+        killCount: game.killCount,
+        gameTime: game.gameTime
+    };
+    localStorage.setItem('roguelikeSave', JSON.stringify(saveData));
+}
+
+// 读取游戏
+function loadGame() {
+    const saveData = JSON.parse(localStorage.getItem('roguelikeSave'));
+    if (!saveData) return;
+
+    game.selectedClass = saveData.selectedClass;
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('gameScreen').classList.remove('hidden');
+
+    generateObstacles();
+
+    game.player = new Player(game.selectedClass);
+    // 恢复玩家属性
+    game.player.x = saveData.player.x;
+    game.player.y = saveData.player.y;
+    game.player.health = saveData.player.health;
+    game.player.maxHealth = saveData.player.maxHealth;
+    game.player.attack = saveData.player.attack;
+    game.player.speed = saveData.player.speed;
+    game.player.level = saveData.player.level;
+    game.player.exp = saveData.player.exp;
+    game.player.maxExp = saveData.player.maxExp;
+    game.player.critChance = saveData.player.critChance || 0;
+    game.player.critDamage = saveData.player.critDamage || 2;
+    game.player.vampireHeal = saveData.player.vampireHeal || 0;
+    game.player.expMultiplier = saveData.player.expMultiplier || 1;
+    game.player.healthRegen = saveData.player.healthRegen || 0;
+    game.player.multiShot = saveData.player.multiShot || 1;
+    game.player.maxSummons = saveData.player.maxSummons || CLASSES[game.selectedClass].maxSummons || 0;
+
+    // 恢复武器
+    game.player.weapons = [];
+    saveData.player.weapons.forEach(w => {
+        const weaponData = WEAPONS[w.id];
+        if (weaponData) {
+            game.player.weapons.push({ ...weaponData, level: w.level });
+        }
+    });
+
+    game.enemies = [];
+    game.particles = [];
+    game.projectiles = [];
+    game.weaponProjectiles = [];
+    game.summons = [];
+    game.killCount = saveData.killCount;
+    game.gameTime = saveData.gameTime;
+    game.lastTime = 0;
+    game.state = 'playing';
+
+    game.wave = {
+        current: saveData.wave,
+        enemiesRemaining: 0,
+        enemiesSpawned: 0,
+        totalEnemies: 0,
+        lastSpawnTime: 0,
+        isSpawning: false,
+        eliteSpawned: false,
+        bossSpawned: false,
+        waveStartTime: 0,
+        inBreak: false
+    };
+
+    startNewWave();
+    requestAnimationFrame(gameLoop);
+}
+
+function clearSaveData() {
+    localStorage.removeItem('roguelikeSave');
+}
+
+// 暂停游戏
+function pauseGame() {
+    if (game.state !== 'playing') return;
+    game.state = 'paused';
+    document.getElementById('pauseScreen').classList.remove('hidden');
+}
+
+// 继续游戏
+function resumeGame() {
+    game.state = 'playing';
+    document.getElementById('pauseScreen').classList.add('hidden');
+    game.lastTime = 0; // 重置时间以避免大的deltaTime
+    requestAnimationFrame(gameLoop);
+}
+
+// 返回主菜单
+function returnToMenu() {
+    location.reload();
+}
+
+// 显示保存成功提示
+function showSaveNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'save-notification';
+    notification.textContent = '💾 游戏已保存';
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 300);
+    }, 2000);
+}
+
+// 显示武器详情
+function showWeaponDetail(weapon) {
+    const typeNames = { melee: '近战', ranged: '远程', magic: '魔法', accessory: '配件', evolved: '进化' };
+
+    document.getElementById('weaponDetailIcon').textContent = weapon.icon;
+    document.getElementById('weaponDetailName').textContent = weapon.name;
+    document.getElementById('weaponDetailLevel').textContent = weapon.type === 'evolved' ? '进化' : `Lv.${weapon.level}`;
+    document.getElementById('weaponDetailDesc').textContent = weapon.description;
+    document.getElementById('weaponDetailDamage').textContent = weapon.damage || 0;
+    document.getElementById('weaponDetailType').textContent = typeNames[weapon.type] || weapon.type;
+
+    const evolveInfo = document.getElementById('weaponEvolveInfo');
+    if (weapon.evolvesWith && weapon.evolvesTo) {
+        const partner = WEAPONS[weapon.evolvesWith];
+        const evolved = WEAPONS[weapon.evolvesTo];
+        document.getElementById('evolvePartner').textContent = `${partner.icon} ${partner.name}`;
+        document.getElementById('evolveResult').textContent = `${evolved.icon} ${evolved.name}`;
+        evolveInfo.classList.remove('hidden');
+    } else {
+        evolveInfo.classList.add('hidden');
+    }
+
+    document.getElementById('weaponDetailModal').classList.remove('hidden');
 }
 
 // 开始游戏

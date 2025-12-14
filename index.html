@@ -10,7 +10,11 @@
     <!-- 开始界面 -->
     <div id="startScreen" class="screen">
         <h1>肉鸽冒险</h1>
-        <div class="class-selection">
+        <div class="menu-buttons">
+            <button id="newGameBtn" class="menu-btn">🎮 新游戏</button>
+            <button id="loadGameBtn" class="menu-btn" disabled>📂 读取存档</button>
+        </div>
+        <div id="classSelection" class="class-selection hidden">
             <h2>选择你的职业</h2>
             <div class="class-cards">
                 <div class="class-card" data-class="warrior">
@@ -38,6 +42,18 @@
                     <p>召唤随从帮助战斗</p>
                     <p>生命: 90 | 攻击: 12 | 速度: 3.2</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 存档覆盖确认弹窗 -->
+    <div id="overwriteModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>⚠️ 存档确认</h3>
+            <p>检测到已有存档，是否覆盖？</p>
+            <div class="modal-buttons">
+                <button id="overwriteYes" class="modal-btn confirm">确认覆盖</button>
+                <button id="overwriteNo" class="modal-btn cancel">取消</button>
             </div>
         </div>
     </div>
@@ -75,8 +91,50 @@
         <!-- 游戏画布 -->
         <canvas id="gameCanvas"></canvas>
 
-        <!-- 重新开始按钮放在画布下方 -->
-        <button id="inGameRestartBtn" class="ingame-restart-btn">🔄 重新开始</button>
+        <!-- 控制按钮 -->
+        <div class="game-controls">
+            <button id="pauseBtn" class="control-btn">⏸️ 暂停</button>
+            <button id="saveBtn" class="control-btn">💾 保存</button>
+            <button id="inGameRestartBtn" class="control-btn restart">🔄 重新开始</button>
+        </div>
+    </div>
+
+    <!-- 暂停界面 -->
+    <div id="pauseScreen" class="screen hidden">
+        <div class="pause-content">
+            <h2>⏸️ 游戏暂停</h2>
+            <div class="pause-buttons">
+                <button id="resumeBtn" class="pause-btn">▶️ 继续游戏</button>
+                <button id="pauseSaveBtn" class="pause-btn">💾 保存并退出</button>
+                <button id="pauseRestartBtn" class="pause-btn danger">🔄 重新开始</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 武器详情弹窗 -->
+    <div id="weaponDetailModal" class="modal hidden">
+        <div class="modal-content weapon-detail">
+            <span class="modal-close">&times;</span>
+            <div class="weapon-detail-header">
+                <span id="weaponDetailIcon" class="detail-icon">🗡️</span>
+                <div>
+                    <h3 id="weaponDetailName">武器名称</h3>
+                    <span id="weaponDetailLevel" class="detail-level">Lv.1</span>
+                </div>
+            </div>
+            <div class="weapon-detail-body">
+                <p id="weaponDetailDesc">武器描述</p>
+                <div class="weapon-stats">
+                    <p>⚔️ 伤害: <span id="weaponDetailDamage">0</span></p>
+                    <p>📊 类型: <span id="weaponDetailType">近战</span></p>
+                </div>
+                <div id="weaponEvolveInfo" class="evolve-info">
+                    <h4>🔄 进化信息</h4>
+                    <p>满级后与 <span id="evolvePartner">配件</span> 合成进化为:</p>
+                    <p class="evolved-weapon"><span id="evolveResult">进化武器</span></p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 升级选择界面 -->
@@ -93,8 +151,10 @@
             <p>存活时间: <span id="finalTime">0</span>秒</p>
             <p>击杀数: <span id="finalKills">0</span></p>
             <p>最终等级: <span id="finalLevel">1</span></p>
+            <p>最高波次: <span id="finalWave">1</span></p>
         </div>
         <button id="restartBtn">重新开始</button>
+        <button id="returnMenuBtn">返回主菜单</button>
     </div>
 
     <script src="game.js"></script>
