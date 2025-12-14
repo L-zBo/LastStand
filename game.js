@@ -1,8 +1,8 @@
 // 游戏配置
 const CONFIG = {
     canvas: {
-        width: 1200,
-        height: 800
+        width: 1200,  // 默认值，会在初始化时自适应
+        height: 800   // 默认值，会在初始化时自适应
     },
     world: {
         width: 8000,  // 大地图宽度
@@ -2420,12 +2420,76 @@ function drawMinimap() {
     game.ctx.strokeRect(viewX, viewY, viewW, viewH);
 }
 
+// 自适应屏幕大小
+function resizeCanvas() {
+    const container = document.getElementById('gameScreen');
+    const ui = document.getElementById('ui');
+
+    // 获取可用空间（窗口大小减去边距和UI）
+    const padding = 40; // 上下边距
+    const uiHeight = ui ? ui.offsetHeight + 30 : 100; // UI高度 + 间距
+
+    // 计算可用宽度和高度
+    let availableWidth = window.innerWidth - padding * 2;
+    let availableHeight = window.innerHeight - uiHeight - padding * 2;
+
+    // 最小尺寸限制
+    const minWidth = 800;
+    const minHeight = 500;
+
+    // 最大尺寸限制
+    const maxWidth = 1920;
+    const maxHeight = 1080;
+
+    // 保持16:10的宽高比
+    const aspectRatio = 16 / 10;
+
+    let canvasWidth = Math.max(minWidth, Math.min(maxWidth, availableWidth));
+    let canvasHeight = canvasWidth / aspectRatio;
+
+    // 如果高度超出可用空间，则按高度计算
+    if (canvasHeight > availableHeight) {
+        canvasHeight = Math.max(minHeight, Math.min(maxHeight, availableHeight));
+        canvasWidth = canvasHeight * aspectRatio;
+    }
+
+    // 确保宽度不超过可用空间
+    if (canvasWidth > availableWidth) {
+        canvasWidth = availableWidth;
+        canvasHeight = canvasWidth / aspectRatio;
+    }
+
+    // 取整
+    canvasWidth = Math.floor(canvasWidth);
+    canvasHeight = Math.floor(canvasHeight);
+
+    // 更新配置
+    CONFIG.canvas.width = canvasWidth;
+    CONFIG.canvas.height = canvasHeight;
+
+    // 更新canvas
+    if (game.canvas) {
+        game.canvas.width = canvasWidth;
+        game.canvas.height = canvasHeight;
+    }
+
+    // 更新UI宽度以匹配画布
+    if (ui) {
+        ui.style.minWidth = canvasWidth + 'px';
+        ui.style.maxWidth = canvasWidth + 'px';
+    }
+
+    console.log(`Canvas resized to: ${canvasWidth}x${canvasHeight}`);
+}
+
 // 初始化游戏
 function initGame() {
     game.canvas = document.getElementById('gameCanvas');
     game.ctx = game.canvas.getContext('2d');
-    game.canvas.width = CONFIG.canvas.width;
-    game.canvas.height = CONFIG.canvas.height;
+
+    // 自适应屏幕大小
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
     // 检查是否有存档
     checkSaveData();
