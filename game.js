@@ -1629,7 +1629,8 @@ function showWaveCompleteScreen() {
                 document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
                 screen.classList.add('hidden');
                 game.state = 'playing';
-                // 开始下一波
+                // 波次递增并开始下一波
+                game.wave.current++;
                 startNewWave();
             };
         } else {
@@ -1644,7 +1645,8 @@ function showWaveCompleteScreen() {
                 document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
                 screen.classList.add('hidden');
                 game.state = 'playing';
-                // 开始下一波
+                // 波次递增并开始下一波
+                game.wave.current++;
                 startNewWave();
             };
         }
