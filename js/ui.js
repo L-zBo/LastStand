@@ -410,100 +410,181 @@ function showWaveNotification(waveNum) {
     }, 2000);
 }
 
-// 显示波次完成奖励界面
+// 显示波次完成奖励界面（详细版，与升级界面一致）
 function showWaveCompleteScreen() {
     const screen = document.getElementById('levelUpScreen');
     const title = document.querySelector('#levelUpScreen h2');
-    title.textContent = `第 ${game.wave.current} 波完成!`;
+    title.textContent = `🏆 第 ${game.wave.current} 波完成!`;
 
     const buffOptions = document.getElementById('buffOptions');
     buffOptions.innerHTML = '';
 
-    const options = [];
-    const usedWeaponIds = new Set();
-    const usedBuffIds = new Set();
+    // 收集所有可选项
+    const availableWeapons = Object.values(WEAPONS).filter(w =>
+        w.type !== 'evolved' && w.type !== 'accessory'
+    );
+    const playerWeaponIds = game.player.weapons.map(w => w.id);
+    const upgradeableWeapons = game.player.weapons.filter(w => w.level < w.maxLevel);
+    const accessories = Object.values(WEAPONS).filter(w => w.type === 'accessory');
 
-    for (let i = 0; i < 5; i++) {
-        if (Math.random() > 0.5) {
-            const weapons = Object.values(WEAPONS).filter(w =>
-                w.type !== 'evolved' && w.type !== 'accessory' && !usedWeaponIds.has(w.id)
-            );
-            if (weapons.length > 0) {
-                const weapon = weapons[Math.floor(Math.random() * weapons.length)];
-                usedWeaponIds.add(weapon.id);
-                options.push({ type: 'weapon', data: weapon });
-            } else {
-                const availableBuffs = BUFFS.filter(b => !usedBuffIds.has(b.id));
-                if (availableBuffs.length > 0) {
-                    const buff = availableBuffs[Math.floor(Math.random() * availableBuffs.length)];
-                    usedBuffIds.add(buff.id);
-                    options.push({ type: 'buff', data: buff });
-                }
-            }
-        } else {
-            const availableBuffs = BUFFS.filter(b => !usedBuffIds.has(b.id));
-            if (availableBuffs.length > 0) {
-                const buff = availableBuffs[Math.floor(Math.random() * availableBuffs.length)];
-                usedBuffIds.add(buff.id);
-                options.push({ type: 'buff', data: buff });
-            } else {
-                const weapons = Object.values(WEAPONS).filter(w =>
-                    w.type !== 'evolved' && w.type !== 'accessory' && !usedWeaponIds.has(w.id)
-                );
-                if (weapons.length > 0) {
-                    const weapon = weapons[Math.floor(Math.random() * weapons.length)];
-                    usedWeaponIds.add(weapon.id);
-                    options.push({ type: 'weapon', data: weapon });
-                }
-            }
-        }
+    let allOptions = [];
+
+    // 添加可升级的武器
+    upgradeableWeapons.forEach(w => {
+        allOptions.push({ type: 'weaponUpgrade', weapon: w });
+    });
+
+    // 添加新武器
+    availableWeapons.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
+        allOptions.push({ type: 'weaponNew', weapon: w });
+    });
+
+    // 添加配件
+    accessories.filter(w => !playerWeaponIds.includes(w.id)).forEach(w => {
+        allOptions.push({ type: 'accessory', weapon: w });
+    });
+
+    // 添加Buff
+    BUFFS.forEach(buff => {
+        allOptions.push({ type: 'buff', buff: buff });
+    });
+
+    // 随机选择5个不重复的选项
+    const selectedOptions = [];
+    for (let i = 0; i < 5 && allOptions.length > 0; i++) {
+        const index = Math.floor(Math.random() * allOptions.length);
+        selectedOptions.push(allOptions[index]);
+        allOptions.splice(index, 1);
     }
 
-    options.forEach(option => {
+    selectedOptions.forEach(option => {
         const card = document.createElement('div');
         card.className = 'buff-card';
 
-        if (option.type === 'weapon') {
-            const weapon = option.data;
-            const existingWeapon = game.player.weapons.find(w => w.id === weapon.id);
-            const level = existingWeapon ? existingWeapon.level : 0;
+        if (option.type === 'weaponUpgrade' || option.type === 'weaponNew') {
+            const w = option.weapon;
+            card.classList.add('weapon-card');
+
+            let evolveInfo = '';
+            if (w.evolvesWith && w.evolvesTo) {
+                const partner = WEAPONS[w.evolvesWith];
+                const evolved = WEAPONS[w.evolvesTo];
+                evolveInfo = `<div class="evolve-hint">🔄 满级 + ${partner.icon}${partner.name} → ${evolved.icon}${evolved.name}</div>`;
+            }
+
+            const typeNames = { melee: '近战', ranged: '远程', magic: '魔法', accessory: '配件' };
+            const levelInfo = option.type === 'weaponUpgrade'
+                ? `Lv.${w.level} → Lv.${w.level + 1}`
+                : 'Lv.1';
+
+            let statsHtml = '<div class="weapon-stats-detail">';
+            const currentDamage = w.damage * (option.type === 'weaponUpgrade' ? w.level : 1);
+            const nextDamage = w.damage * (option.type === 'weaponUpgrade' ? w.level + 1 : 1);
+
+            if (option.type === 'weaponUpgrade') {
+                statsHtml += `<span class="stat-item">⚔️ 伤害: ${currentDamage} → <span class="stat-up">${nextDamage}</span></span>`;
+            } else {
+                statsHtml += `<span class="stat-item">⚔️ 伤害: ${w.damage}</span>`;
+            }
+            if (w.attackSpeed) statsHtml += `<span class="stat-item">⚡ 攻速: ${w.attackSpeed}s</span>`;
+            statsHtml += `<span class="stat-item">📊 最高Lv: ${w.maxLevel || 5}</span>`;
+            statsHtml += '</div>';
 
             card.innerHTML = `
                 <span class="option-type-tag tag-weapon">武器</span>
-                <span class="buff-icon">${weapon.icon}</span>
-                <h3>${weapon.name} ${level > 0 ? 'Lv.' + (level + 1) : ''}</h3>
-                <p>${weapon.description}</p>
+                <div class="buff-card-header">
+                    <span class="buff-icon">${w.icon}</span>
+                    <div>
+                        <h3>${w.name}${option.type === 'weaponUpgrade' ? ' 升级' : ''}</h3>
+                        <span class="buff-type">${typeNames[w.type] || w.type} | ${levelInfo}</span>
+                    </div>
+                </div>
+                <p class="buff-desc">${w.description}</p>
+                ${statsHtml}
+                ${evolveInfo}
             `;
-            card.onclick = () => {
-                game.player.addWeapon(weapon.id);
-                document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
-                screen.classList.add('hidden');
-                game.state = 'playing';
-                game.wave.current++;
-                startNewWave();
-            };
-        } else {
-            const buff = option.data;
+            card.onclick = () => selectWaveRewardWeapon(option, screen);
+
+        } else if (option.type === 'accessory') {
+            const w = option.weapon;
+            card.classList.add('weapon-card');
+
+            let statsHtml = '<div class="weapon-stats-detail">';
+            if (w.effect) statsHtml += `<span class="stat-item">✨ ${w.effect}</span>`;
+            statsHtml += `<span class="stat-item">📊 最高Lv: ${w.maxLevel || 5}</span>`;
+            statsHtml += '</div>';
+
+            card.innerHTML = `
+                <span class="option-type-tag tag-accessory">配件装备</span>
+                <div class="buff-card-header">
+                    <span class="buff-icon">${w.icon}</span>
+                    <div>
+                        <h3>${w.name}</h3>
+                        <span class="buff-type">配件 | Lv.1</span>
+                    </div>
+                </div>
+                <p class="buff-desc">${w.description}</p>
+                ${statsHtml}
+            `;
+            card.onclick = () => selectWaveRewardWeapon(option, screen);
+
+        } else if (option.type === 'buff') {
+            const buff = option.buff;
             card.innerHTML = `
                 <span class="option-type-tag tag-buff">属性强化</span>
-                <span class="buff-icon">${buff.icon}</span>
-                <h3>${buff.name}</h3>
-                <p>${buff.description}</p>
+                <div class="buff-card-header">
+                    <span class="buff-icon">${buff.icon}</span>
+                    <div>
+                        <h3>${buff.name}</h3>
+                        <span class="buff-type">${buff.type || '通用'}</span>
+                    </div>
+                </div>
+                <p class="buff-desc">${buff.description}</p>
+                <div class="buff-effect">${buff.detail || buff.description}</div>
             `;
-            card.onclick = () => {
-                buff.apply(game.player);
-                document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
-                screen.classList.add('hidden');
-                game.state = 'playing';
-                game.wave.current++;
-                startNewWave();
-            };
+            card.onclick = () => selectWaveRewardBuff(buff, screen);
         }
 
         buffOptions.appendChild(card);
     });
 
     screen.classList.remove('hidden');
+}
+
+// 选择波次奖励武器
+function selectWaveRewardWeapon(option, screen) {
+    if (option.type === 'weaponUpgrade') {
+        option.weapon.level++;
+        game.player.checkWeaponEvolution(option.weapon);
+    } else {
+        game.player.addWeapon(option.weapon.id);
+    }
+    document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
+    screen.classList.add('hidden');
+    game.state = 'playing';
+    game.wave.current++;
+    startNewWave();
+}
+
+// 选择波次奖励Buff
+function selectWaveRewardBuff(buff, screen) {
+    buff.apply(game.player);
+    // 添加到被动栏显示
+    if (!game.player.passives.find(p => p.id === buff.id)) {
+        game.player.passives.push({
+            id: buff.id,
+            name: buff.name,
+            icon: buff.icon,
+            description: buff.description,
+            type: buff.type || '通用强化',
+            classOnly: buff.classOnly
+        });
+    }
+    document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
+    screen.classList.add('hidden');
+    game.state = 'playing';
+    game.wave.current++;
+    startNewWave();
 }
 
 // 显示倒计时

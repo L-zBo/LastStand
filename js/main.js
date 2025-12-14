@@ -391,10 +391,12 @@ function pauseGame() {
 
 // 继续游戏
 function resumeGame() {
+    if (game.state !== 'paused') return;
     game.state = 'playing';
     document.getElementById('pauseScreen').classList.add('hidden');
+    // 重置lastTime以避免大的deltaTime跳跃
     game.lastTime = 0;
-    requestAnimationFrame(gameLoop);
+    // 注意：不需要调用requestAnimationFrame，游戏循环一直在运行
 }
 
 // 重新开始当前波
@@ -490,8 +492,13 @@ function initGame() {
     // 键盘事件
     window.addEventListener('keydown', (e) => {
         game.keys[e.key] = true;
-        if (e.key === 'Escape' && game.state === 'playing') {
-            pauseGame();
+        // ESC键：暂停/继续游戏
+        if (e.key === 'Escape') {
+            if (game.state === 'playing') {
+                pauseGame();
+            } else if (game.state === 'paused') {
+                resumeGame();
+            }
         }
     });
 
