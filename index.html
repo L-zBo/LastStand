@@ -50,11 +50,22 @@
     <div id="overwriteModal" class="modal hidden">
         <div class="modal-content">
             <h3>⚠️ 存档确认</h3>
-            <p>检测到已有存档，是否覆盖？</p>
+            <p>该存档位已有数据，是否覆盖？</p>
             <div class="modal-buttons">
                 <button id="overwriteYes" class="modal-btn confirm">确认覆盖</button>
                 <button id="overwriteNo" class="modal-btn cancel">取消</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 存档选择界面 -->
+    <div id="saveSlotScreen" class="screen hidden">
+        <div class="save-slot-content">
+            <h2 id="saveSlotTitle">📂 选择存档位</h2>
+            <div class="save-slots" id="saveSlots">
+                <!-- 存档位会通过JS动态生成 -->
+            </div>
+            <button id="saveSlotBackBtn" class="menu-btn">返回</button>
         </div>
     </div>
 
