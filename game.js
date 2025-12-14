@@ -1950,10 +1950,25 @@ function updateUI() {
     document.getElementById('killCount').textContent = game.killCount;
     document.getElementById('gameTime').textContent = Math.floor(game.gameTime);
 
-    // 更新武器栏显示
+    // 只在数据变化时更新武器栏和被动栏
+    updateWeaponBarIfNeeded();
+    updatePassiveBarIfNeeded();
+}
+
+// 上次武器栏状态的缓存
+let lastWeaponBarState = '';
+
+// 更新武器栏（仅在变化时）
+function updateWeaponBarIfNeeded() {
+    // 生成当前状态的哈希
+    const currentState = game.player.weapons.map(w => `${w.id}:${w.level}`).join(',');
+
+    if (currentState === lastWeaponBarState) {
+        return; // 没有变化，不更新
+    }
+
+    lastWeaponBarState = currentState;
     updateWeaponBar();
-    // 更新被动栏显示
-    updatePassiveBar();
 }
 
 // 更新武器栏
@@ -1977,13 +1992,29 @@ function updateWeaponBar() {
                 ${weapon.level ? `<span class="weapon-level">${weapon.level}</span>` : ''}
             `;
             // 点击显示武器详情
-            slot.onclick = () => showWeaponDetail(weapon);
+            slot.addEventListener('click', () => showWeaponDetail(weapon));
         } else {
             slot.innerHTML = '<span class="weapon-empty">+</span>';
         }
 
         weaponBar.appendChild(slot);
     }
+}
+
+// 上次被动栏状态的缓存
+let lastPassiveBarState = '';
+
+// 更新被动栏（仅在变化时）
+function updatePassiveBarIfNeeded() {
+    const passives = game.player.passives || [];
+    const currentState = passives.map(p => p.id).join(',');
+
+    if (currentState === lastPassiveBarState) {
+        return; // 没有变化，不更新
+    }
+
+    lastPassiveBarState = currentState;
+    updatePassiveBar();
 }
 
 // 更新被动栏
@@ -2974,6 +3005,10 @@ function loadGame() {
 function applyLoadedSaveData(saveData) {
     game.selectedClass = saveData.selectedClass;
 
+    // 重置UI缓存
+    lastWeaponBarState = '';
+    lastPassiveBarState = '';
+
     generateObstacles();
 
     game.player = new Player(game.selectedClass);
@@ -3108,11 +3143,11 @@ function restartCurrentWave() {
     game.player.health = Math.min(game.player.health + game.player.maxHealth * 0.3, game.player.maxHealth);
 
     game.state = 'playing';
-    game.lastTime = 0;
+    game.lastTime = 0; // 重置时间以避免大的deltaTime
 
     // 重新开始本波
     startNewWave();
-    requestAnimationFrame(gameLoop);
+    // 注意：不需要再调用requestAnimationFrame，游戏循环已经在运行中
 }
 
 // 返回主菜单
@@ -3162,6 +3197,10 @@ function showWeaponDetail(weapon) {
 function startGame() {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
+
+    // 重置UI缓存
+    lastWeaponBarState = '';
+    lastPassiveBarState = '';
 
     // 生成障碍物
     generateObstacles();
