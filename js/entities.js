@@ -851,11 +851,24 @@ class Player {
             ctx.globalAlpha = 0.3;
         }
 
-        // 绘制玩家精灵
-        ctx.font = `${this.size * 2}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.sprite, this.x, this.y);
+        // 尝试使用精灵图绘制
+        const spriteSize = this.size * 2.5;
+        const spriteDrawn = drawPlayerSprite(
+            ctx,
+            this.classType,
+            this.x - spriteSize / 2,
+            this.y - spriteSize / 2,
+            spriteSize,
+            spriteSize
+        );
+
+        // 如果精灵图不可用，使用默认emoji渲染
+        if (!spriteDrawn) {
+            ctx.font = `${this.size * 2}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.sprite, this.x, this.y);
+        }
 
         // 绘制攻击范围（半透明）
         ctx.strokeStyle = this.color + '30';
@@ -882,7 +895,10 @@ class Player {
 
 // 敌人类
 class Enemy {
+    static nextId = 0;  // 用于生成唯一ID
+
     constructor(x, y, type = 'normal') {
+        this.id = Enemy.nextId++;  // 分配唯一ID，用于选择精灵
         this.x = x;
         this.y = y;
         this.size = CONFIG.enemy.size;
@@ -1002,10 +1018,6 @@ class Enemy {
     }
 
     draw(ctx) {
-        ctx.font = `${this.size * 2}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
         // Boss特殊光环
         if (this.isBoss) {
             ctx.strokeStyle = '#9b59b6';
@@ -1026,7 +1038,25 @@ class Enemy {
             ctx.stroke();
         }
 
-        ctx.fillText(this.sprite, this.x, this.y);
+        // 尝试使用精灵图绘制
+        const spriteSize = this.size * 2.2;
+        const spriteDrawn = drawEnemySprite(
+            ctx,
+            this.type,
+            this.id,
+            this.x - spriteSize / 2,
+            this.y - spriteSize / 2,
+            spriteSize,
+            spriteSize
+        );
+
+        // 如果精灵图不可用，使用默认emoji渲染
+        if (!spriteDrawn) {
+            ctx.font = `${this.size * 2}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.sprite, this.x, this.y);
+        }
 
         // 绘制生命条
         if (this.health < this.maxHealth) {
