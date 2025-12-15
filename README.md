@@ -62,6 +62,16 @@
 roge game/
 ├── index.html      # 主页面，包含所有UI结构和CSS引用
 ├── README.md       # 本文档
+├── assets/         # 游戏素材目录
+│   ├── sprites/
+│   │   ├── players/    # 玩家角色精灵图
+│   │   ├── enemies/    # 敌人精灵图
+│   │   ├── effects/    # 特效（攻击、爆炸等）
+│   │   ├── weapons/    # 武器图标
+│   │   └── items/      # 道具拾取物
+│   ├── tiles/          # 地图瓦片
+│   ├── ui/             # UI元素
+│   └── README.md       # 素材获取指南
 ├── css/            # CSS模块目录
 │   ├── base.css        # 基础样式（重置、全局）
 │   ├── menu.css        # 开始菜单、职业选择样式
@@ -75,6 +85,7 @@ roge game/
 └── js/             # JavaScript模块目录
     ├── config.js   # 游戏配置（画布大小、世界大小、波次参数等）
     ├── data.js     # 游戏数据（职业、武器、Buff、敌人类型）
+    ├── assets.js   # 素材管理器（加载、缓存、绘制）
     ├── entities.js # 游戏实体类（玩家、敌人、投射物、召唤物等）
     ├── ui.js       # UI相关函数（更新显示、升级选择、通知等）
     ├── save.js     # 存档系统（保存、读取、存档槽管理）
