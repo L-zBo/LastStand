@@ -743,4 +743,10 @@ function initGame() {
 }
 
 // 页面加载完成后初始化
-window.addEventListener('DOMContentLoaded', initGame);
+window.addEventListener('DOMContentLoaded', () => {
+    // 预加载精灵图资源
+    preloadAssets(() => {
+        console.log('Assets loaded, initializing game...');
+        initGame();
+    });
+});
