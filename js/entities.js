@@ -348,50 +348,73 @@ class WeaponProjectile {
 
     draw(ctx) {
         ctx.save();
+        const weaponId = this.weapon.id;
+
         switch(this.type) {
             case 'slash':
                 ctx.translate(this.player.x, this.player.y);
                 ctx.rotate(this.angle);
-                ctx.strokeStyle = this.weapon.id === 'holyBlade' ? '#ffd700' : '#fff';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.arc(0, 0, this.size, -0.8, 0.8);
-                ctx.stroke();
+                // 尝试绘制武器精灵
+                const slashDrawn = drawWeaponSprite(ctx, weaponId, 20, -16, 32, 32);
+                if (!slashDrawn) {
+                    ctx.strokeStyle = weaponId === 'holyBlade' ? '#ffd700' : '#fff';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size, -0.8, 0.8);
+                    ctx.stroke();
+                }
                 break;
             case 'stab':
                 ctx.translate(this.player.x, this.player.y);
                 ctx.rotate(this.angle);
-                ctx.fillStyle = this.weapon.id === 'shadowBlade' ? '#9b59b6' : '#c0c0c0';
-                ctx.fillRect(10, -3, this.size, 6);
+                // 尝试绘制武器精灵
+                const stabDrawn = drawWeaponSprite(ctx, weaponId, 15, -12, 24, 24);
+                if (!stabDrawn) {
+                    ctx.fillStyle = weaponId === 'shadowBlade' ? '#9b59b6' : '#c0c0c0';
+                    ctx.fillRect(10, -3, this.size, 6);
+                }
                 break;
             case 'spin':
                 ctx.translate(this.player.x, this.player.y);
                 ctx.rotate(this.rotation);
-                ctx.strokeStyle = this.weapon.id === 'bloodAxe' ? '#e74c3c' : '#c0c0c0';
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(-this.size/2, 0);
-                ctx.lineTo(this.size/2, 0);
-                ctx.stroke();
+                // 尝试绘制武器精灵
+                const spinDrawn = drawWeaponSprite(ctx, weaponId, -20, -20, 40, 40);
+                if (!spinDrawn) {
+                    ctx.strokeStyle = weaponId === 'bloodAxe' ? '#e74c3c' : '#c0c0c0';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.size/2, 0);
+                    ctx.lineTo(this.size/2, 0);
+                    ctx.stroke();
+                }
                 break;
             case 'arrow':
                 ctx.translate(this.x, this.y);
                 ctx.rotate(this.rotation);
-                ctx.fillStyle = this.weapon.id === 'phoenixBow' ? '#ff6b35' : '#8B4513';
-                ctx.beginPath();
-                ctx.moveTo(12, 0);
-                ctx.lineTo(-8, -5);
-                ctx.lineTo(-8, 5);
-                ctx.fill();
+                // 尝试绘制武器精灵（弓箭）
+                const arrowDrawn = drawWeaponSprite(ctx, weaponId, -12, -12, 24, 24);
+                if (!arrowDrawn) {
+                    ctx.fillStyle = weaponId === 'phoenixBow' ? '#ff6b35' : '#8B4513';
+                    ctx.beginPath();
+                    ctx.moveTo(12, 0);
+                    ctx.lineTo(-8, -5);
+                    ctx.lineTo(-8, 5);
+                    ctx.fill();
+                }
                 break;
             case 'magic':
-                ctx.fillStyle = this.weapon.id === 'arcaneStaff' ? '#9b59b6' : '#4ecdc4';
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                // 尝试绘制法杖精灵
+                const magicDrawn = drawWeaponSprite(ctx, weaponId, this.x - 16, this.y - 16, 32, 32);
+                if (!magicDrawn) {
+                    ctx.fillStyle = weaponId === 'arcaneStaff' ? '#9b59b6' : '#4ecdc4';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
                 break;
             case 'fireball':
-                ctx.fillStyle = this.weapon.id === 'inferno' ? '#ff4500' : '#ff6b35';
+                // 火球使用特效而非武器精灵
+                ctx.fillStyle = weaponId === 'inferno' ? '#ff4500' : '#ff6b35';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
@@ -956,6 +979,8 @@ class Enemy {
             this.isBoss = true;
             this.isElite = true;
             this.size = CONFIG.enemy.size * 2.5;
+            // 根据波数获取Boss类型
+            this.bossType = getBossTypeByWave(game.wave.current);
         }
     }
 
@@ -1040,15 +1065,32 @@ class Enemy {
 
         // 尝试使用精灵图绘制
         const spriteSize = this.size * 2.2;
-        const spriteDrawn = drawEnemySprite(
-            ctx,
-            this.type,
-            this.id,
-            this.x - spriteSize / 2,
-            this.y - spriteSize / 2,
-            spriteSize,
-            spriteSize
-        );
+        let spriteDrawn = false;
+
+        // Boss使用专门的Boss精灵图
+        if (this.isBoss && this.bossType) {
+            spriteDrawn = drawBossSprite(
+                ctx,
+                this.bossType,
+                this.x - spriteSize / 2,
+                this.y - spriteSize / 2,
+                spriteSize,
+                spriteSize
+            );
+        }
+
+        // 非Boss或Boss精灵图不可用时，使用普通敌人精灵图
+        if (!spriteDrawn) {
+            spriteDrawn = drawEnemySprite(
+                ctx,
+                this.type,
+                this.id,
+                this.x - spriteSize / 2,
+                this.y - spriteSize / 2,
+                spriteSize,
+                spriteSize
+            );
+        }
 
         // 如果精灵图不可用，使用默认emoji渲染
         if (!spriteDrawn) {
