@@ -768,7 +768,22 @@ class Player {
     }
 
     gainExp(amount) {
-        this.exp += Math.floor(amount * this.expMultiplier);
+        // 双人模式下经验共享：给自己加经验，同时也给队友加
+        const expGained = Math.floor(amount * this.expMultiplier);
+        this.exp += expGained;
+
+        // 如果是双人模式，给另一个玩家也加经验
+        if (game.playerCount === 2) {
+            const otherPlayer = (this === game.player) ? game.player2 : game.player;
+            if (otherPlayer && otherPlayer.health > 0 && otherPlayer !== this) {
+                // 队友获得相同的基础经验（使用队友自己的经验倍率）
+                otherPlayer.exp += Math.floor(amount * otherPlayer.expMultiplier);
+                // 检查队友是否升级
+                if (otherPlayer.exp >= otherPlayer.maxExp) {
+                    otherPlayer.levelUp();
+                }
+            }
+        }
 
         if (this.exp >= this.maxExp) {
             this.levelUp();

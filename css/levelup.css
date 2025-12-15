@@ -18,16 +18,102 @@
     overflow-y: auto;
 }
 
-#levelUpScreen h2 {
+/* 单人模式升级界面 */
+.single-levelup h2 {
     font-size: 2.8em;
     margin-bottom: 15px;
     color: #ffd700;
     text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
 }
 
-#levelUpScreen > p {
+.single-levelup > p {
     font-size: 1.3em;
     margin-bottom: 30px;
+}
+
+/* 双人模式升级界面 */
+.dual-levelup {
+    display: flex;
+    gap: 30px;
+    width: 100%;
+}
+
+.dual-levelup .player-levelup-panel {
+    flex: 1;
+    padding: 20px;
+    border-radius: 15px;
+    position: relative;
+    min-height: 500px;
+}
+
+.dual-levelup .player-levelup-panel.p1-panel {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.1) 100%);
+    border: 2px solid #3498db;
+}
+
+.dual-levelup .player-levelup-panel.p2-panel {
+    background: linear-gradient(135deg, rgba(231, 76, 60, 0.2) 0%, rgba(192, 57, 43, 0.1) 100%);
+    border: 2px solid #e74c3c;
+}
+
+.player-levelup-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.player-levelup-header h3 {
+    font-size: 1.5em;
+    color: #ffd700;
+    margin: 0;
+}
+
+/* 双人模式下的buff选项 */
+.dual-levelup .buff-options {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.dual-levelup .buff-card {
+    max-width: none;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* 已选择状态 */
+.player-selected {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.player-selected .check-icon {
+    font-size: 5em;
+    color: #2ecc71;
+    margin-bottom: 20px;
+    animation: checkPulse 1s ease-in-out infinite;
+}
+
+.player-selected p {
+    font-size: 1.3em;
+    color: #aaa;
+}
+
+@keyframes checkPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
 }
 
 .buff-options {

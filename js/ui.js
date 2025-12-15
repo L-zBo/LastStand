@@ -2,9 +2,11 @@
 
 // 上次武器栏状态的缓存
 let lastWeaponBarState = '';
+let lastWeaponBar2State = '';
 
 // 上次被动栏状态的缓存
 let lastPassiveBarState = '';
+let lastPassiveBar2State = '';
 
 // 更新UI
 function updateUI() {
@@ -41,6 +43,18 @@ function updateUI() {
         document.getElementById('player2MaxExp').textContent = game.player2.maxExp;
         document.getElementById('player2Attack').textContent = game.player2.attack;
         document.getElementById('player2Speed').textContent = game.player2.speed.toFixed(1);
+        document.getElementById('player2Regen').textContent = game.player2.healthRegen || 0;
+        document.getElementById('player2Crit').textContent = Math.floor((game.player2.critChance || 0) * 100);
+        document.getElementById('player2Vampire').textContent = game.player2.vampireHeal || 0;
+        document.getElementById('player2CritDmg').textContent = Math.floor((game.player2.critDamage || 2) * 100) + '%';
+        document.getElementById('player2Range').textContent = Math.floor(game.player2.attackRange || 50);
+        document.getElementById('player2AtkSpeed').textContent = game.player2.attackCooldown + 'ms';
+        document.getElementById('player2Multishot').textContent = game.player2.multiShot || 1;
+        document.getElementById('player2ExpBonus').textContent = Math.floor((game.player2.expMultiplier || 1) * 100) + '%';
+
+        // 更新P2的武器栏和被动栏
+        updateWeaponBar2IfNeeded();
+        updatePassiveBar2IfNeeded();
     }
 
     // 只在数据变化时更新武器栏和被动栏
@@ -132,6 +146,91 @@ function updatePassiveBar() {
 function resetUICache() {
     lastWeaponBarState = '';
     lastPassiveBarState = '';
+    lastWeaponBar2State = '';
+    lastPassiveBar2State = '';
+}
+
+// P2武器栏更新（仅在变化时）
+function updateWeaponBar2IfNeeded() {
+    if (!game.player2) return;
+    const currentState = game.player2.weapons.map(w => `${w.id}:${w.level}`).join(',');
+
+    if (currentState === lastWeaponBar2State) {
+        return;
+    }
+
+    lastWeaponBar2State = currentState;
+    updateWeaponBar2();
+}
+
+// 更新P2武器栏
+function updateWeaponBar2() {
+    const weaponBar = document.getElementById('weaponBar2');
+    if (!weaponBar || !game.player2) return;
+    weaponBar.innerHTML = '';
+
+    for (let i = 0; i < game.player2.maxWeapons; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'weapon-slot';
+
+        if (game.player2.weapons[i]) {
+            const weapon = game.player2.weapons[i];
+            if (weapon.type === 'evolved') {
+                slot.classList.add('evolved');
+            }
+            slot.innerHTML = `
+                <span class="weapon-icon">${weapon.icon}</span>
+                ${weapon.level ? `<span class="weapon-level">${weapon.level}</span>` : ''}
+            `;
+            slot.addEventListener('click', () => showWeaponDetail(weapon));
+        } else {
+            slot.innerHTML = '<span class="weapon-empty">+</span>';
+        }
+
+        weaponBar.appendChild(slot);
+    }
+}
+
+// P2被动栏更新（仅在变化时）
+function updatePassiveBar2IfNeeded() {
+    if (!game.player2) return;
+    const passives = game.player2.passives || [];
+    const currentState = passives.map(p => p.id).join(',');
+
+    if (currentState === lastPassiveBar2State) {
+        return;
+    }
+
+    lastPassiveBar2State = currentState;
+    updatePassiveBar2();
+}
+
+// 更新P2被动栏
+function updatePassiveBar2() {
+    const passiveBar = document.getElementById('passiveBar2');
+    if (!passiveBar || !game.player2) return;
+    passiveBar.innerHTML = '';
+
+    const passives = game.player2.passives || [];
+
+    if (passives.length === 0) {
+        passiveBar.innerHTML = '<span style="color: #666; font-size: 0.8em;">暂无被动</span>';
+        return;
+    }
+
+    passives.forEach(passive => {
+        const slot = document.createElement('div');
+        slot.className = 'passive-slot' + (passive.classOnly ? ' class-passive' : '');
+        slot.innerHTML = `
+            <span>${passive.icon}</span>
+            <div class="passive-tooltip">
+                <h4>${passive.name}</h4>
+                <p>${passive.description}</p>
+                <p class="passive-type">${passive.type || '通用强化'}</p>
+            </div>
+        `;
+        passiveBar.appendChild(slot);
+    });
 }
 
 // 显示武器详情弹窗
@@ -185,33 +284,151 @@ function showEvolutionNotification(weapon1Name, weapon2Name, evolvedName, evolve
     }, 2500);
 }
 
-// 显示升级选择界面
-function showLevelUpScreen() {
-    const buffOptions = document.getElementById('buffOptions');
-    buffOptions.innerHTML = '';
-    document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
+// 双人模式升级选择状态
+let dualLevelUpState = {
+    p1Selected: false,
+    p2Selected: false,
+    p1Choice: null,
+    p2Choice: null
+};
 
-    // 40%武器，30%通用Buff，30%职业专属
-    const rand = Math.random();
-
-    if (rand < 0.4) {
-        showWeaponOptions(buffOptions);
-    } else if (rand < 0.7) {
-        showBuffOptionsDetailed(buffOptions);
-    } else {
-        showClassBuffOptions(buffOptions);
-    }
-
-    document.getElementById('levelUpScreen').classList.remove('hidden');
+// 重置双人升级状态
+function resetDualLevelUpState() {
+    dualLevelUpState = {
+        p1Selected: false,
+        p2Selected: false,
+        p1Choice: null,
+        p2Choice: null
+    };
 }
 
-// 显示武器选项（详细版）
-function showWeaponOptions(container) {
+// 显示升级选择界面
+function showLevelUpScreen() {
+    const levelUpScreen = document.getElementById('levelUpScreen');
+    const singleLayout = document.getElementById('singlePlayerLevelUp');
+    const dualLayout = document.getElementById('dualPlayerLevelUp');
+
+    if (game.playerCount === 2) {
+        // 双人模式
+        singleLayout.classList.add('hidden');
+        dualLayout.classList.remove('hidden');
+        resetDualLevelUpState();
+        showDualPlayerLevelUp();
+    } else {
+        // 单人模式
+        singleLayout.classList.remove('hidden');
+        dualLayout.classList.add('hidden');
+        const buffOptions = document.getElementById('buffOptions');
+        buffOptions.innerHTML = '';
+        document.querySelector('.single-levelup h2').textContent = '🎉 升级!';
+
+        // 40%武器，30%通用Buff，30%职业专属
+        const rand = Math.random();
+
+        if (rand < 0.4) {
+            showWeaponOptionsForPlayer(buffOptions, game.player, 1);
+        } else if (rand < 0.7) {
+            showBuffOptionsForPlayer(buffOptions, game.player, 1);
+        } else {
+            showClassBuffOptionsForPlayer(buffOptions, game.player, 1);
+        }
+    }
+
+    levelUpScreen.classList.remove('hidden');
+}
+
+// 双人升级界面
+function showDualPlayerLevelUp() {
+    const p1Container = document.getElementById('p1BuffOptions');
+    const p2Container = document.getElementById('p2BuffOptions');
+    const p1Selected = document.getElementById('p1Selected');
+    const p2Selected = document.getElementById('p2Selected');
+
+    p1Container.innerHTML = '';
+    p2Container.innerHTML = '';
+    p1Selected.classList.add('hidden');
+    p2Selected.classList.add('hidden');
+
+    // 为P1生成选项
+    const rand1 = Math.random();
+    if (rand1 < 0.4) {
+        showWeaponOptionsForPlayer(p1Container, game.player, 1);
+    } else if (rand1 < 0.7) {
+        showBuffOptionsForPlayer(p1Container, game.player, 1);
+    } else {
+        showClassBuffOptionsForPlayer(p1Container, game.player, 1);
+    }
+
+    // 为P2生成选项
+    const rand2 = Math.random();
+    if (rand2 < 0.4) {
+        showWeaponOptionsForPlayer(p2Container, game.player2, 2);
+    } else if (rand2 < 0.7) {
+        showBuffOptionsForPlayer(p2Container, game.player2, 2);
+    } else {
+        showClassBuffOptionsForPlayer(p2Container, game.player2, 2);
+    }
+}
+
+// 检查双人是否都选完了
+function checkDualLevelUpComplete() {
+    if (dualLevelUpState.p1Selected && dualLevelUpState.p2Selected) {
+        // 应用选择
+        applyPlayerChoice(game.player, dualLevelUpState.p1Choice);
+        applyPlayerChoice(game.player2, dualLevelUpState.p2Choice);
+
+        document.getElementById('levelUpScreen').classList.add('hidden');
+        game.state = 'playing';
+    }
+}
+
+// 应用玩家选择
+function applyPlayerChoice(player, choice) {
+    if (!choice) return;
+
+    if (choice.type === 'weapon') {
+        if (choice.isUpgrade) {
+            choice.weapon.level++;
+            player.checkWeaponEvolution(choice.weapon);
+        } else {
+            player.addWeapon(choice.weapon.id);
+        }
+    } else if (choice.type === 'buff') {
+        choice.buff.apply(player);
+        if (!player.passives.find(p => p.id === choice.buff.id)) {
+            player.passives.push({
+                id: choice.buff.id,
+                name: choice.buff.name,
+                icon: choice.buff.icon,
+                description: choice.buff.description,
+                type: choice.buff.type || '通用强化',
+                classOnly: choice.buff.classOnly
+            });
+        }
+    }
+}
+
+// 玩家选择处理
+function handlePlayerSelection(playerNum, choice) {
+    if (playerNum === 1) {
+        dualLevelUpState.p1Selected = true;
+        dualLevelUpState.p1Choice = choice;
+        document.getElementById('p1Selected').classList.remove('hidden');
+    } else {
+        dualLevelUpState.p2Selected = true;
+        dualLevelUpState.p2Choice = choice;
+        document.getElementById('p2Selected').classList.remove('hidden');
+    }
+    checkDualLevelUpComplete();
+}
+
+// 显示武器选项（详细版）- 支持指定玩家
+function showWeaponOptionsForPlayer(container, player, playerNum) {
     const availableWeapons = Object.values(WEAPONS).filter(w =>
         w.type !== 'evolved' && w.type !== 'accessory'
     );
-    const playerWeaponIds = game.player.weapons.map(w => w.id);
-    const upgradeableWeapons = game.player.weapons.filter(w => w.level < w.maxLevel);
+    const playerWeaponIds = player.weapons.map(w => w.id);
+    const upgradeableWeapons = player.weapons.filter(w => w.level < w.maxLevel);
     const accessories = Object.values(WEAPONS).filter(w => w.type === 'accessory');
 
     let allOptions = [];
@@ -231,16 +448,17 @@ function showWeaponOptions(container) {
         allOptions.push({ type: 'new', weapon: w, isAccessory: true });
     });
 
-    // 随机选择5个不重复的选项
+    // 随机选择5个不重复的选项（双人模式选3个）
+    const maxOptions = game.playerCount === 2 ? 3 : 5;
     const selectedOptions = [];
-    for (let i = 0; i < 5 && allOptions.length > 0; i++) {
+    for (let i = 0; i < maxOptions && allOptions.length > 0; i++) {
         const index = Math.floor(Math.random() * allOptions.length);
         selectedOptions.push(allOptions[index]);
         allOptions.splice(index, 1);
     }
 
     if (selectedOptions.length === 0) {
-        showBuffOptionsDetailed(container);
+        showBuffOptionsForPlayer(container, player, playerNum);
         return;
     }
 
@@ -297,17 +515,27 @@ function showWeaponOptions(container) {
             ${statsHtml}
             ${evolveInfo}
         `;
-        card.onclick = () => selectWeapon(option);
+
+        if (game.playerCount === 2) {
+            card.onclick = () => handlePlayerSelection(playerNum, {
+                type: 'weapon',
+                weapon: option.weapon,
+                isUpgrade: option.type === 'upgrade'
+            });
+        } else {
+            card.onclick = () => selectWeaponForPlayer(option, player);
+        }
         container.appendChild(card);
     });
 }
 
-// 显示Buff选项（详细版）
-function showBuffOptionsDetailed(container) {
+// 显示Buff选项（详细版）- 支持指定玩家
+function showBuffOptionsForPlayer(container, player, playerNum) {
     const availableBuffs = [...BUFFS];
     const selectedBuffs = [];
+    const maxOptions = game.playerCount === 2 ? 3 : 5;
 
-    for (let i = 0; i < 5 && availableBuffs.length > 0; i++) {
+    for (let i = 0; i < maxOptions && availableBuffs.length > 0; i++) {
         const index = Math.floor(Math.random() * availableBuffs.length);
         selectedBuffs.push(availableBuffs[index]);
         availableBuffs.splice(index, 1);
@@ -328,34 +556,44 @@ function showBuffOptionsDetailed(container) {
             <p class="buff-desc">${buff.description}</p>
             <div class="buff-effect">${buff.detail || buff.description}</div>
         `;
-        card.onclick = () => selectBuff(buff);
+
+        if (game.playerCount === 2) {
+            card.onclick = () => handlePlayerSelection(playerNum, {
+                type: 'buff',
+                buff: buff
+            });
+        } else {
+            card.onclick = () => selectBuffForPlayer(buff, player);
+        }
         container.appendChild(card);
     });
 }
 
-// 显示职业专属强化选项
-function showClassBuffOptions(container) {
-    const playerClass = game.selectedClass;
+// 显示职业专属强化选项 - 支持指定玩家
+function showClassBuffOptionsForPlayer(container, player, playerNum) {
+    const playerClass = player.className || game.selectedClass;
     const classBuffs = CLASS_BUFFS[playerClass] || [];
 
     if (classBuffs.length === 0) {
-        showBuffOptionsDetailed(container);
+        showBuffOptionsForPlayer(container, player, playerNum);
         return;
     }
 
     const availableClassBuffs = [...classBuffs];
     const availableGeneralBuffs = [...BUFFS];
     const selectedOptions = [];
+    const maxClassBuffs = game.playerCount === 2 ? 2 : 3;
+    const maxGeneralBuffs = game.playerCount === 2 ? 1 : 2;
 
-    // 选择职业专属buff（最多3个）
-    for (let i = 0; i < 3 && availableClassBuffs.length > 0; i++) {
+    // 选择职业专属buff
+    for (let i = 0; i < maxClassBuffs && availableClassBuffs.length > 0; i++) {
         const index = Math.floor(Math.random() * availableClassBuffs.length);
         selectedOptions.push(availableClassBuffs[index]);
         availableClassBuffs.splice(index, 1);
     }
 
-    // 添加2个通用Buff
-    for (let i = 0; i < 2 && availableGeneralBuffs.length > 0; i++) {
+    // 添加通用Buff
+    for (let i = 0; i < maxGeneralBuffs && availableGeneralBuffs.length > 0; i++) {
         const index = Math.floor(Math.random() * availableGeneralBuffs.length);
         selectedOptions.push(availableGeneralBuffs[index]);
         availableGeneralBuffs.splice(index, 1);
@@ -378,34 +616,36 @@ function showClassBuffOptions(container) {
             <div class="buff-effect">${buff.detail || buff.description}</div>
             ${isClassBuff ? '<p class="class-exclusive">★ 职业专属</p>' : ''}
         `;
-        card.onclick = () => selectBuff(buff);
+
+        if (game.playerCount === 2) {
+            card.onclick = () => handlePlayerSelection(playerNum, {
+                type: 'buff',
+                buff: buff
+            });
+        } else {
+            card.onclick = () => selectBuffForPlayer(buff, player);
+        }
         container.appendChild(card);
     });
 }
 
-// 显示Buff选项（旧版兼容）
-function showBuffOptions(container) {
-    showBuffOptionsDetailed(container);
-}
-
-// 选择武器
-function selectWeapon(option) {
+// 单人模式 - 选择武器
+function selectWeaponForPlayer(option, player) {
     if (option.type === 'upgrade') {
         option.weapon.level++;
-        game.player.checkWeaponEvolution(option.weapon);
+        player.checkWeaponEvolution(option.weapon);
     } else {
-        game.player.addWeapon(option.weapon.id);
+        player.addWeapon(option.weapon.id);
     }
     document.getElementById('levelUpScreen').classList.add('hidden');
     game.state = 'playing';
 }
 
-// 选择buff
-function selectBuff(buff) {
-    buff.apply(game.player);
-    // 添加到被动栏显示
-    if (!game.player.passives.find(p => p.id === buff.id)) {
-        game.player.passives.push({
+// 单人模式 - 选择buff
+function selectBuffForPlayer(buff, player) {
+    buff.apply(player);
+    if (!player.passives.find(p => p.id === buff.id)) {
+        player.passives.push({
             id: buff.id,
             name: buff.name,
             icon: buff.icon,
@@ -416,6 +656,36 @@ function selectBuff(buff) {
     }
     document.getElementById('levelUpScreen').classList.add('hidden');
     game.state = 'playing';
+}
+
+// 显示武器选项（详细版）- 旧版兼容
+function showWeaponOptions(container) {
+    showWeaponOptionsForPlayer(container, game.player, 1);
+}
+
+// 显示Buff选项（详细版）- 旧版兼容
+function showBuffOptionsDetailed(container) {
+    showBuffOptionsForPlayer(container, game.player, 1);
+}
+
+// 显示职业专属强化选项 - 旧版兼容
+function showClassBuffOptions(container) {
+    showClassBuffOptionsForPlayer(container, game.player, 1);
+}
+
+// 显示Buff选项（旧版兼容）
+function showBuffOptions(container) {
+    showBuffOptionsDetailed(container);
+}
+
+// 选择武器 - 旧版兼容
+function selectWeapon(option) {
+    selectWeaponForPlayer(option, game.player);
+}
+
+// 选择buff - 旧版兼容
+function selectBuff(buff) {
+    selectBuffForPlayer(buff, game.player);
 }
 
 // 显示波次提示
@@ -435,21 +705,89 @@ function showWaveNotification(waveNum) {
     }, 2000);
 }
 
-// 显示波次完成奖励界面（详细版，与升级界面一致）
+// 双人波次选择状态
+let dualWaveState = {
+    p1Selected: false,
+    p2Selected: false,
+    p1Choice: null,
+    p2Choice: null
+};
+
+// 重置双人波次选择状态
+function resetDualWaveState() {
+    dualWaveState = {
+        p1Selected: false,
+        p2Selected: false,
+        p1Choice: null,
+        p2Choice: null
+    };
+}
+
+// 显示波次完成奖励界面
 function showWaveCompleteScreen() {
-    const screen = document.getElementById('levelUpScreen');
-    const title = document.querySelector('#levelUpScreen h2');
+    const levelUpScreen = document.getElementById('levelUpScreen');
+    const singleLayout = document.getElementById('singlePlayerLevelUp');
+    const dualLayout = document.getElementById('dualPlayerLevelUp');
+
+    if (game.playerCount === 2) {
+        // 双人模式
+        singleLayout.classList.add('hidden');
+        dualLayout.classList.remove('hidden');
+        resetDualWaveState();
+        showDualWaveComplete();
+    } else {
+        // 单人模式
+        singleLayout.classList.remove('hidden');
+        dualLayout.classList.add('hidden');
+        showSingleWaveComplete();
+    }
+
+    levelUpScreen.classList.remove('hidden');
+}
+
+// 单人波次完成界面
+function showSingleWaveComplete() {
+    const title = document.querySelector('.single-levelup h2');
     title.textContent = `🏆 第 ${game.wave.current} 波完成!`;
 
     const buffOptions = document.getElementById('buffOptions');
     buffOptions.innerHTML = '';
 
-    // 收集所有可选项
+    showWaveOptionsForPlayer(buffOptions, game.player, 1, true);
+}
+
+// 双人波次完成界面
+function showDualWaveComplete() {
+    const p1Container = document.getElementById('p1BuffOptions');
+    const p2Container = document.getElementById('p2BuffOptions');
+    const p1Selected = document.getElementById('p1Selected');
+    const p2Selected = document.getElementById('p2Selected');
+
+    // 更新标题
+    const p1Header = document.querySelector('.dual-levelup .p1-panel .player-levelup-header h3');
+    const p2Header = document.querySelector('.dual-levelup .p2-panel .player-levelup-header h3');
+    if (p1Header) p1Header.textContent = `第 ${game.wave.current} 波完成!`;
+    if (p2Header) p2Header.textContent = `第 ${game.wave.current} 波完成!`;
+
+    p1Container.innerHTML = '';
+    p2Container.innerHTML = '';
+    p1Selected.classList.add('hidden');
+    p2Selected.classList.add('hidden');
+
+    // 为P1生成选项
+    showWaveOptionsForPlayer(p1Container, game.player, 1, true);
+
+    // 为P2生成选项
+    showWaveOptionsForPlayer(p2Container, game.player2, 2, true);
+}
+
+// 为玩家生成波次奖励选项
+function showWaveOptionsForPlayer(container, player, playerNum, isWaveReward = false) {
     const availableWeapons = Object.values(WEAPONS).filter(w =>
         w.type !== 'evolved' && w.type !== 'accessory'
     );
-    const playerWeaponIds = game.player.weapons.map(w => w.id);
-    const upgradeableWeapons = game.player.weapons.filter(w => w.level < w.maxLevel);
+    const playerWeaponIds = player.weapons.map(w => w.id);
+    const upgradeableWeapons = player.weapons.filter(w => w.level < w.maxLevel);
     const accessories = Object.values(WEAPONS).filter(w => w.type === 'accessory');
 
     let allOptions = [];
@@ -474,9 +812,10 @@ function showWaveCompleteScreen() {
         allOptions.push({ type: 'buff', buff: buff });
     });
 
-    // 随机选择5个不重复的选项
+    // 随机选择选项
+    const maxOptions = game.playerCount === 2 ? 3 : 5;
     const selectedOptions = [];
-    for (let i = 0; i < 5 && allOptions.length > 0; i++) {
+    for (let i = 0; i < maxOptions && allOptions.length > 0; i++) {
         const index = Math.floor(Math.random() * allOptions.length);
         selectedOptions.push(allOptions[index]);
         allOptions.splice(index, 1);
@@ -528,7 +867,16 @@ function showWaveCompleteScreen() {
                 ${statsHtml}
                 ${evolveInfo}
             `;
-            card.onclick = () => selectWaveRewardWeapon(option, screen);
+
+            if (game.playerCount === 2) {
+                card.onclick = () => handleWaveSelection(playerNum, {
+                    type: 'weapon',
+                    weapon: option.weapon,
+                    isUpgrade: option.type === 'weaponUpgrade'
+                });
+            } else {
+                card.onclick = () => selectWaveRewardForPlayer(option, player);
+            }
 
         } else if (option.type === 'accessory') {
             const w = option.weapon;
@@ -551,7 +899,16 @@ function showWaveCompleteScreen() {
                 <p class="buff-desc">${w.description}</p>
                 ${statsHtml}
             `;
-            card.onclick = () => selectWaveRewardWeapon(option, screen);
+
+            if (game.playerCount === 2) {
+                card.onclick = () => handleWaveSelection(playerNum, {
+                    type: 'weapon',
+                    weapon: w,
+                    isUpgrade: false
+                });
+            } else {
+                card.onclick = () => selectWaveRewardForPlayer(option, player);
+            }
 
         } else if (option.type === 'buff') {
             const buff = option.buff;
@@ -567,36 +924,75 @@ function showWaveCompleteScreen() {
                 <p class="buff-desc">${buff.description}</p>
                 <div class="buff-effect">${buff.detail || buff.description}</div>
             `;
-            card.onclick = () => selectWaveRewardBuff(buff, screen);
+
+            if (game.playerCount === 2) {
+                card.onclick = () => handleWaveSelection(playerNum, {
+                    type: 'buff',
+                    buff: buff
+                });
+            } else {
+                card.onclick = () => selectWaveRewardBuffForPlayer(buff, player);
+            }
         }
 
-        buffOptions.appendChild(card);
+        container.appendChild(card);
     });
-
-    screen.classList.remove('hidden');
 }
 
-// 选择波次奖励武器
-function selectWaveRewardWeapon(option, screen) {
+// 双人波次选择处理
+function handleWaveSelection(playerNum, choice) {
+    if (playerNum === 1) {
+        dualWaveState.p1Selected = true;
+        dualWaveState.p1Choice = choice;
+        document.getElementById('p1Selected').classList.remove('hidden');
+    } else {
+        dualWaveState.p2Selected = true;
+        dualWaveState.p2Choice = choice;
+        document.getElementById('p2Selected').classList.remove('hidden');
+    }
+    checkDualWaveComplete();
+}
+
+// 检查双人波次选择是否完成
+function checkDualWaveComplete() {
+    if (dualWaveState.p1Selected && dualWaveState.p2Selected) {
+        // 应用选择
+        applyPlayerChoice(game.player, dualWaveState.p1Choice);
+        applyPlayerChoice(game.player2, dualWaveState.p2Choice);
+
+        // 恢复标题
+        const p1Header = document.querySelector('.dual-levelup .p1-panel .player-levelup-header h3');
+        const p2Header = document.querySelector('.dual-levelup .p2-panel .player-levelup-header h3');
+        if (p1Header) p1Header.textContent = '选择强化';
+        if (p2Header) p2Header.textContent = '选择强化';
+
+        document.getElementById('levelUpScreen').classList.add('hidden');
+        game.state = 'playing';
+        game.wave.current++;
+        startNewWave();
+    }
+}
+
+// 单人波次奖励选择
+function selectWaveRewardForPlayer(option, player) {
     if (option.type === 'weaponUpgrade') {
         option.weapon.level++;
-        game.player.checkWeaponEvolution(option.weapon);
+        player.checkWeaponEvolution(option.weapon);
     } else {
-        game.player.addWeapon(option.weapon.id);
+        player.addWeapon(option.weapon.id);
     }
-    document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
-    screen.classList.add('hidden');
+    document.querySelector('.single-levelup h2').textContent = '🎉 升级!';
+    document.getElementById('levelUpScreen').classList.add('hidden');
     game.state = 'playing';
     game.wave.current++;
     startNewWave();
 }
 
-// 选择波次奖励Buff
-function selectWaveRewardBuff(buff, screen) {
-    buff.apply(game.player);
-    // 添加到被动栏显示
-    if (!game.player.passives.find(p => p.id === buff.id)) {
-        game.player.passives.push({
+// 单人波次奖励Buff选择
+function selectWaveRewardBuffForPlayer(buff, player) {
+    buff.apply(player);
+    if (!player.passives.find(p => p.id === buff.id)) {
+        player.passives.push({
             id: buff.id,
             name: buff.name,
             icon: buff.icon,
@@ -605,11 +1001,20 @@ function selectWaveRewardBuff(buff, screen) {
             classOnly: buff.classOnly
         });
     }
-    document.querySelector('#levelUpScreen h2').textContent = '🎉 升级!';
-    screen.classList.add('hidden');
+    document.querySelector('.single-levelup h2').textContent = '🎉 升级!';
+    document.getElementById('levelUpScreen').classList.add('hidden');
     game.state = 'playing';
     game.wave.current++;
     startNewWave();
+}
+
+// 旧版兼容
+function selectWaveRewardWeapon(option, screen) {
+    selectWaveRewardForPlayer(option, game.player);
+}
+
+function selectWaveRewardBuff(buff, screen) {
+    selectWaveRewardBuffForPlayer(buff, game.player);
 }
 
 // 显示倒计时
