@@ -1,5 +1,5 @@
 /**
- * 精灵图自动裁剪脚本
+ * 精灵图自动裁剪脚本 - 精确定位版
  * 运行方式: node tools/extract_sprites.js
  */
 
@@ -7,232 +7,231 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
-// 项目根目录
 const ROOT = path.join(__dirname, '..');
 
-// 精灵图配置
-const SPRITESHEETS = {
-    characters: {
-        path: path.join(ROOT, 'PNG/角色，怪物.png'),
-        spriteWidth: 16,
-        spriteHeight: 16,
-        cols: 10,
-        rows: 6,
-        scale: 4  // 放大倍数
-    },
-    bosses: {
-        path: path.join(ROOT, 'PNG/BOSS.png'),
-        spriteWidth: 32,
-        spriteHeight: 32,
-        cols: 5,
-        rows: 2,
-        scale: 2
-    },
-    weapons: {
-        path: path.join(ROOT, 'PNG/工具武器.png'),
-        spriteWidth: 16,
-        spriteHeight: 16,
-        cols: 10,
-        rows: 6,
-        scale: 4
-    }
-};
-
-// 玩家角色 (从 characters 精灵图) - 根据新图片重新映射
-const PLAYERS = {
-    warrior: { row: 0, col: 5 },    // 蓝色骑士
-    mage: { row: 2, col: 5 },       // 紫色法师
-    assassin: { row: 3, col: 3 },   // 黑色忍者
-    ranger: { row: 1, col: 7 },     // 绿色弓手
-    summoner: { row: 4, col: 2 }    // 蓝紫召唤师
-};
-
-// 敌人 (从 characters 精灵图) - 根据新图片重新映射
-const ENEMIES = {
-    skeleton: { row: 0, col: 0 },      // 骷髅
-    greenBlob: { row: 0, col: 2 },     // 绿色怪物
-    blueSlime: { row: 4, col: 0 },     // 蓝色史莱姆
-    rat: { row: 5, col: 0 },           // 老鼠
-    snake: { row: 5, col: 1 },         // 蛇
-    redImp: { row: 2, col: 0 },        // 红色小怪
-    redDevil: { row: 3, col: 1 },      // 红色小鬼
-    blackCat: { row: 1, col: 2 },      // 黑猫
-    stoneGolem: { row: 2, col: 7 },    // 石头怪
-    orc: { row: 1, col: 3 },           // 绿皮兽人
-    greenOrc: { row: 0, col: 4 },      // 绿色兽人
-    demon: { row: 0, col: 3 },         // 红色恶魔
-    hornedDemon: { row: 2, col: 4 },   // 红角恶魔
-    fireMan: { row: 1, col: 4 },       // 橙色火人
-    smallDragon: { row: 3, col: 7 }    // 小龙
-};
-
-// Boss (从 bosses 精灵图)
-const BOSSES = {
-    bear: { row: 0, col: 0 },
-    frog: { row: 0, col: 1 },
-    eyeball: { row: 0, col: 2 },
-    flame: { row: 0, col: 3 },
-    dragon: { row: 0, col: 4 },
-    beetle: { row: 1, col: 0 },
-    spider: { row: 1, col: 1 },
-    snakeBoss: { row: 1, col: 2 },
-    oneEyeDemon: { row: 1, col: 3 },
-    dragonHead: { row: 1, col: 4 }
-};
-
-// 武器 (从 weapons 精灵图)
-const WEAPONS = {
-    dagger: { row: 0, col: 0 },
-    sword: { row: 0, col: 1 },
-    holyBlade: { row: 0, col: 2 },
-    staff: { row: 0, col: 4 },
-    axe: { row: 0, col: 5 },
-    bow: { row: 1, col: 8 },
-    phoenixBow: { row: 0, col: 8 },
-    shadowBlade: { row: 1, col: 1 },
-    arcaneStaff: { row: 1, col: 4 },
-    bloodAxe: { row: 1, col: 5 },
-    fireball: { row: 2, col: 3 },
-    inferno: { row: 2, col: 4 }
-};
-
-// 道具 (从 weapons 精灵图)
-const ITEMS = {
-    healthPotion: { row: 4, col: 0 },
-    manaPotion: { row: 4, col: 1 },
-    ruby: { row: 3, col: 6 },
-    emerald: { row: 3, col: 7 },
-    sapphire: { row: 3, col: 8 },
-    diamond: { row: 3, col: 9 },
-    key: { row: 5, col: 0 },
-    coin: { row: 5, col: 9 },
-    coinBag: { row: 4, col: 9 },
-    scroll: { row: 2, col: 9 },
-    bomb: { row: 0, col: 6 },
-    shield: { row: 2, col: 7 },
-    helmet: { row: 2, col: 8 },
-    ring: { row: 4, col: 6 },
-    necklace: { row: 4, col: 7 }
-};
+// 背景色 (实际测量: #686557, RGB: 104, 101, 87)
+const BG_COLOR = { r: 104, g: 101, b: 87 };
+const COLOR_TOLERANCE = 15;
 
 // 确保目录存在
 function ensureDir(dirPath) {
     if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath, { recursive: true });
-        console.log(`创建目录: ${dirPath}`);
     }
 }
 
-// 裁剪单个精灵
-async function extractSprite(sheetConfig, row, col, outputPath) {
-    const { path: sheetPath, spriteWidth, spriteHeight, scale } = sheetConfig;
+// 去除背景色，转为透明
+async function removeBackground(inputBuffer) {
+    const image = sharp(inputBuffer);
+    const { data, info } = await image.raw().toBuffer({ resolveWithObject: true });
 
-    const left = col * spriteWidth;
-    const top = row * spriteHeight;
+    const newData = Buffer.alloc(info.width * info.height * 4);
 
+    for (let i = 0; i < info.width * info.height; i++) {
+        const srcIdx = i * info.channels;
+        const dstIdx = i * 4;
+
+        const r = data[srcIdx];
+        const g = data[srcIdx + 1];
+        const b = data[srcIdx + 2];
+
+        const isBg = Math.abs(r - BG_COLOR.r) < COLOR_TOLERANCE &&
+                     Math.abs(g - BG_COLOR.g) < COLOR_TOLERANCE &&
+                     Math.abs(b - BG_COLOR.b) < COLOR_TOLERANCE;
+
+        if (isBg) {
+            newData[dstIdx] = 0;
+            newData[dstIdx + 1] = 0;
+            newData[dstIdx + 2] = 0;
+            newData[dstIdx + 3] = 0;
+        } else {
+            newData[dstIdx] = r;
+            newData[dstIdx + 1] = g;
+            newData[dstIdx + 2] = b;
+            newData[dstIdx + 3] = 255;
+        }
+    }
+
+    return sharp(newData, {
+        raw: { width: info.width, height: info.height, channels: 4 }
+    }).png().toBuffer();
+}
+
+// 裁剪并去背景
+async function extractSprite(sheetPath, x, y, w, h, outputPath, scale = 4) {
     try {
-        await sharp(sheetPath)
-            .extract({
-                left: left,
-                top: top,
-                width: spriteWidth,
-                height: spriteHeight
-            })
-            .resize(spriteWidth * scale, spriteHeight * scale, {
-                kernel: sharp.kernel.nearest  // 保持像素风格
-            })
+        const cropped = await sharp(sheetPath)
+            .extract({ left: x, top: y, width: w, height: h })
+            .toBuffer();
+
+        const transparent = await removeBackground(cropped);
+
+        await sharp(transparent)
+            .resize(w * scale, h * scale, { kernel: sharp.kernel.nearest })
             .png()
             .toFile(outputPath);
 
         return true;
     } catch (err) {
-        console.error(`裁剪失败: ${outputPath}`, err.message);
+        console.error(`  ✗ ${outputPath}: ${err.message}`);
         return false;
     }
 }
 
-// 批量裁剪
-async function extractCategory(name, sprites, sheetConfig, outputDir) {
-    console.log(`\n📦 正在裁剪 ${name}...`);
-    ensureDir(outputDir);
-
-    let success = 0;
-    let failed = 0;
-
-    for (const [id, pos] of Object.entries(sprites)) {
-        const outputPath = path.join(outputDir, `${id}.png`);
-        const result = await extractSprite(sheetConfig, pos.row, pos.col, outputPath);
-
-        if (result) {
-            console.log(`  ✓ ${id}.png`);
-            success++;
-        } else {
-            failed++;
-        }
-    }
-
-    console.log(`  完成: ${success} 成功, ${failed} 失败`);
-}
-
-// 主函数
 async function main() {
-    console.log('🎮 精灵图自动裁剪工具');
-    console.log('========================\n');
-
-    // 检查源文件是否存在
-    for (const [name, config] of Object.entries(SPRITESHEETS)) {
-        if (!fs.existsSync(config.path)) {
-            console.error(`❌ 找不到精灵图: ${config.path}`);
-            return;
-        }
-        console.log(`✓ 找到精灵图: ${name}`);
-    }
+    console.log('🎮 精灵图裁剪工具 (精确定位版)');
+    console.log('================================\n');
 
     const assetsDir = path.join(ROOT, 'assets');
+    const charSheet = path.join(ROOT, 'PNG/角色，怪物.png');
+    const bossSheet = path.join(ROOT, 'PNG/BOSS.png');
+    const weaponSheet = path.join(ROOT, 'PNG/工具武器.png');
 
-    // 裁剪玩家角色
-    await extractCategory(
-        '玩家角色',
-        PLAYERS,
-        SPRITESHEETS.characters,
-        path.join(assetsDir, 'players')
-    );
+    // ============ 角色怪物精灵图 - 精确坐标 ============
+    // 实际测量的精灵起始位置
+    const COL_X = [16, 43, 70, 97, 123, 149, 176, 204, 231, 257];
+    const ROW_Y = [16, 43, 70, 95, 122];
+    const SPRITE_SIZE = 24;  // 精灵大小
+
+    // 玩家角色 (行, 列) - 根据实际查看的精灵重新选择
+    // r1c2:蓝骷髅骑士 r1c6:灰骑士 r4c2:灰骑士 r0c7:红忍者 r4c1:红忍者
+    // r2c5:蓝机器人 r0c6:蓝机器人 r3c7:戴帽人
+    const PLAYERS = {
+        warrior:   { row: 1, col: 2, name: '战士' },      // 蓝色骷髅骑士
+        mage:      { row: 2, col: 5, name: '法师' },      // 蓝色机器人
+        assassin:  { row: 0, col: 7, name: '刺客' },      // 红色忍者
+        ranger:    { row: 3, col: 7, name: '游侠' },      // 戴帽子的人
+        summoner:  { row: 0, col: 6, name: '召唤师' }     // 蓝色机器人
+    };
+
+    // 敌人 - 选择怪物形象
+    const ENEMIES = {
+        skeleton:     { row: 0, col: 3, name: '骷髅' },      // 黑色死神
+        greenBlob:    { row: 2, col: 6, name: '绿怪' },      // 绿色史莱姆
+        blueSlime:    { row: 2, col: 9, name: '史莱姆' },    // 粉色史莱姆
+        rat:          { row: 1, col: 0, name: '乌龟' },      // 绿色乌龟
+        snake:        { row: 4, col: 3, name: '蝙蝠' },      // 黑色蝙蝠
+        redImp:       { row: 0, col: 2, name: '火焰怪' },    // 红色火焰
+        redDevil:     { row: 1, col: 5, name: '红怪' },      // 红色怪物
+        blackCat:     { row: 3, col: 6, name: '幽灵' },      // 黑色幽灵
+        stoneGolem:   { row: 3, col: 4, name: '蘑菇' },      // 棕色蘑菇
+        orc:          { row: 0, col: 4, name: '兽人' },      // 绿色兽人
+        greenOrc:     { row: 1, col: 4, name: '青蛙王' },    // 绿色青蛙
+        demon:        { row: 4, col: 8, name: '章鱼' },      // 红色章鱼
+        hornedDemon:  { row: 0, col: 8, name: '章鱼怪' },    // 红章鱼
+        fireMan:      { row: 3, col: 0, name: '植物怪' },    // 绿色怪物
+        smallDragon:  { row: 4, col: 5, name: '幽灵' }       // 白色幽灵
+    };
+
+    // 裁剪玩家
+    console.log('📦 裁剪玩家角色...');
+    ensureDir(path.join(assetsDir, 'players'));
+    for (const [id, info] of Object.entries(PLAYERS)) {
+        const x = COL_X[info.col];
+        const y = ROW_Y[info.row];
+        const outPath = path.join(assetsDir, 'players', `${id}.png`);
+        const ok = await extractSprite(charSheet, x, y, SPRITE_SIZE, SPRITE_SIZE, outPath);
+        console.log(ok ? `  ✓ ${id}` : `  ✗ ${id}`);
+    }
 
     // 裁剪敌人
-    await extractCategory(
-        '敌人',
-        ENEMIES,
-        SPRITESHEETS.characters,
-        path.join(assetsDir, 'enemies')
-    );
+    console.log('\n📦 裁剪敌人...');
+    ensureDir(path.join(assetsDir, 'enemies'));
+    for (const [id, info] of Object.entries(ENEMIES)) {
+        const x = COL_X[info.col];
+        const y = ROW_Y[info.row];
+        const outPath = path.join(assetsDir, 'enemies', `${id}.png`);
+        const ok = await extractSprite(charSheet, x, y, SPRITE_SIZE, SPRITE_SIZE, outPath);
+        console.log(ok ? `  ✓ ${id}` : `  ✗ ${id}`);
+    }
 
-    // 裁剪Boss
-    await extractCategory(
-        'Boss',
-        BOSSES,
-        SPRITESHEETS.bosses,
-        path.join(assetsDir, 'bosses')
-    );
+    // ============ BOSS精灵图 - 手动指定位置 ============
+    console.log('\n📦 裁剪Boss...');
+    ensureDir(path.join(assetsDir, 'bosses'));
 
-    // 裁剪武器
-    await extractCategory(
-        '武器',
-        WEAPONS,
-        SPRITESHEETS.weapons,
-        path.join(assetsDir, 'weapons')
-    );
+    // 先分析BOSS图的背景色并裁剪
+    const BOSSES = {
+        bear:       { x: 10,  y: 18,  w: 36, h: 44, name: '红熊' },
+        frog:       { x: 58,  y: 26,  w: 36, h: 36, name: '青蛙' },
+        eyeball:    { x: 106, y: 32,  w: 28, h: 28, name: '眼球' },
+        flame:      { x: 146, y: 18,  w: 36, h: 44, name: '火焰' },
+        dragon:     { x: 196, y: 4,   w: 72, h: 64, name: '绿龙' },
+        beetle:     { x: 10,  y: 82,  w: 36, h: 52, name: '甲虫' },
+        spider:     { x: 58,  y: 90,  w: 44, h: 44, name: '蜘蛛' },
+        snakeBoss:  { x: 114, y: 82,  w: 44, h: 52, name: '蛇妖' },
+        oneEyeDemon:{ x: 170, y: 90,  w: 36, h: 44, name: '独眼' },
+        dragonHead: { x: 218, y: 74,  w: 68, h: 68, name: '龙首' }
+    };
 
-    // 裁剪道具
-    await extractCategory(
-        '道具',
-        ITEMS,
-        SPRITESHEETS.weapons,
-        path.join(assetsDir, 'items')
-    );
+    for (const [id, info] of Object.entries(BOSSES)) {
+        const outPath = path.join(assetsDir, 'bosses', `${id}.png`);
+        const ok = await extractSprite(bossSheet, info.x, info.y, info.w, info.h, outPath, 2);
+        console.log(ok ? `  ✓ ${id}` : `  ✗ ${id}`);
+    }
 
-    console.log('\n========================');
-    console.log('🎉 全部裁剪完成！');
-    console.log(`素材已保存到: ${assetsDir}`);
+    // ============ 武器道具精灵图 ============
+    console.log('\n📦 裁剪武器...');
+    ensureDir(path.join(assetsDir, 'weapons'));
+
+    // 武器图分析 - 347x135
+    const WPN_COL_X = [15, 38, 65, 92, 119, 146, 173, 200, 226, 253];
+    const WPN_ROW_Y = [12, 34, 56, 78, 98, 115];
+    const WPN_SIZE = 18;
+
+    const WEAPONS = {
+        dagger:      { row: 0, col: 0, name: '匕首' },
+        sword:       { row: 0, col: 1, name: '长剑' },
+        holyBlade:   { row: 0, col: 2, name: '圣剑' },
+        staff:       { row: 0, col: 4, name: '法杖' },
+        axe:         { row: 0, col: 5, name: '战斧' },
+        bow:         { row: 1, col: 8, name: '弓' },
+        phoenixBow:  { row: 0, col: 8, name: '凤凰弓' },
+        shadowBlade: { row: 1, col: 1, name: '暗影刃' },
+        arcaneStaff: { row: 1, col: 4, name: '奥术杖' },
+        bloodAxe:    { row: 1, col: 5, name: '血斧' },
+        fireball:    { row: 2, col: 3, name: '火球杖' },
+        inferno:     { row: 2, col: 4, name: '炼狱杖' }
+    };
+
+    for (const [id, info] of Object.entries(WEAPONS)) {
+        const x = WPN_COL_X[info.col];
+        const y = WPN_ROW_Y[info.row];
+        const outPath = path.join(assetsDir, 'weapons', `${id}.png`);
+        const ok = await extractSprite(weaponSheet, x, y, WPN_SIZE, WPN_SIZE, outPath);
+        console.log(ok ? `  ✓ ${id}` : `  ✗ ${id}`);
+    }
+
+    console.log('\n📦 裁剪道具...');
+    ensureDir(path.join(assetsDir, 'items'));
+
+    const ITEMS = {
+        healthPotion: { row: 4, col: 0, name: '生命药水' },
+        manaPotion:   { row: 4, col: 1, name: '魔法药水' },
+        ruby:         { row: 3, col: 6, name: '红宝石' },
+        emerald:      { row: 3, col: 7, name: '绿宝石' },
+        sapphire:     { row: 3, col: 8, name: '蓝宝石' },
+        diamond:      { row: 3, col: 9, name: '钻石' },
+        key:          { row: 4, col: 2, name: '钥匙' },
+        coin:         { row: 4, col: 8, name: '金币' },
+        coinBag:      { row: 4, col: 9, name: '钱袋' },
+        scroll:       { row: 2, col: 9, name: '卷轴' },
+        bomb:         { row: 0, col: 6, name: '炸弹' },
+        shield:       { row: 2, col: 7, name: '盾牌' },
+        helmet:       { row: 2, col: 8, name: '头盔' },
+        ring:         { row: 4, col: 6, name: '戒指' },
+        necklace:     { row: 4, col: 7, name: '项链' }
+    };
+
+    for (const [id, info] of Object.entries(ITEMS)) {
+        const x = WPN_COL_X[info.col];
+        const y = WPN_ROW_Y[info.row];
+        const outPath = path.join(assetsDir, 'items', `${id}.png`);
+        const ok = await extractSprite(weaponSheet, x, y, WPN_SIZE, WPN_SIZE, outPath);
+        console.log(ok ? `  ✓ ${id}` : `  ✗ ${id}`);
+    }
+
+    console.log('\n================================');
+    console.log('🎉 全部完成！');
 }
 
 main().catch(console.error);
