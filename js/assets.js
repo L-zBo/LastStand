@@ -1,365 +1,286 @@
 // ==================== 素材管理器 ====================
 
-// 角色精灵图配置
-const SPRITESHEET = {
-    path: 'PNG/yDDd9O.png',
-    spriteWidth: 16,
-    spriteHeight: 16,
-    cols: 10,
-    rows: 6
+// 素材路径配置
+const ASSET_PATHS = {
+    players: 'assets/players/',
+    enemies: 'assets/enemies/',
+    bosses: 'assets/bosses/',
+    weapons: 'assets/weapons/',
+    items: 'assets/items/'
 };
 
-// Boss精灵图配置 (2行5列，每个精灵大约32x32)
-const BOSS_SPRITESHEET = {
-    path: 'PNG/BOSS.png',
-    spriteWidth: 32,
-    spriteHeight: 32,
-    cols: 5,
-    rows: 2
+// 玩家角色配置
+const PLAYER_ASSETS = {
+    warrior: { file: 'warrior.png', name: '战士' },
+    mage: { file: 'mage.png', name: '法师' },
+    assassin: { file: 'assassin.png', name: '刺客' },
+    ranger: { file: 'ranger.png', name: '游侠' },
+    summoner: { file: 'summoner.png', name: '召唤师' }
 };
 
-// 武器道具精灵图配置 (6行10列，每个精灵16x16)
-const WEAPON_SPRITESHEET = {
-    path: 'PNG/工具武器.png',
-    spriteWidth: 16,
-    spriteHeight: 16,
-    cols: 10,
-    rows: 6
-};
-
-// 玩家角色在精灵图中的位置 (row, col)
-const PLAYER_SPRITE_MAP = {
-    warrior: { row: 0, col: 5, name: '战士' },     // 蓝色骑士
-    mage: { row: 2, col: 5, name: '法师' },        // 紫色法师
-    assassin: { row: 3, col: 3, name: '刺客' },    // 黑色忍者
-    ranger: { row: 1, col: 7, name: '游侠' },      // 绿色弓手
-    summoner: { row: 4, col: 2, name: '召唤师' }   // 蓝紫法师
-};
-
-// 敌人在精灵图中的位置
-const ENEMY_SPRITE_MAP = {
-    // 普通敌人
+// 敌人配置
+const ENEMY_ASSETS = {
     normal: [
-        { row: 0, col: 0 },  // 骷髅
-        { row: 0, col: 2 },  // 绿色生物
-        { row: 4, col: 0 },  // 蓝史莱姆
-        { row: 5, col: 0 },  // 老鼠
-        { row: 5, col: 1 },  // 蛇
+        { id: 'skeleton', file: 'skeleton.png', name: '骷髅' },
+        { id: 'greenBlob', file: 'greenBlob.png', name: '绿色生物' },
+        { id: 'blueSlime', file: 'blueSlime.png', name: '蓝史莱姆' },
+        { id: 'rat', file: 'rat.png', name: '老鼠' },
+        { id: 'snake', file: 'snake.png', name: '蛇' }
     ],
-    // 快速敌人
     fast: [
-        { row: 2, col: 0 },  // 红色小怪
-        { row: 3, col: 1 },  // 红色小鬼
-        { row: 5, col: 2 },  // 黑猫
+        { id: 'redImp', file: 'redImp.png', name: '红色小怪' },
+        { id: 'redDevil', file: 'redDevil.png', name: '红色小鬼' },
+        { id: 'blackCat', file: 'blackCat.png', name: '黑猫' }
     ],
-    // 坦克敌人
     tank: [
-        { row: 2, col: 7 },  // 石头怪
-        { row: 1, col: 3 },  // 绿皮兽人
-        { row: 0, col: 4 },  // 绿色兽人
+        { id: 'stoneGolem', file: 'stoneGolem.png', name: '石头怪' },
+        { id: 'orc', file: 'orc.png', name: '绿皮兽人' },
+        { id: 'greenOrc', file: 'greenOrc.png', name: '绿色兽人' }
     ],
-    // 精英敌人
     elite: [
-        { row: 0, col: 3 },  // 红色恶魔
-        { row: 2, col: 4 },  // 红角恶魔
-        { row: 1, col: 4 },  // 橙色火人
-        { row: 3, col: 7 },  // 小龙
-    ],
-    // 普通Boss（使用原精灵图）
-    boss: [
-        { row: 5, col: 7 },  // 蝙蝠怪
-        { row: 0, col: 7 },  // 机器人
+        { id: 'demon', file: 'demon.png', name: '红色恶魔' },
+        { id: 'hornedDemon', file: 'hornedDemon.png', name: '红角恶魔' },
+        { id: 'fireMan', file: 'fireMan.png', name: '橙色火人' },
+        { id: 'smallDragon', file: 'smallDragon.png', name: '小龙' }
     ]
 };
 
-// Boss精灵图映射（使用BOSS.png）
-const BOSS_SPRITE_MAP = {
-    // 第一行Boss
-    bear: { row: 0, col: 0, name: '红熊怪' },
-    frog: { row: 0, col: 1, name: '青蛙王' },
-    eyeball: { row: 0, col: 2, name: '眼球怪' },
-    flame: { row: 0, col: 3, name: '火焰魔' },
-    dragon: { row: 0, col: 4, name: '绿龙' },
-    // 第二行Boss
-    beetle: { row: 1, col: 0, name: '蓝甲虫' },
-    spider: { row: 1, col: 1, name: '毒蜘蛛' },
-    snake: { row: 1, col: 2, name: '蛇妖' },
-    demon: { row: 1, col: 3, name: '独眼魔' },
-    dragonHead: { row: 1, col: 4, name: '龙首' }
+// Boss配置
+const BOSS_ASSETS = {
+    bear: { file: 'bear.png', name: '红熊怪' },
+    frog: { file: 'frog.png', name: '青蛙王' },
+    eyeball: { file: 'eyeball.png', name: '眼球怪' },
+    flame: { file: 'flame.png', name: '火焰魔' },
+    dragon: { file: 'dragon.png', name: '绿龙' },
+    beetle: { file: 'beetle.png', name: '蓝甲虫' },
+    spider: { file: 'spider.png', name: '毒蜘蛛' },
+    snakeBoss: { file: 'snakeBoss.png', name: '蛇妖' },
+    oneEyeDemon: { file: 'oneEyeDemon.png', name: '独眼魔' },
+    dragonHead: { file: 'dragonHead.png', name: '龙首' }
 };
 
-// Boss列表（按波数出现）
-const BOSS_LIST = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'spider', 'snake', 'demon', 'dragonHead', 'dragon'];
+// Boss出场顺序
+const BOSS_ORDER = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'spider', 'snakeBoss', 'oneEyeDemon', 'dragonHead', 'dragon'];
 
-// 武器精灵图映射（使用工具武器.png）
-const WEAPON_SPRITE_MAP = {
-    // 近战武器
-    dagger: { row: 0, col: 0, name: '匕首' },
-    sword: { row: 0, col: 1, name: '长剑' },
-    axe: { row: 0, col: 5, name: '战斧' },
-    holyBlade: { row: 0, col: 2, name: '圣剑' },
-    shadowBlade: { row: 1, col: 1, name: '暗影刃' },
-    bloodAxe: { row: 1, col: 5, name: '嗜血斧' },
-
-    // 远程武器
-    bow: { row: 1, col: 8, name: '弓' },
-    phoenixBow: { row: 0, col: 8, name: '凤凰弓' },
-
-    // 法杖
-    staff: { row: 0, col: 4, name: '法杖' },
-    arcaneStaff: { row: 1, col: 4, name: '奥术法杖' },
-    fireball: { row: 2, col: 3, name: '火球杖' },
-    inferno: { row: 2, col: 4, name: '炼狱杖' }
+// 武器配置
+const WEAPON_ASSETS = {
+    dagger: { file: 'dagger.png', name: '匕首' },
+    sword: { file: 'sword.png', name: '长剑' },
+    holyBlade: { file: 'holyBlade.png', name: '圣剑' },
+    staff: { file: 'staff.png', name: '法杖' },
+    axe: { file: 'axe.png', name: '战斧' },
+    bow: { file: 'bow.png', name: '弓' },
+    phoenixBow: { file: 'phoenixBow.png', name: '凤凰弓' },
+    shadowBlade: { file: 'shadowBlade.png', name: '暗影刃' },
+    arcaneStaff: { file: 'arcaneStaff.png', name: '奥术法杖' },
+    bloodAxe: { file: 'bloodAxe.png', name: '嗜血斧' },
+    fireball: { file: 'fireball.png', name: '火球杖' },
+    inferno: { file: 'inferno.png', name: '炼狱杖' }
 };
 
-// 道具精灵图映射
-const ITEM_SPRITE_MAP = {
-    // 药水
-    healthPotion: { row: 4, col: 0, name: '生命药水' },
-    manaPotion: { row: 4, col: 1, name: '魔法药水' },
-
-    // 宝石
-    ruby: { row: 3, col: 6, name: '红宝石' },
-    emerald: { row: 3, col: 7, name: '绿宝石' },
-    sapphire: { row: 3, col: 8, name: '蓝宝石' },
-    diamond: { row: 3, col: 9, name: '钻石' },
-
-    // 钥匙和金币
-    key: { row: 5, col: 0, name: '钥匙' },
-    coin: { row: 5, col: 9, name: '金币' },
-    coinBag: { row: 4, col: 9, name: '钱袋' },
-
-    // 其他道具
-    scroll: { row: 2, col: 9, name: '卷轴' },
-    bomb: { row: 0, col: 6, name: '炸弹' },
-    shield: { row: 2, col: 7, name: '盾牌' },
-    helmet: { row: 2, col: 8, name: '头盔' },
-    ring: { row: 4, col: 6, name: '戒指' },
-    necklace: { row: 4, col: 7, name: '项链' }
+// 道具配置
+const ITEM_ASSETS = {
+    healthPotion: { file: 'healthPotion.png', name: '生命药水' },
+    manaPotion: { file: 'manaPotion.png', name: '魔法药水' },
+    ruby: { file: 'ruby.png', name: '红宝石' },
+    emerald: { file: 'emerald.png', name: '绿宝石' },
+    sapphire: { file: 'sapphire.png', name: '蓝宝石' },
+    diamond: { file: 'diamond.png', name: '钻石' },
+    key: { file: 'key.png', name: '钥匙' },
+    coin: { file: 'coin.png', name: '金币' },
+    coinBag: { file: 'coinBag.png', name: '钱袋' },
+    scroll: { file: 'scroll.png', name: '卷轴' },
+    bomb: { file: 'bomb.png', name: '炸弹' },
+    shield: { file: 'shield.png', name: '盾牌' },
+    helmet: { file: 'helmet.png', name: '头盔' },
+    ring: { file: 'ring.png', name: '戒指' },
+    necklace: { file: 'necklace.png', name: '项链' }
 };
 
-// 精灵图加载状态
-let spritesheetImage = null;
-let spritesheetLoaded = false;
-let bossSpritesheetImage = null;
-let bossSpritesheetLoaded = false;
-let weaponSpritesheetImage = null;
-let weaponSpritesheetLoaded = false;
+// 已加载的图片缓存
+const loadedImages = {
+    players: {},
+    enemies: {},
+    bosses: {},
+    weapons: {},
+    items: {}
+};
 
-// 预加载单个精灵图
+// 加载状态
+let assetsLoaded = false;
+let loadedCount = 0;
+let totalAssets = 0;
+
+// 加载单个图片
 function loadImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`Failed to load: ${src}`));
+        img.onerror = () => resolve(null); // 加载失败返回null而非reject
         img.src = src;
     });
 }
 
-// 预加载所有精灵图
-function preloadAllSpritesheets(callback) {
-    let loadedCount = 0;
-    const totalCount = 3;
+// 预加载所有素材
+async function preloadAssets(callback) {
+    console.log('开始加载游戏素材...');
 
-    function checkComplete() {
-        loadedCount++;
-        if (loadedCount >= totalCount) {
-            console.log('所有精灵图加载完成');
-            if (callback) callback(true);
+    // 计算总数
+    totalAssets = Object.keys(PLAYER_ASSETS).length +
+        Object.values(ENEMY_ASSETS).flat().length +
+        Object.keys(BOSS_ASSETS).length +
+        Object.keys(WEAPON_ASSETS).length +
+        Object.keys(ITEM_ASSETS).length;
+
+    const promises = [];
+
+    // 加载玩家素材
+    for (const [id, config] of Object.entries(PLAYER_ASSETS)) {
+        promises.push(
+            loadImage(ASSET_PATHS.players + config.file).then(img => {
+                if (img) loadedImages.players[id] = img;
+                loadedCount++;
+            })
+        );
+    }
+
+    // 加载敌人素材
+    for (const type of Object.keys(ENEMY_ASSETS)) {
+        for (const enemy of ENEMY_ASSETS[type]) {
+            promises.push(
+                loadImage(ASSET_PATHS.enemies + enemy.file).then(img => {
+                    if (img) loadedImages.enemies[enemy.id] = img;
+                    loadedCount++;
+                })
+            );
         }
     }
 
-    // 加载角色精灵图
-    loadImage(SPRITESHEET.path)
-        .then(img => {
-            spritesheetImage = img;
-            spritesheetLoaded = true;
-            console.log('角色精灵图加载成功');
-            checkComplete();
-        })
-        .catch(() => {
-            console.warn('角色精灵图加载失败');
-            checkComplete();
-        });
-
-    // 加载Boss精灵图
-    loadImage(BOSS_SPRITESHEET.path)
-        .then(img => {
-            bossSpritesheetImage = img;
-            bossSpritesheetLoaded = true;
-            console.log('Boss精灵图加载成功');
-            checkComplete();
-        })
-        .catch(() => {
-            console.warn('Boss精灵图加载失败');
-            checkComplete();
-        });
-
-    // 加载武器精灵图
-    loadImage(WEAPON_SPRITESHEET.path)
-        .then(img => {
-            weaponSpritesheetImage = img;
-            weaponSpritesheetLoaded = true;
-            console.log('武器精灵图加载成功');
-            checkComplete();
-        })
-        .catch(() => {
-            console.warn('武器精灵图加载失败');
-            checkComplete();
-        });
-}
-
-// 从角色精灵图绘制
-function drawSpriteFromSheet(ctx, row, col, x, y, width, height) {
-    if (!spritesheetLoaded || !spritesheetImage) {
-        return false;
+    // 加载Boss素材
+    for (const [id, config] of Object.entries(BOSS_ASSETS)) {
+        promises.push(
+            loadImage(ASSET_PATHS.bosses + config.file).then(img => {
+                if (img) loadedImages.bosses[id] = img;
+                loadedCount++;
+            })
+        );
     }
 
-    const srcX = col * SPRITESHEET.spriteWidth;
-    const srcY = row * SPRITESHEET.spriteHeight;
-
-    ctx.drawImage(
-        spritesheetImage,
-        srcX, srcY,
-        SPRITESHEET.spriteWidth, SPRITESHEET.spriteHeight,
-        x, y,
-        width, height
-    );
-
-    return true;
-}
-
-// 从Boss精灵图绘制
-function drawBossSpriteFromSheet(ctx, row, col, x, y, width, height) {
-    if (!bossSpritesheetLoaded || !bossSpritesheetImage) {
-        return false;
+    // 加载武器素材
+    for (const [id, config] of Object.entries(WEAPON_ASSETS)) {
+        promises.push(
+            loadImage(ASSET_PATHS.weapons + config.file).then(img => {
+                if (img) loadedImages.weapons[id] = img;
+                loadedCount++;
+            })
+        );
     }
 
-    const srcX = col * BOSS_SPRITESHEET.spriteWidth;
-    const srcY = row * BOSS_SPRITESHEET.spriteHeight;
-
-    ctx.drawImage(
-        bossSpritesheetImage,
-        srcX, srcY,
-        BOSS_SPRITESHEET.spriteWidth, BOSS_SPRITESHEET.spriteHeight,
-        x, y,
-        width, height
-    );
-
-    return true;
-}
-
-// 从武器精灵图绘制
-function drawWeaponSpriteFromSheet(ctx, row, col, x, y, width, height) {
-    if (!weaponSpritesheetLoaded || !weaponSpritesheetImage) {
-        return false;
+    // 加载道具素材
+    for (const [id, config] of Object.entries(ITEM_ASSETS)) {
+        promises.push(
+            loadImage(ASSET_PATHS.items + config.file).then(img => {
+                if (img) loadedImages.items[id] = img;
+                loadedCount++;
+            })
+        );
     }
 
-    const srcX = col * WEAPON_SPRITESHEET.spriteWidth;
-    const srcY = row * WEAPON_SPRITESHEET.spriteHeight;
+    await Promise.all(promises);
 
-    ctx.drawImage(
-        weaponSpritesheetImage,
-        srcX, srcY,
-        WEAPON_SPRITESHEET.spriteWidth, WEAPON_SPRITESHEET.spriteHeight,
-        x, y,
-        width, height
-    );
+    assetsLoaded = true;
+    console.log(`素材加载完成: ${loadedCount}/${totalAssets}`);
 
-    return true;
+    if (callback) callback();
 }
+
+// ==================== 绘制函数 ====================
 
 // 绘制玩家精灵
-function drawPlayerSprite(ctx, className, x, y, width, height) {
-    const spriteInfo = PLAYER_SPRITE_MAP[className];
-    if (!spriteInfo) {
-        return false;
+function drawPlayerSprite(ctx, classType, x, y, width, height) {
+    const img = loadedImages.players[classType];
+    if (img) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, x, y, width, height);
+        return true;
     }
-
-    return drawSpriteFromSheet(ctx, spriteInfo.row, spriteInfo.col, x, y, width, height);
+    return false;
 }
 
 // 绘制敌人精灵
 function drawEnemySprite(ctx, enemyType, enemyId, x, y, width, height) {
-    const sprites = ENEMY_SPRITE_MAP[enemyType];
-    if (!sprites || sprites.length === 0) {
-        return false;
+    const enemies = ENEMY_ASSETS[enemyType];
+    if (!enemies || enemies.length === 0) return false;
+
+    // 根据ID选择一个固定的敌人图片
+    const index = enemyId % enemies.length;
+    const enemyConfig = enemies[index];
+    const img = loadedImages.enemies[enemyConfig.id];
+
+    if (img) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, x, y, width, height);
+        return true;
     }
-
-    // 根据敌人ID选择一个固定的精灵（保持一致性）
-    const index = enemyId % sprites.length;
-    const spriteInfo = sprites[index];
-
-    return drawSpriteFromSheet(ctx, spriteInfo.row, spriteInfo.col, x, y, width, height);
+    return false;
 }
 
-// 绘制Boss精灵（使用BOSS.png）
+// 绘制Boss精灵
 function drawBossSprite(ctx, bossType, x, y, width, height) {
-    const spriteInfo = BOSS_SPRITE_MAP[bossType];
-    if (!spriteInfo) {
-        return false;
+    const img = loadedImages.bosses[bossType];
+    if (img) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, x, y, width, height);
+        return true;
     }
-
-    return drawBossSpriteFromSheet(ctx, spriteInfo.row, spriteInfo.col, x, y, width, height);
+    return false;
 }
 
 // 根据波数获取Boss类型
 function getBossTypeByWave(waveNumber) {
-    const index = (waveNumber - 1) % BOSS_LIST.length;
-    return BOSS_LIST[index];
+    const index = (waveNumber - 1) % BOSS_ORDER.length;
+    return BOSS_ORDER[index];
 }
 
 // 绘制武器精灵
 function drawWeaponSprite(ctx, weaponId, x, y, width, height) {
-    const spriteInfo = WEAPON_SPRITE_MAP[weaponId];
-    if (!spriteInfo) {
-        return false;
+    const img = loadedImages.weapons[weaponId];
+    if (img) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, x, y, width, height);
+        return true;
     }
-
-    return drawWeaponSpriteFromSheet(ctx, spriteInfo.row, spriteInfo.col, x, y, width, height);
+    return false;
 }
 
 // 绘制道具精灵
 function drawItemSprite(ctx, itemId, x, y, width, height) {
-    const spriteInfo = ITEM_SPRITE_MAP[itemId];
-    if (!spriteInfo) {
-        return false;
+    const img = loadedImages.items[itemId];
+    if (img) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, x, y, width, height);
+        return true;
     }
-
-    return drawWeaponSpriteFromSheet(ctx, spriteInfo.row, spriteInfo.col, x, y, width, height);
+    return false;
 }
 
-// 获取随机敌人精灵位置
-function getRandomEnemySprite(enemyType) {
-    const sprites = ENEMY_SPRITE_MAP[enemyType];
-    if (!sprites || sprites.length === 0) {
-        return null;
-    }
-    return sprites[Math.floor(Math.random() * sprites.length)];
+// ==================== 辅助函数 ====================
+
+// 检查素材是否已加载
+function isAssetLoaded(category, id) {
+    return !!(loadedImages[category] && loadedImages[category][id]);
 }
 
-// 检查精灵图是否可用
-function isSpritesheetReady() {
-    return spritesheetLoaded && spritesheetImage;
+// 获取加载进度
+function getLoadProgress() {
+    return {
+        loaded: loadedCount,
+        total: totalAssets,
+        percentage: totalAssets > 0 ? Math.floor((loadedCount / totalAssets) * 100) : 0
+    };
 }
 
-function isBossSpritesheetReady() {
-    return bossSpritesheetLoaded && bossSpritesheetImage;
-}
-
-function isWeaponSpritesheetReady() {
-    return weaponSpritesheetLoaded && weaponSpritesheetImage;
-}
-
-// ==================== 素材预加载入口 ====================
-
-// 素材是否可用的标志
-let assetsEnabled = false;
-
-// 预加载所有素材
-function preloadAssets(callback) {
-    preloadAllSpritesheets((success) => {
-        assetsEnabled = success;
-        if (callback) callback();
-    });
+// 检查是否所有素材都已加载
+function areAssetsReady() {
+    return assetsLoaded;
 }

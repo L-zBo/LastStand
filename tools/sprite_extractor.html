@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>精灵图批量裁剪工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        h1, h2 { color: #4ecdc4; }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a3e;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4ecdc4;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #3dbdb5; }
+        .preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .sprite-item {
+            text-align: center;
+            background: #3a3a4e;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sprite-item canvas {
+            image-rendering: pixelated;
+            border: 1px solid #4ecdc4;
+        }
+        .sprite-item p {
+            margin: 5px 0 0;
+            font-size: 12px;
+        }
+        #status {
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .download-link {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #27ae60;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            margin: 2px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 精灵图批量裁剪工具</h1>
+
+    <div class="section">
+        <h2>操作说明</h2>
+        <p>点击下方按钮，将自动从精灵图中裁剪出所需图片并提供下载。</p>
+        <p>下载后请将文件放入对应的 assets 文件夹中。</p>
+    </div>
+
+    <div class="section">
+        <h2>1. 角色精灵 (assets/players/)</h2>
+        <button onclick="extractPlayers()">裁剪角色精灵</button>
+        <div id="playersPreview" class="preview"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. 敌人精灵 (assets/enemies/)</h2>
+        <button onclick="extractEnemies()">裁剪敌人精灵</button>
+        <div id="enemiesPreview" class="preview"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Boss精灵 (assets/bosses/)</h2>
+        <button onclick="extractBosses()">裁剪Boss精灵</button>
+        <div id="bossesPreview" class="preview"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. 武器精灵 (assets/weapons/)</h2>
+        <button onclick="extractWeapons()">裁剪武器精灵</button>
+        <div id="weaponsPreview" class="preview"></div>
+    </div>
+
+    <div class="section">
+        <h2>5. 道具精灵 (assets/items/)</h2>
+        <button onclick="extractItems()">裁剪道具精灵</button>
+        <div id="itemsPreview" class="preview"></div>
+    </div>
+
+    <div class="section">
+        <button onclick="extractAll()" style="background: #e74c3c; font-size: 16px; padding: 15px 30px;">
+            🚀 一键裁剪全部并下载
+        </button>
+    </div>
+
+    <div id="status">状态: 就绪</div>
+
+    <script>
+        // 精灵图配置
+        const SPRITES = {
+            characters: {
+                path: '../PNG/yDDd9O.png',
+                spriteWidth: 16,
+                spriteHeight: 16,
+                cols: 10,
+                rows: 6
+            },
+            bosses: {
+                path: '../PNG/BOSS.png',
+                spriteWidth: 32,
+                spriteHeight: 32,
+                cols: 5,
+                rows: 2
+            },
+            weapons: {
+                path: '../PNG/工具武器.png',
+                spriteWidth: 16,
+                spriteHeight: 16,
+                cols: 10,
+                rows: 6
+            }
+        };
+
+        // 角色映射
+        const PLAYERS = {
+            warrior: { row: 0, col: 5, name: '战士' },
+            mage: { row: 2, col: 5, name: '法师' },
+            assassin: { row: 3, col: 3, name: '刺客' },
+            ranger: { row: 1, col: 7, name: '游侠' },
+            summoner: { row: 4, col: 2, name: '召唤师' }
+        };
+
+        // 敌人映射
+        const ENEMIES = {
+            skeleton: { row: 0, col: 0, name: '骷髅', type: 'normal' },
+            greenBlob: { row: 0, col: 2, name: '绿色生物', type: 'normal' },
+            blueSlime: { row: 4, col: 0, name: '蓝史莱姆', type: 'normal' },
+            rat: { row: 5, col: 0, name: '老鼠', type: 'normal' },
+            snake: { row: 5, col: 1, name: '蛇', type: 'normal' },
+            redImp: { row: 2, col: 0, name: '红色小怪', type: 'fast' },
+            redDevil: { row: 3, col: 1, name: '红色小鬼', type: 'fast' },
+            blackCat: { row: 5, col: 2, name: '黑猫', type: 'fast' },
+            stoneGolem: { row: 2, col: 7, name: '石头怪', type: 'tank' },
+            orc: { row: 1, col: 3, name: '绿皮兽人', type: 'tank' },
+            greenOrc: { row: 0, col: 4, name: '绿色兽人', type: 'tank' },
+            demon: { row: 0, col: 3, name: '红色恶魔', type: 'elite' },
+            hornedDemon: { row: 2, col: 4, name: '红角恶魔', type: 'elite' },
+            fireMan: { row: 1, col: 4, name: '橙色火人', type: 'elite' },
+            smallDragon: { row: 3, col: 7, name: '小龙', type: 'elite' }
+        };
+
+        // Boss映射
+        const BOSSES = {
+            bear: { row: 0, col: 0, name: '红熊怪' },
+            frog: { row: 0, col: 1, name: '青蛙王' },
+            eyeball: { row: 0, col: 2, name: '眼球怪' },
+            flame: { row: 0, col: 3, name: '火焰魔' },
+            dragon: { row: 0, col: 4, name: '绿龙' },
+            beetle: { row: 1, col: 0, name: '蓝甲虫' },
+            spider: { row: 1, col: 1, name: '毒蜘蛛' },
+            snakeBoss: { row: 1, col: 2, name: '蛇妖' },
+            oneEyeDemon: { row: 1, col: 3, name: '独眼魔' },
+            dragonHead: { row: 1, col: 4, name: '龙首' }
+        };
+
+        // 武器映射
+        const WEAPONS = {
+            dagger: { row: 0, col: 0, name: '匕首' },
+            sword: { row: 0, col: 1, name: '长剑' },
+            holyBlade: { row: 0, col: 2, name: '圣剑' },
+            staff: { row: 0, col: 4, name: '法杖' },
+            axe: { row: 0, col: 5, name: '战斧' },
+            bow: { row: 1, col: 8, name: '弓' },
+            phoenixBow: { row: 0, col: 8, name: '凤凰弓' },
+            shadowBlade: { row: 1, col: 1, name: '暗影刃' },
+            arcaneStaff: { row: 1, col: 4, name: '奥术法杖' },
+            bloodAxe: { row: 1, col: 5, name: '嗜血斧' },
+            fireball: { row: 2, col: 3, name: '火球杖' },
+            inferno: { row: 2, col: 4, name: '炼狱杖' }
+        };
+
+        // 道具映射
+        const ITEMS = {
+            healthPotion: { row: 4, col: 0, name: '生命药水' },
+            manaPotion: { row: 4, col: 1, name: '魔法药水' },
+            ruby: { row: 3, col: 6, name: '红宝石' },
+            emerald: { row: 3, col: 7, name: '绿宝石' },
+            sapphire: { row: 3, col: 8, name: '蓝宝石' },
+            diamond: { row: 3, col: 9, name: '钻石' },
+            key: { row: 5, col: 0, name: '钥匙' },
+            coin: { row: 5, col: 9, name: '金币' },
+            coinBag: { row: 4, col: 9, name: '钱袋' },
+            scroll: { row: 2, col: 9, name: '卷轴' },
+            bomb: { row: 0, col: 6, name: '炸弹' },
+            shield: { row: 2, col: 7, name: '盾牌' },
+            helmet: { row: 2, col: 8, name: '头盔' },
+            ring: { row: 4, col: 6, name: '戒指' },
+            necklace: { row: 4, col: 7, name: '项链' }
+        };
+
+        // 加载图片
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        // 裁剪单个精灵
+        function extractSprite(img, config, row, col, scale = 4) {
+            const canvas = document.createElement('canvas');
+            canvas.width = config.spriteWidth * scale;
+            canvas.height = config.spriteHeight * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+
+            ctx.drawImage(
+                img,
+                col * config.spriteWidth,
+                row * config.spriteHeight,
+                config.spriteWidth,
+                config.spriteHeight,
+                0, 0,
+                canvas.width, canvas.height
+            );
+
+            return canvas;
+        }
+
+        // 创建下载链接
+        function createDownloadLink(canvas, filename) {
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = filename;
+            link.className = 'download-link';
+            link.textContent = '下载';
+            return link;
+        }
+
+        // 显示预览
+        function showPreview(containerId, sprites, category) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            sprites.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'sprite-item';
+                div.appendChild(item.canvas);
+
+                const nameP = document.createElement('p');
+                nameP.textContent = `${item.name} (${item.id})`;
+                div.appendChild(nameP);
+
+                const link = createDownloadLink(item.canvas, `${item.id}.png`);
+                div.appendChild(link);
+
+                container.appendChild(div);
+            });
+        }
+
+        // 裁剪角色
+        async function extractPlayers() {
+            updateStatus('正在裁剪角色精灵...');
+            try {
+                const img = await loadImage(SPRITES.characters.path);
+                const sprites = [];
+
+                for (const [id, info] of Object.entries(PLAYERS)) {
+                    const canvas = extractSprite(img, SPRITES.characters, info.row, info.col);
+                    sprites.push({ id, name: info.name, canvas });
+                }
+
+                showPreview('playersPreview', sprites, 'players');
+                updateStatus(`角色精灵裁剪完成！共 ${sprites.length} 个`);
+                return sprites;
+            } catch (e) {
+                updateStatus('错误: ' + e.message);
+            }
+        }
+
+        // 裁剪敌人
+        async function extractEnemies() {
+            updateStatus('正在裁剪敌人精灵...');
+            try {
+                const img = await loadImage(SPRITES.characters.path);
+                const sprites = [];
+
+                for (const [id, info] of Object.entries(ENEMIES)) {
+                    const canvas = extractSprite(img, SPRITES.characters, info.row, info.col);
+                    sprites.push({ id, name: info.name, type: info.type, canvas });
+                }
+
+                showPreview('enemiesPreview', sprites, 'enemies');
+                updateStatus(`敌人精灵裁剪完成！共 ${sprites.length} 个`);
+                return sprites;
+            } catch (e) {
+                updateStatus('错误: ' + e.message);
+            }
+        }
+
+        // 裁剪Boss
+        async function extractBosses() {
+            updateStatus('正在裁剪Boss精灵...');
+            try {
+                const img = await loadImage(SPRITES.bosses.path);
+                const sprites = [];
+
+                for (const [id, info] of Object.entries(BOSSES)) {
+                    const canvas = extractSprite(img, SPRITES.bosses, info.row, info.col, 2);
+                    sprites.push({ id, name: info.name, canvas });
+                }
+
+                showPreview('bossesPreview', sprites, 'bosses');
+                updateStatus(`Boss精灵裁剪完成！共 ${sprites.length} 个`);
+                return sprites;
+            } catch (e) {
+                updateStatus('错误: ' + e.message);
+            }
+        }
+
+        // 裁剪武器
+        async function extractWeapons() {
+            updateStatus('正在裁剪武器精灵...');
+            try {
+                const img = await loadImage(SPRITES.weapons.path);
+                const sprites = [];
+
+                for (const [id, info] of Object.entries(WEAPONS)) {
+                    const canvas = extractSprite(img, SPRITES.weapons, info.row, info.col);
+                    sprites.push({ id, name: info.name, canvas });
+                }
+
+                showPreview('weaponsPreview', sprites, 'weapons');
+                updateStatus(`武器精灵裁剪完成！共 ${sprites.length} 个`);
+                return sprites;
+            } catch (e) {
+                updateStatus('错误: ' + e.message);
+            }
+        }
+
+        // 裁剪道具
+        async function extractItems() {
+            updateStatus('正在裁剪道具精灵...');
+            try {
+                const img = await loadImage(SPRITES.weapons.path);
+                const sprites = [];
+
+                for (const [id, info] of Object.entries(ITEMS)) {
+                    const canvas = extractSprite(img, SPRITES.weapons, info.row, info.col);
+                    sprites.push({ id, name: info.name, canvas });
+                }
+
+                showPreview('itemsPreview', sprites, 'items');
+                updateStatus(`道具精灵裁剪完成！共 ${sprites.length} 个`);
+                return sprites;
+            } catch (e) {
+                updateStatus('错误: ' + e.message);
+            }
+        }
+
+        // 一键裁剪全部
+        async function extractAll() {
+            updateStatus('开始批量裁剪所有精灵...');
+
+            await extractPlayers();
+            await extractEnemies();
+            await extractBosses();
+            await extractWeapons();
+            await extractItems();
+
+            updateStatus('全部裁剪完成！请点击各精灵下方的"下载"按钮保存文件。');
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('status').textContent = '状态: ' + msg;
+        }
+    </script>
+</body>
+</html>
