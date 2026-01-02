@@ -1,4 +1,4 @@
-/* ==================== 升级界面和强化卡片样式 ==================== */
+/* ==================== 升级界面和强化卡片样式 - 像素艺术风格 ==================== */
 
 /* 升级界面 */
 #levelUpScreen {
@@ -6,69 +6,80 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.95);
-    padding: 40px 60px;
-    border-radius: 20px;
-    border: 3px solid #ffd700;
-    box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+    background: #1a1a2e;
+    padding: 30px 50px;
+    border: 4px solid;
+    border-color: #ffd700 #aa8800 #aa8800 #ffd700;
     z-index: 1000;
-    min-width: 1200px;
+    min-width: 1100px;
     max-width: 98vw;
     max-height: 90vh;
     overflow-y: auto;
+    box-shadow:
+        inset 4px 4px 0 rgba(255,255,255,0.1),
+        inset -4px -4px 0 rgba(0,0,0,0.3),
+        8px 8px 0 rgba(0,0,0,0.5);
 }
 
 /* 单人模式升级界面 */
 .single-levelup h2 {
-    font-size: 2.8em;
-    margin-bottom: 15px;
+    font-size: 1.8em;
+    margin-bottom: 12px;
     color: #ffd700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    text-shadow:
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    font-family: 'Press Start 2P', monospace;
 }
 
 .single-levelup > p {
-    font-size: 1.3em;
-    margin-bottom: 30px;
+    font-size: 0.7em;
+    margin-bottom: 25px;
+    font-family: 'Press Start 2P', monospace;
 }
 
 /* 双人模式升级界面 */
 .dual-levelup {
     display: flex;
-    gap: 30px;
+    gap: 20px;
     width: 100%;
 }
 
 .dual-levelup .player-levelup-panel {
     flex: 1;
-    padding: 20px;
-    border-radius: 15px;
+    padding: 15px;
     position: relative;
-    min-height: 500px;
+    min-height: 450px;
+    border: 4px solid;
 }
 
 .dual-levelup .player-levelup-panel.p1-panel {
-    background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.1) 100%);
-    border: 2px solid #3498db;
+    background: #1a2a3a;
+    border-color: #3080aa #1a4060 #1a4060 #3080aa;
 }
 
 .dual-levelup .player-levelup-panel.p2-panel {
-    background: linear-gradient(135deg, rgba(231, 76, 60, 0.2) 0%, rgba(192, 57, 43, 0.1) 100%);
-    border: 2px solid #e74c3c;
+    background: #3a1a1a;
+    border-color: #aa3030 #601a1a #601a1a #aa3030;
 }
 
 .player-levelup-header {
     display: flex;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 4px solid rgba(255, 255, 255, 0.1);
 }
 
 .player-levelup-header h3 {
-    font-size: 1.5em;
+    font-size: 0.9em;
     color: #ffd700;
     margin: 0;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 2px 2px 0 #000;
 }
 
 /* 双人模式下的buff选项 */
@@ -80,7 +91,7 @@
 .dual-levelup .buff-card {
     max-width: none;
     width: 100%;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 /* 已选择状态 */
@@ -90,25 +101,27 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
-    border-radius: 15px;
+    background: rgba(0, 0, 0, 0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    border: 4px solid #2ecc71;
 }
 
 .player-selected .check-icon {
-    font-size: 5em;
+    font-size: 4em;
     color: #2ecc71;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    text-shadow: 4px 4px 0 #000;
     animation: checkPulse 1s ease-in-out infinite;
 }
 
 .player-selected p {
-    font-size: 1.3em;
+    font-size: 0.7em;
     color: #aaa;
+    font-family: 'Press Start 2P', monospace;
 }
 
 @keyframes checkPulse {
@@ -118,169 +131,209 @@
 
 .buff-options {
     display: flex;
-    gap: 15px;
+    gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
 }
 
-/* 强化卡片 */
+/* 强化卡片 - 像素风格 */
 .buff-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 20px 18px;
-    border-radius: 15px;
+    background: #3a3a6a;
+    padding: 15px 12px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    min-width: 200px;
-    max-width: 220px;
+    transition: all 0.1s ease;
+    border: 4px solid;
+    border-color: #6a6a9a #1a1a3a #1a1a3a #6a6a9a;
+    min-width: 180px;
+    max-width: 200px;
     text-align: left;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
 }
 
 .buff-card:hover {
-    transform: translateY(-10px) scale(1.02);
-    border-color: #ffd700;
-    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    background: #4a4a7a;
+    border-color: #ffd700 #aa8800 #aa8800 #ffd700;
+}
+
+.buff-card:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
 }
 
 .buff-card-header {
     display: flex;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 15px;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
 .buff-icon {
-    font-size: 2.8em;
+    font-size: 2em;
 }
 
 .buff-card h3 {
-    font-size: 1.2em;
+    font-size: 0.7em;
     margin: 0;
     color: #ffd700;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 2px 2px 0 #000;
 }
 
 .buff-card .buff-type {
-    font-size: 0.8em;
+    font-size: 0.5em;
     color: #aaa;
     margin-top: 3px;
-    padding: 2px 8px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 5px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.4);
     display: inline-block;
+    font-family: 'Press Start 2P', monospace;
 }
 
 .buff-card .buff-desc {
-    font-size: 1em;
+    font-size: 0.55em;
     color: #fff;
-    margin: 10px 0;
-    line-height: 1.4;
+    margin: 8px 0;
+    line-height: 1.6;
+    font-family: 'Press Start 2P', monospace;
 }
 
 .buff-card .buff-effect {
-    font-size: 0.9em;
+    font-size: 0.5em;
     color: #4ecdc4;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    margin-top: 10px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.4);
+    margin-top: 8px;
+    font-family: 'Press Start 2P', monospace;
+    line-height: 1.6;
 }
 
 .buff-card .class-exclusive {
-    font-size: 0.85em;
+    font-size: 0.5em;
     color: #e74c3c;
-    margin-top: 8px;
-    font-weight: bold;
+    margin-top: 6px;
+    font-family: 'Press Start 2P', monospace;
 }
 
 /* 武器卡片进化信息 */
 .buff-card .evolve-hint {
-    font-size: 0.85em;
+    font-size: 0.5em;
     color: #ffd700;
-    margin-top: 10px;
-    padding: 8px;
+    margin-top: 8px;
+    padding: 6px;
     background: rgba(255, 215, 0, 0.1);
-    border-radius: 8px;
-    border: 1px dashed rgba(255, 215, 0, 0.3);
+    border: 2px dashed rgba(255, 215, 0, 0.3);
+    font-family: 'Press Start 2P', monospace;
+    line-height: 1.6;
 }
 
 /* 类型标签样式 */
 .option-type-tag {
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-size: 0.75em;
-    font-weight: bold;
-    margin-bottom: 10px;
+    padding: 3px 8px;
+    font-size: 0.5em;
+    font-family: 'Press Start 2P', monospace;
+    margin-bottom: 8px;
+    border: 2px solid;
 }
 
 .tag-weapon {
-    background: #e74c3c;
+    background: #8a3030;
     color: #fff;
+    border-color: #aa5050 #5a1a1a #5a1a1a #aa5050;
 }
 
 .tag-buff {
-    background: #3498db;
+    background: #305a8a;
     color: #fff;
+    border-color: #5080aa #1a3a5a #1a3a5a #5080aa;
 }
 
 .tag-class {
-    background: #9b59b6;
+    background: #5a3080;
     color: #fff;
+    border-color: #8050aa #3a1a5a #3a1a5a #8050aa;
 }
 
 .tag-accessory {
-    background: #f39c12;
+    background: #8a6a30;
     color: #fff;
+    border-color: #aa8a50 #5a4a1a #5a4a1a #aa8a50;
 }
 
-/* 游戏结束界面 */
+/* 游戏结束界面 - 像素风格 */
 #gameOverScreen {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.95);
-    padding: 50px;
-    border-radius: 20px;
-    border: 3px solid #ff4757;
-    box-shadow: 0 0 50px rgba(255, 71, 87, 0.5);
+    background: #1a1a2e;
+    padding: 40px;
+    border: 4px solid;
+    border-color: #aa3030 #5a1a1a #5a1a1a #aa3030;
     z-index: 1000;
+    box-shadow:
+        inset 4px 4px 0 rgba(255,255,255,0.1),
+        inset -4px -4px 0 rgba(0,0,0,0.3),
+        8px 8px 0 rgba(0,0,0,0.5);
 }
 
 #gameOverScreen h1 {
-    font-size: 3em;
-    margin-bottom: 30px;
+    font-size: 1.8em;
+    margin-bottom: 25px;
     color: #ff4757;
-    text-shadow: 0 0 10px rgba(255, 71, 87, 0.8);
+    text-shadow:
+        4px 4px 0 #000,
+        -2px -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 2px 0 #000;
+    font-family: 'Press Start 2P', monospace;
 }
 
 #gameStats {
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
 #gameStats p {
-    font-size: 1.3em;
-    margin: 10px 0;
+    font-size: 0.7em;
+    margin: 8px 0;
+    font-family: 'Press Start 2P', monospace;
+    line-height: 1.8;
 }
 
 #restartBtn, #returnMenuBtn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #4a4a7a;
     color: #fff;
-    border: none;
-    padding: 15px 40px;
-    font-size: 1.2em;
-    border-radius: 10px;
+    border: 4px solid;
+    border-color: #7a7aaa #2a2a5a #2a2a5a #7a7aaa;
+    padding: 12px 30px;
+    font-size: 0.7em;
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: bold;
-    margin: 5px 10px;
+    transition: all 0.1s ease;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 2px 2px 0 #000;
+    margin: 5px 8px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
 }
 
 #restartBtn:hover, #returnMenuBtn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+    background: #5a5a8a;
+}
+
+#restartBtn:active, #returnMenuBtn:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+    border-color: #2a2a5a #7a7aaa #7a7aaa #2a2a5a;
 }
 
 #returnMenuBtn {
-    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    background: #305a8a;
+    border-color: #5080aa #1a3a5a #1a3a5a #5080aa;
+}
+
+#returnMenuBtn:hover {
+    background: #406a9a;
 }

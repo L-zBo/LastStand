@@ -1,133 +1,136 @@
-/* ==================== 武器和被动技能栏样式 ==================== */
+/* ==================== 武器和被动技能栏样式 - 像素艺术风格 ==================== */
 
 /* 武器栏 */
 .weapon-bar {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: wrap;
 }
 
 .weapon-slot {
-    width: 36px;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    background: #2a2a4a;
+    border: 3px solid;
+    border-color: #4a4a6a #1a1a2a #1a1a2a #4a4a6a;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2em;
+    font-size: 1em;
     position: relative;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.1s ease;
+    image-rendering: pixelated;
 }
 
 .weapon-slot:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.1);
-    border-color: #ffd700;
+    background: #3a3a5a;
+    transform: translate(-1px, -1px);
+    border-color: #ffd700 #aa8800 #aa8800 #ffd700;
 }
 
 .weapon-empty {
     color: rgba(255, 255, 255, 0.3);
-    font-size: 1.2em;
-}
-
-.weapon-icon {
     font-size: 1em;
 }
 
+.weapon-icon {
+    font-size: 0.9em;
+}
+
 .weapon-slot.evolved {
-    border-color: #ffd700;
-    background: rgba(255, 215, 0, 0.2);
+    border-color: #ffd700 #aa8800 #aa8800 #ffd700;
+    background: rgba(255, 215, 0, 0.15);
 }
 
 .weapon-level {
     position: absolute;
-    bottom: -2px;
-    right: -2px;
-    background: #333;
+    bottom: -1px;
+    right: -1px;
+    background: #1a1a3a;
     color: #fff;
-    font-size: 0.5em;
-    padding: 1px 4px;
-    border-radius: 4px;
+    font-size: 0.4em;
+    padding: 1px 3px;
+    font-family: 'Press Start 2P', monospace;
+    border: 1px solid #4a4a6a;
 }
 
 /* 武器详细属性样式 */
 .weapon-stats-detail {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
+    gap: 5px;
+    margin-top: 8px;
 }
 
 .weapon-stats-detail .stat-item {
-    background: rgba(0, 0, 0, 0.3);
-    padding: 4px 8px;
-    border-radius: 5px;
-    font-size: 0.8em;
+    background: #1a1a3a;
+    padding: 3px 6px;
+    font-size: 0.45em;
     color: #4ecdc4;
+    font-family: 'Press Start 2P', monospace;
+    border: 2px solid;
+    border-color: #0a0a1a #3a3a5a #3a3a5a #0a0a1a;
 }
 
 .weapon-stats-detail .stat-up {
     color: #2ecc71;
-    font-weight: bold;
 }
 
 /* 被动技能栏 */
 .passive-bar {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     flex-wrap: wrap;
 }
 
 .passive-slot {
-    width: 28px;
-    height: 28px;
-    background: rgba(155, 89, 182, 0.3);
-    border: 2px solid rgba(155, 89, 182, 0.5);
-    border-radius: 5px;
+    width: 26px;
+    height: 26px;
+    background: #2a2a4a;
+    border: 2px solid;
+    border-color: #5a3080 #2a1040 #2a1040 #5a3080;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9em;
+    font-size: 0.8em;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.1s ease;
     position: relative;
 }
 
 .passive-slot:hover {
-    background: rgba(155, 89, 182, 0.5);
-    transform: scale(1.1);
-    border-color: #9b59b6;
+    background: #3a3a5a;
+    transform: translate(-1px, -1px);
+    border-color: #8050aa #3a1a5a #3a1a5a #8050aa;
 }
 
 .passive-slot.class-passive {
-    border-color: #e74c3c;
-    background: rgba(231, 76, 60, 0.2);
+    border-color: #aa3030 #5a1a1a #5a1a1a #aa3030;
+    background: rgba(231, 76, 60, 0.15);
 }
 
 .passive-slot.class-passive:hover {
-    background: rgba(231, 76, 60, 0.4);
-    border-color: #e74c3c;
+    background: rgba(231, 76, 60, 0.25);
 }
 
-/* 被动详情弹窗 */
+/* 被动详情弹窗 - 像素风格 */
 .passive-tooltip {
     position: absolute;
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.95);
-    padding: 10px 15px;
-    border-radius: 8px;
-    border: 1px solid #9b59b6;
+    background: #1a1a2e;
+    padding: 8px 12px;
+    border: 3px solid;
+    border-color: #5a3080 #2a1040 #2a1040 #5a3080;
     white-space: nowrap;
     z-index: 100;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.2s ease;
-    margin-bottom: 5px;
+    transition: all 0.1s ease;
+    margin-bottom: 4px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
 }
 
 .passive-slot:hover .passive-tooltip {
@@ -137,18 +140,23 @@
 
 .passive-tooltip h4 {
     color: #ffd700;
-    margin: 0 0 5px 0;
-    font-size: 0.9em;
+    margin: 0 0 4px 0;
+    font-size: 0.5em;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 1px 1px 0 #000;
 }
 
 .passive-tooltip p {
     color: #ccc;
     margin: 0;
-    font-size: 0.8em;
+    font-size: 0.45em;
+    font-family: 'Press Start 2P', monospace;
+    line-height: 1.6;
 }
 
 .passive-tooltip .passive-type {
     color: #9b59b6;
-    font-size: 0.75em;
+    font-size: 0.4em;
     margin-top: 3px;
+    font-family: 'Press Start 2P', monospace;
 }

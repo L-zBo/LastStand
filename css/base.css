@@ -1,4 +1,7 @@
-/* ==================== 基础样式 ==================== */
+/* ==================== 基础样式 - 像素艺术风格 ==================== */
+
+/* 像素字体导入 */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 * {
     margin: 0;
@@ -7,13 +10,14 @@
 }
 
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: 'Press Start 2P', 'Arial', sans-serif;
     background-color: #1a1a2e;
     background-image: url('../assets/backgrounds/menu_bg.png');
     background-repeat: repeat;
     background-size: 256px 256px;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+    -ms-interpolation-mode: nearest-neighbor;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -30,7 +34,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
     pointer-events: none;
     z-index: 0;
 }
@@ -46,4 +50,14 @@ body::before {
 
 .hidden {
     display: none !important;
+}
+
+/* 像素风格边框 */
+.pixel-border {
+    border: 4px solid;
+    border-color: #fff #555 #555 #fff;
+    box-shadow:
+        inset 2px 2px 0 #aaa,
+        inset -2px -2px 0 #333,
+        4px 4px 0 rgba(0,0,0,0.5);
 }

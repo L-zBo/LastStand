@@ -52,6 +52,39 @@ const CLASSES = {
         attackType: 'summon',
         attackRange: 180,
         maxSummons: 3
+    },
+    knight: {
+        name: '骑士',
+        health: 180,
+        attack: 18,
+        speed: 2.8,
+        color: '#c0c0c0',
+        sprite: '⚔️',
+        attackType: 'melee',
+        attackRange: 55,
+        armor: 10
+    },
+    paladin: {
+        name: '圣骑士',
+        health: 140,
+        attack: 16,
+        speed: 3.0,
+        color: '#ffd700',
+        sprite: '✝️',
+        attackType: 'holy',
+        attackRange: 60,
+        healPower: 5
+    },
+    necromancer: {
+        name: '死灵法师',
+        health: 75,
+        attack: 22,
+        speed: 3.3,
+        color: '#4a0080',
+        sprite: '💀',
+        attackType: 'dark',
+        attackRange: 160,
+        maxSummons: 5
     }
 };
 
@@ -351,6 +384,112 @@ const CLASS_BUFFS = {
             type: '召唤师专属',
             classOnly: 'summoner',
             apply: (player) => player.summonDurationBonus = (player.summonDurationBonus || 1) * 2
+        }
+    ],
+    knight: [
+        {
+            id: 'heavyArmor',
+            name: '重甲精通',
+            description: '受到伤害减少 20%',
+            detail: '骑士专属：重甲提供更强的防护',
+            icon: '🛡️',
+            type: '骑士专属',
+            classOnly: 'knight',
+            apply: (player) => player.damageReduction = (player.damageReduction || 0) + 0.2
+        },
+        {
+            id: 'steadfast',
+            name: '坚定不移',
+            description: '被击中时不会被击退',
+            detail: '骑士专属：站稳脚跟，不受击退效果影响',
+            icon: '🏰',
+            type: '骑士专属',
+            classOnly: 'knight',
+            apply: (player) => player.knockbackImmune = true
+        },
+        {
+            id: 'counterAttack',
+            name: '反击',
+            description: '受到攻击时反弹 30% 伤害',
+            detail: '骑士专属：受到攻击时自动对敌人造成反伤',
+            icon: '⚔️',
+            type: '骑士专属',
+            classOnly: 'knight',
+            apply: (player) => player.counterAttack = (player.counterAttack || 0) + 0.3
+        }
+    ],
+    paladin: [
+        {
+            id: 'holyLight',
+            name: '圣光',
+            description: '每5秒恢复 10% 生命',
+            detail: '圣骑士专属：圣光持续治愈',
+            icon: '✨',
+            type: '圣骑士专属',
+            classOnly: 'paladin',
+            apply: (player) => player.holyHeal = (player.holyHeal || 0) + 0.1
+        },
+        {
+            id: 'divineShield',
+            name: '神圣护盾',
+            description: '生命值低于 30% 时获得无敌 3 秒',
+            detail: '圣骑士专属：生命垂危时触发神圣庇护',
+            icon: '🛡️',
+            type: '圣骑士专属',
+            classOnly: 'paladin',
+            apply: (player) => player.divineShield = true
+        },
+        {
+            id: 'smite',
+            name: '惩击',
+            description: '对亡灵敌人伤害 +100%',
+            detail: '圣骑士专属：圣光对亡灵造成额外伤害',
+            icon: '⚡',
+            type: '圣骑士专属',
+            classOnly: 'paladin',
+            apply: (player) => player.smite = true
+        }
+    ],
+    necromancer: [
+        {
+            id: 'darkPact',
+            name: '黑暗契约',
+            description: '召唤物数量上限 +3',
+            detail: '死灵法师专属：与更多亡灵签订契约',
+            icon: '💀',
+            type: '死灵法师专属',
+            classOnly: 'necromancer',
+            apply: (player) => player.maxSummons += 3
+        },
+        {
+            id: 'lifeSteal',
+            name: '生命汲取',
+            description: '造成伤害的 15% 转化为生命',
+            detail: '死灵法师专属：黑暗魔法吸取敌人生命',
+            icon: '🩸',
+            type: '死灵法师专属',
+            classOnly: 'necromancer',
+            apply: (player) => player.lifeSteal = (player.lifeSteal || 0) + 0.15
+        },
+        {
+            id: 'corpseExplosion',
+            name: '尸爆',
+            description: '敌人死亡时爆炸造成范围伤害',
+            detail: '死灵法师专属：引爆敌人尸体伤害周围敌人',
+            icon: '💥',
+            type: '死灵法师专属',
+            classOnly: 'necromancer',
+            apply: (player) => player.corpseExplosion = true
+        },
+        {
+            id: 'deathCoil',
+            name: '死亡缠绕',
+            description: '攻击附带死亡诅咒',
+            detail: '死灵法师专属：被诅咒的敌人受到的伤害提升 25%',
+            icon: '☠️',
+            type: '死灵法师专属',
+            classOnly: 'necromancer',
+            apply: (player) => player.deathCoil = true
         }
     ]
 };
