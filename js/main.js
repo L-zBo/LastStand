@@ -10,6 +10,10 @@ let game = {
     playerCount: 1, // 玩家数量
     selectedClass: null,
     selectedClass2: null, // P2职业
+    selectedDifficulty: 'normal', // 选择的难度
+    selectedMap: 'forest',        // 选择的地图
+    difficultyMod: null,          // 难度修正
+    mapConfig: null,              // 地图配置
     enemies: [],
     particles: [],
     projectiles: [],
@@ -45,8 +49,13 @@ let game = {
 function generateObstacles() {
     game.obstacles = [];
 
+    // 使用地图配置的障碍物数量
+    const mapConfig = game.mapConfig || CONFIG.maps.forest;
+    const rockCount = mapConfig.rockCount || CONFIG.obstacles.rockCount;
+    const bushCount = mapConfig.bushCount || CONFIG.obstacles.bushCount;
+
     // 生成石头
-    for (let i = 0; i < CONFIG.obstacles.rockCount; i++) {
+    for (let i = 0; i < rockCount; i++) {
         const x = Math.random() * (CONFIG.world.width - 100) + 50;
         const y = Math.random() * (CONFIG.world.height - 100) + 50;
 
@@ -57,7 +66,7 @@ function generateObstacles() {
     }
 
     // 生成草丛
-    for (let i = 0; i < CONFIG.obstacles.bushCount; i++) {
+    for (let i = 0; i < bushCount; i++) {
         const x = Math.random() * (CONFIG.world.width - 100) + 50;
         const y = Math.random() * (CONFIG.world.height - 100) + 50;
 
@@ -356,30 +365,18 @@ function gameLoop(timestamp) {
         game.ctx.save();
         game.ctx.translate(-game.camera.x, -game.camera.y);
 
-        // 绘制世界网格背景
-        game.ctx.strokeStyle = '#2a2a3e';
-        game.ctx.lineWidth = 1;
+        // 绘制地图背景（无网格）
+        const mapConfig = game.mapConfig || CONFIG.maps.forest;
 
-        const startX = Math.floor(game.camera.x / 50) * 50;
-        const startY = Math.floor(game.camera.y / 50) * 50;
-        const endX = Math.ceil((game.camera.x + CONFIG.canvas.width) / 50) * 50;
-        const endY = Math.ceil((game.camera.y + CONFIG.canvas.height) / 50) * 50;
-
-        for (let x = startX; x <= endX; x += 50) {
-            game.ctx.beginPath();
-            game.ctx.moveTo(x, startY);
-            game.ctx.lineTo(x, endY);
-            game.ctx.stroke();
-        }
-        for (let y = startY; y <= endY; y += 50) {
-            game.ctx.beginPath();
-            game.ctx.moveTo(startX, y);
-            game.ctx.lineTo(endX, y);
-            game.ctx.stroke();
-        }
+        // 绘制渐变背景
+        const bgGradient = game.ctx.createLinearGradient(0, 0, 0, CONFIG.world.height);
+        bgGradient.addColorStop(0, mapConfig.backgroundColor);
+        bgGradient.addColorStop(1, mapConfig.groundColor);
+        game.ctx.fillStyle = bgGradient;
+        game.ctx.fillRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
         // 绘制世界边界
-        game.ctx.strokeStyle = '#ff4757';
+        game.ctx.strokeStyle = mapConfig.borderColor;
         game.ctx.lineWidth = 5;
         game.ctx.strokeRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
@@ -520,7 +517,18 @@ function returnToMenu() {
 // 开始游戏
 function startGame() {
     document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('mapSelection').classList.add('hidden');
+    document.getElementById('difficultySelection').classList.add('hidden');
+    document.getElementById('classSelection').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
+
+    // 应用默认配置（如果没有选择）
+    if (!game.difficultyMod) {
+        game.difficultyMod = CONFIG.difficulty.normal;
+    }
+    if (!game.mapConfig) {
+        game.mapConfig = CONFIG.maps.forest;
+    }
 
     // 重置UI缓存
     resetUICache();
@@ -534,7 +542,8 @@ function startGame() {
     // 设置P1职业名称显示
     const classNames = {
         warrior: '战士', mage: '法师', assassin: '刺客',
-        ranger: '游侠', summoner: '召唤师'
+        ranger: '游侠', summoner: '召唤师',
+        knight: '骑士', paladin: '圣骑士', necromancer: '死灵法师'
     };
     document.getElementById('p1ClassName').textContent = classNames[game.selectedClass] || game.selectedClass;
 
@@ -669,7 +678,9 @@ function initGame() {
             if (game.playerCount === 1) {
                 // 单人模式
                 game.selectedClass = card.dataset.class;
-                startGame();
+                document.getElementById('classSelection').classList.add('hidden');
+                // 显示难度选择
+                document.getElementById('difficultySelection').classList.remove('hidden');
             } else {
                 // 双人模式
                 if (!game.selectedClass) {
@@ -682,10 +693,46 @@ function initGame() {
                 } else {
                     // P2选择职业
                     game.selectedClass2 = card.dataset.class;
-                    startGame();
+                    document.getElementById('classSelection').classList.add('hidden');
+                    // 显示难度选择
+                    document.getElementById('difficultySelection').classList.remove('hidden');
                 }
             }
         });
+    });
+
+    // 难度选择
+    document.querySelectorAll('.difficulty-card').forEach(card => {
+        card.addEventListener('click', () => {
+            // 移除其他选中状态
+            document.querySelectorAll('.difficulty-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            game.selectedDifficulty = card.dataset.difficulty;
+
+            // 延迟后显示地图选择
+            setTimeout(() => {
+                document.getElementById('difficultySelection').classList.add('hidden');
+                document.getElementById('mapSelection').classList.remove('hidden');
+            }, 200);
+        });
+    });
+
+    // 地图选择
+    document.querySelectorAll('.map-card').forEach(card => {
+        card.addEventListener('click', () => {
+            // 移除其他选中状态
+            document.querySelectorAll('.map-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            game.selectedMap = card.dataset.map;
+        });
+    });
+
+    // 开始游戏按钮
+    document.getElementById('startGameBtn').addEventListener('click', () => {
+        // 应用难度和地图配置
+        game.difficultyMod = CONFIG.difficulty[game.selectedDifficulty];
+        game.mapConfig = CONFIG.maps[game.selectedMap];
+        startGame();
     });
 
     // 暂停按钮

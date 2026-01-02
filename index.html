@@ -38,6 +38,89 @@
                 </button>
             </div>
         </div>
+        <!-- 难度选择 -->
+        <div id="difficultySelection" class="difficulty-selection hidden">
+            <h2>选择难度</h2>
+            <div class="difficulty-cards">
+                <div class="difficulty-card" data-difficulty="easy">
+                    <div class="difficulty-icon easy">🌱</div>
+                    <h3>简单</h3>
+                    <p>敌人较弱，适合新手</p>
+                    <ul class="difficulty-modifiers">
+                        <li>敌人生命 -30%</li>
+                        <li>敌人伤害 -30%</li>
+                        <li>经验获取 +20%</li>
+                    </ul>
+                </div>
+                <div class="difficulty-card selected" data-difficulty="normal">
+                    <div class="difficulty-icon normal">⚔️</div>
+                    <h3>普通</h3>
+                    <p>标准难度体验</p>
+                    <ul class="difficulty-modifiers">
+                        <li>敌人生命 100%</li>
+                        <li>敌人伤害 100%</li>
+                        <li>经验获取 100%</li>
+                    </ul>
+                </div>
+                <div class="difficulty-card" data-difficulty="hard">
+                    <div class="difficulty-icon hard">🔥</div>
+                    <h3>困难</h3>
+                    <p>更强的敌人挑战</p>
+                    <ul class="difficulty-modifiers">
+                        <li>敌人生命 +50%</li>
+                        <li>敌人伤害 +50%</li>
+                        <li>经验获取 +30%</li>
+                    </ul>
+                </div>
+                <div class="difficulty-card" data-difficulty="nightmare">
+                    <div class="difficulty-icon nightmare">💀</div>
+                    <h3>噩梦</h3>
+                    <p>极限生存挑战</p>
+                    <ul class="difficulty-modifiers">
+                        <li>敌人生命 +100%</li>
+                        <li>敌人伤害 +100%</li>
+                        <li>经验获取 +50%</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- 地图选择 -->
+        <div id="mapSelection" class="map-selection hidden">
+            <h2>选择地图</h2>
+            <div class="map-cards">
+                <div class="map-card selected" data-map="forest">
+                    <div class="map-preview forest"></div>
+                    <h3>🌲 幽暗森林</h3>
+                    <p>茂密的树林，隐藏着危险</p>
+                </div>
+                <div class="map-card" data-map="desert">
+                    <div class="map-preview desert"></div>
+                    <h3>🏜️ 荒芜沙漠</h3>
+                    <p>炎热的沙漠，视野开阔</p>
+                </div>
+                <div class="map-card" data-map="dungeon">
+                    <div class="map-preview dungeon"></div>
+                    <h3>🏰 黑暗地牢</h3>
+                    <p>阴暗的地下城，怪物横行</p>
+                </div>
+                <div class="map-card" data-map="snow">
+                    <div class="map-preview snow"></div>
+                    <h3>❄️ 冰封雪原</h3>
+                    <p>寒冷的雪地，移动减速</p>
+                </div>
+                <div class="map-card" data-map="lava">
+                    <div class="map-preview lava"></div>
+                    <h3>🌋 熔岩地狱</h3>
+                    <p>危险的火山，持续伤害</p>
+                </div>
+                <div class="map-card" data-map="ocean">
+                    <div class="map-preview ocean"></div>
+                    <h3>🌊 深海遗迹</h3>
+                    <p>神秘的海底，宝藏丰富</p>
+                </div>
+            </div>
+            <button id="startGameBtn" class="menu-btn start-btn">开始游戏</button>
+        </div>
         <!-- 职业选择 -->
         <div id="classSelection" class="class-selection hidden">
             <h2 id="classSelectionTitle">选择你的职业</h2>
