@@ -8,13 +8,36 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #1a1a2e;
+    background-image: url('../assets/backgrounds/menu_bg.png');
+    background-repeat: repeat;
+    background-size: 256px 256px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     color: #fff;
     overflow: hidden;
+}
+
+/* 添加一个半透明遮罩层增强可读性 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    z-index: 0;
+}
+
+#startScreen, #saveSlotScreen, #gameScreen {
+    position: relative;
+    z-index: 1;
 }
 
 .screen {

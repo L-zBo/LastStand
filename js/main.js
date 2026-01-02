@@ -365,15 +365,36 @@ function gameLoop(timestamp) {
         game.ctx.save();
         game.ctx.translate(-game.camera.x, -game.camera.y);
 
-        // 绘制地图背景（无网格）
+        // 绘制地图背景（使用瓦片图片）
         const mapConfig = game.mapConfig || CONFIG.maps.forest;
+        const tileImage = mapTileImages[game.selectedMap || 'forest'];
 
-        // 绘制渐变背景
-        const bgGradient = game.ctx.createLinearGradient(0, 0, 0, CONFIG.world.height);
-        bgGradient.addColorStop(0, mapConfig.backgroundColor);
-        bgGradient.addColorStop(1, mapConfig.groundColor);
-        game.ctx.fillStyle = bgGradient;
-        game.ctx.fillRect(0, 0, CONFIG.world.width, CONFIG.world.height);
+        if (tileImage) {
+            // 使用瓦片图片平铺背景
+            game.ctx.imageSmoothingEnabled = false;
+            const tileSize = 64;
+            const startTileX = Math.floor(game.camera.x / tileSize);
+            const startTileY = Math.floor(game.camera.y / tileSize);
+            const endTileX = Math.ceil((game.camera.x + CONFIG.canvas.width) / tileSize) + 1;
+            const endTileY = Math.ceil((game.camera.y + CONFIG.canvas.height) / tileSize) + 1;
+
+            for (let ty = startTileY; ty <= endTileY; ty++) {
+                for (let tx = startTileX; tx <= endTileX; tx++) {
+                    const drawX = tx * tileSize;
+                    const drawY = ty * tileSize;
+                    if (drawX >= 0 && drawX < CONFIG.world.width && drawY >= 0 && drawY < CONFIG.world.height) {
+                        game.ctx.drawImage(tileImage, drawX, drawY, tileSize, tileSize);
+                    }
+                }
+            }
+        } else {
+            // 回退到渐变背景
+            const bgGradient = game.ctx.createLinearGradient(0, 0, 0, CONFIG.world.height);
+            bgGradient.addColorStop(0, mapConfig.backgroundColor);
+            bgGradient.addColorStop(1, mapConfig.groundColor);
+            game.ctx.fillStyle = bgGradient;
+            game.ctx.fillRect(0, 0, CONFIG.world.width, CONFIG.world.height);
+        }
 
         // 绘制世界边界
         game.ctx.strokeStyle = mapConfig.borderColor;

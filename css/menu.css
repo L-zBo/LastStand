@@ -259,30 +259,31 @@
     margin-bottom: 10px;
     background-size: cover;
     background-position: center;
+    image-rendering: pixelated;
 }
 
 .map-preview.forest {
-    background: linear-gradient(180deg, #1a5522 0%, #0d2810 100%);
+    background-image: url('../assets/ui/maps/forest_preview.png');
 }
 
 .map-preview.desert {
-    background: linear-gradient(180deg, #d4a574 0%, #a67c52 100%);
+    background-image: url('../assets/ui/maps/desert_preview.png');
 }
 
 .map-preview.dungeon {
-    background: linear-gradient(180deg, #2a2a3e 0%, #14141e 100%);
+    background-image: url('../assets/ui/maps/dungeon_preview.png');
 }
 
 .map-preview.snow {
-    background: linear-gradient(180deg, #c8dce8 0%, #96b4c8 100%);
+    background-image: url('../assets/ui/maps/snow_preview.png');
 }
 
 .map-preview.lava {
-    background: linear-gradient(180deg, #8b1a1a 0%, #3d0a0a 100%);
+    background-image: url('../assets/ui/maps/lava_preview.png');
 }
 
 .map-preview.ocean {
-    background: linear-gradient(180deg, #1e6496 0%, #0a2d46 100%);
+    background-image: url('../assets/ui/maps/ocean_preview.png');
 }
 
 .map-card h3 {

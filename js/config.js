@@ -59,6 +59,7 @@ const CONFIG = {
             backgroundColor: '#1a2e1a',
             groundColor: '#0d1f0d',
             borderColor: '#2d5a2d',
+            tileImage: 'assets/tiles/forest_tile.png',
             bushCount: 120,
             rockCount: 60,
             specialEffect: null
@@ -68,6 +69,7 @@ const CONFIG = {
             backgroundColor: '#3d2e1a',
             groundColor: '#2a1f0d',
             borderColor: '#8b7355',
+            tileImage: 'assets/tiles/desert_tile.png',
             bushCount: 30,
             rockCount: 100,
             specialEffect: null
@@ -77,6 +79,7 @@ const CONFIG = {
             backgroundColor: '#14141e',
             groundColor: '#0a0a14',
             borderColor: '#4a4a6a',
+            tileImage: 'assets/tiles/dungeon_tile.png',
             bushCount: 20,
             rockCount: 150,
             specialEffect: 'darkness'
@@ -86,6 +89,7 @@ const CONFIG = {
             backgroundColor: '#283238',
             groundColor: '#1e2832',
             borderColor: '#6a8a9a',
+            tileImage: 'assets/tiles/snow_tile.png',
             bushCount: 50,
             rockCount: 80,
             specialEffect: 'slow'
@@ -95,6 +99,7 @@ const CONFIG = {
             backgroundColor: '#2a0f0f',
             groundColor: '#1a0808',
             borderColor: '#8b2500',
+            tileImage: 'assets/tiles/lava_tile.png',
             bushCount: 10,
             rockCount: 120,
             specialEffect: 'damage'
@@ -104,9 +109,37 @@ const CONFIG = {
             backgroundColor: '#0a1e2d',
             groundColor: '#051428',
             borderColor: '#1e6496',
+            tileImage: 'assets/tiles/ocean_tile.png',
             bushCount: 60,
             rockCount: 90,
             specialEffect: null
         }
     }
 };
+
+// 预加载地图瓦片图片
+const mapTileImages = {};
+
+function preloadMapTiles(callback) {
+    const maps = Object.keys(CONFIG.maps);
+    let loaded = 0;
+
+    maps.forEach(mapKey => {
+        const img = new Image();
+        img.onload = () => {
+            mapTileImages[mapKey] = img;
+            loaded++;
+            if (loaded === maps.length && callback) {
+                callback();
+            }
+        };
+        img.onerror = () => {
+            console.warn(`Failed to load tile: ${CONFIG.maps[mapKey].tileImage}`);
+            loaded++;
+            if (loaded === maps.length && callback) {
+                callback();
+            }
+        };
+        img.src = CONFIG.maps[mapKey].tileImage;
+    });
+}
