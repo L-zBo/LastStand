@@ -116,7 +116,7 @@
         // 精灵图配置
         const SPRITES = {
             characters: {
-                path: '../PNG/yDDd9O.png',
+                path: '../PNG/角色，怪物.png',
                 spriteWidth: 16,
                 spriteHeight: 16,
                 cols: 10,
@@ -138,32 +138,55 @@
             }
         };
 
-        // 角色映射
+        // 角色映射 - 基于精灵图实际位置
         const PLAYERS = {
             warrior: { row: 0, col: 5, name: '战士' },
             mage: { row: 2, col: 5, name: '法师' },
             assassin: { row: 3, col: 3, name: '刺客' },
             ranger: { row: 1, col: 7, name: '游侠' },
-            summoner: { row: 4, col: 2, name: '召唤师' }
+            summoner: { row: 4, col: 2, name: '召唤师' },
+            knight: { row: 0, col: 6, name: '骑士' },
+            paladin: { row: 1, col: 5, name: '圣骑士' },
+            necromancer: { row: 2, col: 3, name: '死灵法师' }
         };
 
-        // 敌人映射
+        // 敌人映射 - 扩充敌人种类
         const ENEMIES = {
+            // 普通敌人 (normal)
             skeleton: { row: 0, col: 0, name: '骷髅', type: 'normal' },
-            greenBlob: { row: 0, col: 2, name: '绿色生物', type: 'normal' },
-            blueSlime: { row: 4, col: 0, name: '蓝史莱姆', type: 'normal' },
-            rat: { row: 5, col: 0, name: '老鼠', type: 'normal' },
-            snake: { row: 5, col: 1, name: '蛇', type: 'normal' },
-            redImp: { row: 2, col: 0, name: '红色小怪', type: 'fast' },
-            redDevil: { row: 3, col: 1, name: '红色小鬼', type: 'fast' },
-            blackCat: { row: 5, col: 2, name: '黑猫', type: 'fast' },
-            stoneGolem: { row: 2, col: 7, name: '石头怪', type: 'tank' },
-            orc: { row: 1, col: 3, name: '绿皮兽人', type: 'tank' },
-            greenOrc: { row: 0, col: 4, name: '绿色兽人', type: 'tank' },
-            demon: { row: 0, col: 3, name: '红色恶魔', type: 'elite' },
-            hornedDemon: { row: 2, col: 4, name: '红角恶魔', type: 'elite' },
-            fireMan: { row: 1, col: 4, name: '橙色火人', type: 'elite' },
-            smallDragon: { row: 3, col: 7, name: '小龙', type: 'elite' }
+            greenBlob: { row: 0, col: 2, name: '绿色史莱姆', type: 'normal' },
+            blueSlime: { row: 4, col: 0, name: '蓝色史莱姆', type: 'normal' },
+            rat: { row: 4, col: 4, name: '老鼠', type: 'normal' },
+            snake: { row: 4, col: 5, name: '毒蛇', type: 'normal' },
+            bat: { row: 0, col: 1, name: '蝙蝠', type: 'normal' },
+            spider: { row: 4, col: 6, name: '蜘蛛', type: 'normal' },
+            zombie: { row: 1, col: 0, name: '僵尸', type: 'normal' },
+
+            // 快速敌人 (fast)
+            redImp: { row: 2, col: 0, name: '红色小鬼', type: 'fast' },
+            redDevil: { row: 3, col: 1, name: '红色恶魔', type: 'fast' },
+            blackCat: { row: 4, col: 7, name: '黑猫', type: 'fast' },
+            wolf: { row: 4, col: 1, name: '灰狼', type: 'fast' },
+            ghost: { row: 1, col: 1, name: '幽灵', type: 'fast' },
+            shadowFiend: { row: 3, col: 0, name: '暗影魔', type: 'fast' },
+
+            // 坦克敌人 (tank)
+            stoneGolem: { row: 2, col: 7, name: '石头傀儡', type: 'tank' },
+            orc: { row: 1, col: 3, name: '兽人战士', type: 'tank' },
+            greenOrc: { row: 0, col: 4, name: '绿皮兽人', type: 'tank' },
+            troll: { row: 1, col: 2, name: '巨魔', type: 'tank' },
+            ogre: { row: 2, col: 2, name: '食人魔', type: 'tank' },
+            ironGolem: { row: 3, col: 2, name: '铁傀儡', type: 'tank' },
+
+            // 精英敌人 (elite)
+            demon: { row: 0, col: 3, name: '恶魔', type: 'elite' },
+            hornedDemon: { row: 2, col: 4, name: '角魔', type: 'elite' },
+            fireMan: { row: 1, col: 4, name: '火焰元素', type: 'elite' },
+            smallDragon: { row: 3, col: 7, name: '幼龙', type: 'elite' },
+            darkKnight: { row: 0, col: 7, name: '黑暗骑士', type: 'elite' },
+            lich: { row: 2, col: 1, name: '巫妖', type: 'elite' },
+            vampire: { row: 4, col: 3, name: '吸血鬼', type: 'elite' },
+            warlock: { row: 3, col: 4, name: '术士', type: 'elite' }
         };
 
         // Boss映射
@@ -180,39 +203,93 @@
             dragonHead: { row: 1, col: 4, name: '龙首' }
         };
 
-        // 武器映射
+        // 武器映射 - 扩充武器种类
         const WEAPONS = {
+            // 近战武器
             dagger: { row: 0, col: 0, name: '匕首' },
             sword: { row: 0, col: 1, name: '长剑' },
             holyBlade: { row: 0, col: 2, name: '圣剑' },
-            staff: { row: 0, col: 4, name: '法杖' },
             axe: { row: 0, col: 5, name: '战斧' },
+            shadowBlade: { row: 1, col: 1, name: '暗影刃' },
+            bloodAxe: { row: 1, col: 5, name: '嗜血斧' },
+            hammer: { row: 0, col: 6, name: '战锤' },
+            spear: { row: 0, col: 7, name: '长矛' },
+            scythe: { row: 1, col: 6, name: '死神镰刀' },
+            katana: { row: 1, col: 0, name: '武士刀' },
+
+            // 法杖
+            staff: { row: 0, col: 4, name: '法杖' },
+            arcaneStaff: { row: 1, col: 4, name: '奥术法杖' },
+            fireball: { row: 2, col: 3, name: '火球杖' },
+            inferno: { row: 2, col: 4, name: '炼狱杖' },
+            iceStaff: { row: 2, col: 5, name: '冰霜法杖' },
+            lightningStaff: { row: 2, col: 6, name: '雷电法杖' },
+            necroStaff: { row: 1, col: 3, name: '死灵法杖' },
+
+            // 远程武器
             bow: { row: 1, col: 8, name: '弓' },
             phoenixBow: { row: 0, col: 8, name: '凤凰弓' },
-            shadowBlade: { row: 1, col: 1, name: '暗影刃' },
-            arcaneStaff: { row: 1, col: 4, name: '奥术法杖' },
-            bloodAxe: { row: 1, col: 5, name: '嗜血斧' },
-            fireball: { row: 2, col: 3, name: '火球杖' },
-            inferno: { row: 2, col: 4, name: '炼狱杖' }
+            crossbow: { row: 1, col: 9, name: '弩' },
+            longbow: { row: 0, col: 9, name: '长弓' },
+
+            // 特殊武器
+            wand: { row: 0, col: 3, name: '魔杖' },
+            scepter: { row: 1, col: 2, name: '权杖' },
+            orb: { row: 2, col: 0, name: '魔法球' },
+            tome: { row: 2, col: 1, name: '魔法书' },
+            whip: { row: 1, col: 7, name: '鞭子' }
         };
 
-        // 道具映射
+        // 道具映射 - 扩充道具种类
         const ITEMS = {
+            // 药水
             healthPotion: { row: 4, col: 0, name: '生命药水' },
             manaPotion: { row: 4, col: 1, name: '魔法药水' },
+            speedPotion: { row: 4, col: 2, name: '速度药水' },
+            strengthPotion: { row: 4, col: 3, name: '力量药水' },
+            poisonPotion: { row: 4, col: 4, name: '毒药' },
+
+            // 宝石
             ruby: { row: 3, col: 6, name: '红宝石' },
             emerald: { row: 3, col: 7, name: '绿宝石' },
             sapphire: { row: 3, col: 8, name: '蓝宝石' },
             diamond: { row: 3, col: 9, name: '钻石' },
-            key: { row: 5, col: 0, name: '钥匙' },
+            amethyst: { row: 4, col: 5, name: '紫水晶' },
+            topaz: { row: 3, col: 5, name: '黄玉' },
+
+            // 货币
             coin: { row: 5, col: 9, name: '金币' },
             coinBag: { row: 4, col: 9, name: '钱袋' },
+            goldBar: { row: 5, col: 8, name: '金条' },
+
+            // 钥匙和卷轴
+            key: { row: 5, col: 0, name: '钥匙' },
+            goldenKey: { row: 5, col: 1, name: '金钥匙' },
             scroll: { row: 2, col: 9, name: '卷轴' },
-            bomb: { row: 0, col: 6, name: '炸弹' },
+            magicScroll: { row: 3, col: 0, name: '魔法卷轴' },
+
+            // 装备
             shield: { row: 2, col: 7, name: '盾牌' },
             helmet: { row: 2, col: 8, name: '头盔' },
             ring: { row: 4, col: 6, name: '戒指' },
-            necklace: { row: 4, col: 7, name: '项链' }
+            necklace: { row: 4, col: 7, name: '项链' },
+            amulet: { row: 4, col: 8, name: '护身符' },
+            gloves: { row: 3, col: 1, name: '手套' },
+            boots: { row: 3, col: 2, name: '靴子' },
+            armor: { row: 3, col: 3, name: '铠甲' },
+            cape: { row: 3, col: 4, name: '披风' },
+
+            // 其他道具
+            bomb: { row: 0, col: 6, name: '炸弹' },
+            torch: { row: 5, col: 2, name: '火把' },
+            map: { row: 5, col: 3, name: '地图' },
+            compass: { row: 5, col: 4, name: '指南针' },
+            hourglass: { row: 5, col: 5, name: '沙漏' },
+            crystal: { row: 5, col: 6, name: '水晶' },
+            skull: { row: 5, col: 7, name: '骷髅头' },
+            heart: { row: 0, col: 7, name: '心脏' },
+            feather: { row: 0, col: 8, name: '羽毛' },
+            bone: { row: 0, col: 9, name: '骨头' }
         };
 
         // 加载图片

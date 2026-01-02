@@ -9,39 +9,55 @@ const ASSET_PATHS = {
     items: 'assets/items/'
 };
 
-// 玩家角色配置
+// 玩家角色配置 - 扩充到8个职业
 const PLAYER_ASSETS = {
     warrior: { file: 'warrior.png', name: '战士' },
     mage: { file: 'mage.png', name: '法师' },
     assassin: { file: 'assassin.png', name: '刺客' },
     ranger: { file: 'ranger.png', name: '游侠' },
-    summoner: { file: 'summoner.png', name: '召唤师' }
+    summoner: { file: 'summoner.png', name: '召唤师' },
+    knight: { file: 'knight.png', name: '骑士' },
+    paladin: { file: 'paladin.png', name: '圣骑士' },
+    necromancer: { file: 'necromancer.png', name: '死灵法师' }
 };
 
-// 敌人配置
+// 敌人配置 - 扩充到28种敌人
 const ENEMY_ASSETS = {
     normal: [
         { id: 'skeleton', file: 'skeleton.png', name: '骷髅' },
-        { id: 'greenBlob', file: 'greenBlob.png', name: '绿色生物' },
-        { id: 'blueSlime', file: 'blueSlime.png', name: '蓝史莱姆' },
+        { id: 'greenBlob', file: 'greenBlob.png', name: '绿色史莱姆' },
+        { id: 'blueSlime', file: 'blueSlime.png', name: '蓝色史莱姆' },
         { id: 'rat', file: 'rat.png', name: '老鼠' },
-        { id: 'snake', file: 'snake.png', name: '蛇' }
+        { id: 'snake', file: 'snake.png', name: '毒蛇' },
+        { id: 'bat', file: 'bat.png', name: '蝙蝠' },
+        { id: 'spider', file: 'spider.png', name: '蜘蛛' },
+        { id: 'zombie', file: 'zombie.png', name: '僵尸' }
     ],
     fast: [
-        { id: 'redImp', file: 'redImp.png', name: '红色小怪' },
-        { id: 'redDevil', file: 'redDevil.png', name: '红色小鬼' },
-        { id: 'blackCat', file: 'blackCat.png', name: '黑猫' }
+        { id: 'redImp', file: 'redImp.png', name: '红色小鬼' },
+        { id: 'redDevil', file: 'redDevil.png', name: '红色恶魔' },
+        { id: 'blackCat', file: 'blackCat.png', name: '黑猫' },
+        { id: 'wolf', file: 'wolf.png', name: '灰狼' },
+        { id: 'ghost', file: 'ghost.png', name: '幽灵' },
+        { id: 'shadowFiend', file: 'shadowFiend.png', name: '暗影魔' }
     ],
     tank: [
-        { id: 'stoneGolem', file: 'stoneGolem.png', name: '石头怪' },
-        { id: 'orc', file: 'orc.png', name: '绿皮兽人' },
-        { id: 'greenOrc', file: 'greenOrc.png', name: '绿色兽人' }
+        { id: 'stoneGolem', file: 'stoneGolem.png', name: '石头傀儡' },
+        { id: 'orc', file: 'orc.png', name: '兽人战士' },
+        { id: 'greenOrc', file: 'greenOrc.png', name: '绿皮兽人' },
+        { id: 'troll', file: 'troll.png', name: '巨魔' },
+        { id: 'ogre', file: 'ogre.png', name: '食人魔' },
+        { id: 'ironGolem', file: 'ironGolem.png', name: '铁傀儡' }
     ],
     elite: [
-        { id: 'demon', file: 'demon.png', name: '红色恶魔' },
-        { id: 'hornedDemon', file: 'hornedDemon.png', name: '红角恶魔' },
-        { id: 'fireMan', file: 'fireMan.png', name: '橙色火人' },
-        { id: 'smallDragon', file: 'smallDragon.png', name: '小龙' }
+        { id: 'demon', file: 'demon.png', name: '恶魔' },
+        { id: 'hornedDemon', file: 'hornedDemon.png', name: '角魔' },
+        { id: 'fireMan', file: 'fireMan.png', name: '火焰元素' },
+        { id: 'smallDragon', file: 'smallDragon.png', name: '幼龙' },
+        { id: 'darkKnight', file: 'darkKnight.png', name: '黑暗骑士' },
+        { id: 'lich', file: 'lich.png', name: '巫妖' },
+        { id: 'vampire', file: 'vampire.png', name: '吸血鬼' },
+        { id: 'warlock', file: 'warlock.png', name: '术士' }
     ]
 };
 
@@ -62,39 +78,93 @@ const BOSS_ASSETS = {
 // Boss出场顺序
 const BOSS_ORDER = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'spider', 'snakeBoss', 'oneEyeDemon', 'dragonHead', 'dragon'];
 
-// 武器配置
+// 武器配置 - 扩充到27种武器
 const WEAPON_ASSETS = {
+    // 近战武器
     dagger: { file: 'dagger.png', name: '匕首' },
     sword: { file: 'sword.png', name: '长剑' },
     holyBlade: { file: 'holyBlade.png', name: '圣剑' },
-    staff: { file: 'staff.png', name: '法杖' },
     axe: { file: 'axe.png', name: '战斧' },
+    shadowBlade: { file: 'shadowBlade.png', name: '暗影刃' },
+    bloodAxe: { file: 'bloodAxe.png', name: '嗜血斧' },
+    hammer: { file: 'hammer.png', name: '战锤' },
+    spear: { file: 'spear.png', name: '长矛' },
+    scythe: { file: 'scythe.png', name: '死神镰刀' },
+    katana: { file: 'katana.png', name: '武士刀' },
+
+    // 法杖
+    staff: { file: 'staff.png', name: '法杖' },
+    arcaneStaff: { file: 'arcaneStaff.png', name: '奥术法杖' },
+    fireball: { file: 'fireball.png', name: '火球杖' },
+    inferno: { file: 'inferno.png', name: '炼狱杖' },
+    iceStaff: { file: 'iceStaff.png', name: '冰霜法杖' },
+    lightningStaff: { file: 'lightningStaff.png', name: '雷电法杖' },
+    necroStaff: { file: 'necroStaff.png', name: '死灵法杖' },
+
+    // 远程武器
     bow: { file: 'bow.png', name: '弓' },
     phoenixBow: { file: 'phoenixBow.png', name: '凤凰弓' },
-    shadowBlade: { file: 'shadowBlade.png', name: '暗影刃' },
-    arcaneStaff: { file: 'arcaneStaff.png', name: '奥术法杖' },
-    bloodAxe: { file: 'bloodAxe.png', name: '嗜血斧' },
-    fireball: { file: 'fireball.png', name: '火球杖' },
-    inferno: { file: 'inferno.png', name: '炼狱杖' }
+    crossbow: { file: 'crossbow.png', name: '弩' },
+    longbow: { file: 'longbow.png', name: '长弓' },
+
+    // 特殊武器
+    wand: { file: 'wand.png', name: '魔杖' },
+    scepter: { file: 'scepter.png', name: '权杖' },
+    orb: { file: 'orb.png', name: '魔法球' },
+    tome: { file: 'tome.png', name: '魔法书' },
+    whip: { file: 'whip.png', name: '鞭子' }
 };
 
-// 道具配置
+// 道具配置 - 扩充到40种道具
 const ITEM_ASSETS = {
+    // 药水
     healthPotion: { file: 'healthPotion.png', name: '生命药水' },
     manaPotion: { file: 'manaPotion.png', name: '魔法药水' },
+    speedPotion: { file: 'speedPotion.png', name: '速度药水' },
+    strengthPotion: { file: 'strengthPotion.png', name: '力量药水' },
+    poisonPotion: { file: 'poisonPotion.png', name: '毒药' },
+
+    // 宝石
     ruby: { file: 'ruby.png', name: '红宝石' },
     emerald: { file: 'emerald.png', name: '绿宝石' },
     sapphire: { file: 'sapphire.png', name: '蓝宝石' },
     diamond: { file: 'diamond.png', name: '钻石' },
-    key: { file: 'key.png', name: '钥匙' },
+    amethyst: { file: 'amethyst.png', name: '紫水晶' },
+    topaz: { file: 'topaz.png', name: '黄玉' },
+
+    // 货币
     coin: { file: 'coin.png', name: '金币' },
     coinBag: { file: 'coinBag.png', name: '钱袋' },
+    goldBar: { file: 'goldBar.png', name: '金条' },
+
+    // 钥匙和卷轴
+    key: { file: 'key.png', name: '钥匙' },
+    goldenKey: { file: 'goldenKey.png', name: '金钥匙' },
     scroll: { file: 'scroll.png', name: '卷轴' },
-    bomb: { file: 'bomb.png', name: '炸弹' },
+    magicScroll: { file: 'magicScroll.png', name: '魔法卷轴' },
+
+    // 装备
     shield: { file: 'shield.png', name: '盾牌' },
     helmet: { file: 'helmet.png', name: '头盔' },
     ring: { file: 'ring.png', name: '戒指' },
-    necklace: { file: 'necklace.png', name: '项链' }
+    necklace: { file: 'necklace.png', name: '项链' },
+    amulet: { file: 'amulet.png', name: '护身符' },
+    gloves: { file: 'gloves.png', name: '手套' },
+    boots: { file: 'boots.png', name: '靴子' },
+    armor: { file: 'armor.png', name: '铠甲' },
+    cape: { file: 'cape.png', name: '披风' },
+
+    // 其他道具
+    bomb: { file: 'bomb.png', name: '炸弹' },
+    torch: { file: 'torch.png', name: '火把' },
+    map: { file: 'map.png', name: '地图' },
+    compass: { file: 'compass.png', name: '指南针' },
+    hourglass: { file: 'hourglass.png', name: '沙漏' },
+    crystal: { file: 'crystal.png', name: '水晶' },
+    skull: { file: 'skull.png', name: '骷髅头' },
+    heart: { file: 'heart.png', name: '心脏' },
+    feather: { file: 'feather.png', name: '羽毛' },
+    bone: { file: 'bone.png', name: '骨头' }
 };
 
 // 已加载的图片缓存
