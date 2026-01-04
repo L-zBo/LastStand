@@ -1,49 +1,67 @@
 // ==================== 游戏数据配置 ====================
 
-// 职业配置
+// 职业配置 - 参考土豆兄弟风格，每个职业有独特优劣势
 const CLASSES = {
     warrior: {
         name: '战士',
+        description: '近战之王，高生命高防御',
         health: 150,
         attack: 15,
         speed: 3,
         color: '#ff6b6b',
         sprite: '🛡️',
         attackType: 'melee',
-        attackRange: 50
+        attackRange: 50,
+        // 被动效果
+        passiveDesc: '受到伤害减少10%，近战攻击有击退效果',
+        damageReduction: 0.1,
+        knockbackPower: 0.3
     },
     mage: {
         name: '法师',
+        description: '远程魔法输出，高伤害低生命',
         health: 80,
         attack: 25,
         speed: 3.5,
         color: '#4ecdc4',
         sprite: '🧙',
         attackType: 'magic',
-        attackRange: 150
+        attackRange: 150,
+        passiveDesc: '魔法攻击穿透敌人，攻击范围+30%',
+        magicPenetration: true,
+        rangeBonus: 0.3
     },
     assassin: {
         name: '刺客',
+        description: '极速暗杀，高暴击高闪避',
         health: 100,
         attack: 20,
         speed: 5,
         color: '#95e1d3',
         sprite: '🥷',
         attackType: 'melee',
-        attackRange: 45
+        attackRange: 45,
+        passiveDesc: '移动速度+30%，首次攻击必定暴击',
+        critChance: 0.25,
+        firstStrikeCrit: true
     },
     ranger: {
         name: '游侠',
+        description: '远程射手，多重箭矢',
         health: 110,
         attack: 18,
         speed: 4,
         color: '#f38181',
         sprite: '🏹',
         attackType: 'ranged',
-        attackRange: 200
+        attackRange: 200,
+        passiveDesc: '攻击发射多支箭矢，攻击速度+20%',
+        arrowCount: 2,
+        attackSpeedBonus: 0.2
     },
     summoner: {
         name: '召唤师',
+        description: '召唤幽灵作战，团队作战',
         health: 90,
         attack: 12,
         speed: 3.2,
@@ -51,10 +69,13 @@ const CLASSES = {
         sprite: '🔮',
         attackType: 'summon',
         attackRange: 180,
-        maxSummons: 3
+        maxSummons: 3,
+        passiveDesc: '可召唤3个幽灵助战，召唤物击杀恢复生命',
+        soulLink: 5
     },
     knight: {
         name: '骑士',
+        description: '重甲坦克，反伤护盾',
         health: 180,
         attack: 18,
         speed: 2.8,
@@ -62,21 +83,28 @@ const CLASSES = {
         sprite: '⚔️',
         attackType: 'melee',
         attackRange: 55,
-        armor: 10
+        armor: 15,
+        passiveDesc: '受到伤害减少15%，受击时反弹20%伤害',
+        damageReduction: 0.15,
+        counterAttack: 0.2
     },
     paladin: {
         name: '圣骑士',
+        description: '圣光战士，治愈与惩戒',
         health: 140,
         attack: 16,
         speed: 3.0,
         color: '#ffd700',
         sprite: '✝️',
         attackType: 'holy',
-        attackRange: 60,
-        healPower: 5
+        attackRange: 80,
+        healPower: 3,
+        passiveDesc: '攻击时恢复生命，对亡灵敌人伤害+50%',
+        smite: true
     },
     necromancer: {
         name: '死灵法师',
+        description: '黑暗召唤，生命汲取',
         health: 75,
         attack: 22,
         speed: 3.3,
@@ -84,7 +112,9 @@ const CLASSES = {
         sprite: '💀',
         attackType: 'dark',
         attackRange: 160,
-        maxSummons: 5
+        maxSummons: 5,
+        passiveDesc: '召唤亡灵骷髅，攻击吸取5%生命',
+        lifeSteal: 0.05
     }
 };
 
@@ -211,6 +241,24 @@ const BUFFS = [
         icon: '💖',
         type: '通用',
         apply: (player) => player.healthRegen = (player.healthRegen || 0) + 2
+    },
+    {
+        id: 'pickupRange',
+        name: '拾取范围扩大',
+        description: '拾取范围 +50%',
+        detail: '扩大金币和道具的拾取范围，更容易收集掉落物',
+        icon: '🧲',
+        type: '通用',
+        apply: (player) => player.pickupRangeBonus = (player.pickupRangeBonus || 1) * 1.5
+    },
+    {
+        id: 'magnetRange',
+        name: '磁铁吸引',
+        description: '吸引范围 +80%',
+        detail: '大幅扩大掉落物的自动吸引范围',
+        icon: '🪄',
+        type: '通用',
+        apply: (player) => player.magnetRangeBonus = (player.magnetRangeBonus || 1) * 1.8
     }
 ];
 
@@ -493,6 +541,232 @@ const CLASS_BUFFS = {
         }
     ]
 };
+
+// 金币掉落数量配置 - 每个金币=1金
+const GOLD_COUNT = {
+    normal: { min: 1, max: 2 },   // 普通怪物掉落1-2个金币
+    fast: { min: 1, max: 2 },
+    tank: { min: 2, max: 3 },
+    elite: { min: 2, max: 4 },    // 精英掉落2-4个金币
+    boss: { min: 5, max: 8 }      // Boss掉落5-8个金币
+};
+
+// 掉落物配置
+const DROP_CONFIG = {
+    pickupRange: 80,           // 拾取范围（增大）
+    magnetRange: 150,          // 磁铁吸引范围
+    magnetSpeed: 5,            // 磁铁吸引速度
+    goldDropChance: 0.85,      // 金币掉落概率 85%
+    buffDropChance: 0.08,      // Buff掉落概率 8%
+    itemDropChance: 0.05,      // 道具掉落概率 5%
+    multiDropChance: 0.15,     // 多重掉落概率 15%
+    despawnTime: 30000         // 掉落物消失时间 30秒
+};
+
+// 可掉落的Buff列表
+const DROPPABLE_BUFFS = [
+    {
+        id: 'dropAttack',
+        name: '力量水晶',
+        description: '攻击力+3',
+        icon: '💎',
+        sprite: 'ruby',
+        effect: (player) => { player.attack += 3; }
+    },
+    {
+        id: 'dropSpeed',
+        name: '疾风羽毛',
+        description: '移动速度+0.3',
+        icon: '🪶',
+        sprite: 'feather',
+        effect: (player) => { player.speed += 0.3; }
+    },
+    {
+        id: 'dropHealth',
+        name: '生命宝石',
+        description: '最大生命+15',
+        icon: '💚',
+        sprite: 'emerald',
+        effect: (player) => { player.maxHealth += 15; player.health += 15; }
+    },
+    {
+        id: 'dropCrit',
+        name: '暴击水晶',
+        description: '暴击率+3%',
+        icon: '💥',
+        sprite: 'amethyst',
+        effect: (player) => { player.critChance = (player.critChance || 0) + 0.03; }
+    },
+    {
+        id: 'dropExp',
+        name: '智慧宝石',
+        description: '经验获取+10%',
+        icon: '⭐',
+        sprite: 'sapphire',
+        effect: (player) => { player.expMultiplier = (player.expMultiplier || 1) * 1.1; }
+    },
+    {
+        id: 'dropGold',
+        name: '财富符文',
+        description: '金币获取+10%',
+        icon: '💰',
+        sprite: 'topaz',
+        effect: (player) => { player.goldMultiplier = (player.goldMultiplier || 1) * 1.1; }
+    }
+];
+
+// 可掉落的消耗品
+const DROPPABLE_ITEMS = [
+    {
+        id: 'dropHealSmall',
+        name: '小治疗药水',
+        description: '恢复25点生命',
+        icon: '🧪',
+        sprite: 'healthPotion',
+        effect: (player) => { player.health = Math.min(player.health + 25, player.maxHealth); }
+    },
+    {
+        id: 'dropHealMedium',
+        name: '中治疗药水',
+        description: '恢复50点生命',
+        icon: '🧴',
+        sprite: 'manaPotion',
+        effect: (player) => { player.health = Math.min(player.health + 50, player.maxHealth); }
+    },
+    {
+        id: 'dropSpeedBoost',
+        name: '速度药水',
+        description: '临时加速',
+        icon: '💨',
+        sprite: 'speedPotion',
+        effect: (player) => { player.speed += 0.5; setTimeout(() => player.speed -= 0.5, 10000); }
+    }
+];
+
+// 商店物品配置
+const SHOP_ITEMS = [
+    {
+        id: 'healSmall',
+        name: '小型治疗药水',
+        description: '恢复30点生命',
+        icon: '🧪',
+        price: 20,
+        effect: (player) => {
+            player.health = Math.min(player.health + 30, player.maxHealth);
+        }
+    },
+    {
+        id: 'healLarge',
+        name: '大型治疗药水',
+        description: '恢复70点生命',
+        icon: '🧴',
+        price: 45,
+        effect: (player) => {
+            player.health = Math.min(player.health + 70, player.maxHealth);
+        }
+    },
+    {
+        id: 'healFull',
+        name: '完全恢复药水',
+        description: '完全恢复生命',
+        icon: '💊',
+        price: 80,
+        effect: (player) => {
+            player.health = player.maxHealth;
+        }
+    },
+    {
+        id: 'attackBoost',
+        name: '力量药剂',
+        description: '攻击力+3（永久）',
+        icon: '⚔️',
+        price: 60,
+        effect: (player) => {
+            player.attack += 3;
+        }
+    },
+    {
+        id: 'speedBoost',
+        name: '敏捷药剂',
+        description: '移动速度+0.3（永久）',
+        icon: '💨',
+        price: 50,
+        effect: (player) => {
+            player.speed += 0.3;
+        }
+    },
+    {
+        id: 'healthBoost',
+        name: '生命药剂',
+        description: '最大生命+20（永久）',
+        icon: '❤️',
+        price: 55,
+        effect: (player) => {
+            player.maxHealth += 20;
+            player.health += 20;
+        }
+    },
+    {
+        id: 'critBoost',
+        name: '致命药剂',
+        description: '暴击率+5%（永久）',
+        icon: '💥',
+        price: 70,
+        effect: (player) => {
+            player.critChance = (player.critChance || 0) + 0.05;
+        }
+    },
+    {
+        id: 'vampireBoost',
+        name: '吸血药剂',
+        description: '击杀回血+2（永久）',
+        icon: '🩸',
+        price: 65,
+        effect: (player) => {
+            player.vampireHeal = (player.vampireHeal || 0) + 2;
+        }
+    },
+    {
+        id: 'rangeBoost',
+        name: '鹰眼药剂',
+        description: '攻击范围+15%（永久）',
+        icon: '🎯',
+        price: 55,
+        effect: (player) => {
+            player.attackRange = Math.floor(player.attackRange * 1.15);
+        }
+    },
+    {
+        id: 'attackSpeedBoost',
+        name: '疾风药剂',
+        description: '攻击速度+10%（永久）',
+        icon: '⚡',
+        price: 60,
+        effect: (player) => {
+            player.attackCooldown = Math.max(100, Math.floor(player.attackCooldown * 0.9));
+        }
+    },
+    {
+        id: 'regenBoost',
+        name: '再生药剂',
+        description: '生命恢复+1/秒（永久）',
+        icon: '💖',
+        price: 75,
+        effect: (player) => {
+            player.healthRegen = (player.healthRegen || 0) + 1;
+        }
+    },
+    {
+        id: 'goldBoost',
+        name: '财富护符',
+        description: '金币获取+20%（永久）',
+        icon: '💰',
+        price: 100,
+        effect: (player) => {
+            player.goldMultiplier = (player.goldMultiplier || 1) * 1.2;
+        }
+    }
+];
 
 // 武器配置
 const WEAPONS = {

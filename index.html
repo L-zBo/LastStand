@@ -43,7 +43,7 @@
             <h2>选择难度</h2>
             <div class="difficulty-cards">
                 <div class="difficulty-card" data-difficulty="easy">
-                    <div class="difficulty-icon easy">🌱</div>
+                    <div class="difficulty-icon easy"></div>
                     <h3>简单</h3>
                     <p>敌人较弱，适合新手</p>
                     <ul class="difficulty-modifiers">
@@ -53,7 +53,7 @@
                     </ul>
                 </div>
                 <div class="difficulty-card selected" data-difficulty="normal">
-                    <div class="difficulty-icon normal">⚔️</div>
+                    <div class="difficulty-icon normal"></div>
                     <h3>普通</h3>
                     <p>标准难度体验</p>
                     <ul class="difficulty-modifiers">
@@ -63,7 +63,7 @@
                     </ul>
                 </div>
                 <div class="difficulty-card" data-difficulty="hard">
-                    <div class="difficulty-icon hard">🔥</div>
+                    <div class="difficulty-icon hard"></div>
                     <h3>困难</h3>
                     <p>更强的敌人挑战</p>
                     <ul class="difficulty-modifiers">
@@ -73,7 +73,7 @@
                     </ul>
                 </div>
                 <div class="difficulty-card" data-difficulty="nightmare">
-                    <div class="difficulty-icon nightmare">💀</div>
+                    <div class="difficulty-icon nightmare"></div>
                     <h3>噩梦</h3>
                     <p>极限生存挑战</p>
                     <ul class="difficulty-modifiers">
@@ -127,43 +127,51 @@
             <div class="class-cards">
                 <div class="class-card" data-class="warrior">
                     <h3>🛡️ 战士</h3>
-                    <p>高生命值和防御力</p>
-                    <p>生命: 150 | 攻击: 15 | 速度: 3</p>
+                    <p class="class-desc">近战之王，高生命高防御</p>
+                    <p class="class-stats">❤️150 ⚔️15 💨3</p>
+                    <p class="class-passive">被动：减伤10%，攻击击退敌人</p>
                 </div>
                 <div class="class-card" data-class="mage">
                     <h3>🧙 法师</h3>
-                    <p>强大的魔法攻击</p>
-                    <p>生命: 80 | 攻击: 25 | 速度: 3.5</p>
+                    <p class="class-desc">远程魔法输出，高伤害低生命</p>
+                    <p class="class-stats">❤️80 ⚔️25 💨3.5</p>
+                    <p class="class-passive">被动：魔法穿透，攻击范围+30%</p>
                 </div>
                 <div class="class-card" data-class="assassin">
                     <h3>🥷 刺客</h3>
-                    <p>高速度和暴击率</p>
-                    <p>生命: 100 | 攻击: 20 | 速度: 5</p>
+                    <p class="class-desc">极速暗杀，高暴击高闪避</p>
+                    <p class="class-stats">❤️100 ⚔️20 💨5</p>
+                    <p class="class-passive">被动：25%暴击率，首击必暴</p>
                 </div>
                 <div class="class-card" data-class="ranger">
                     <h3>🏹 游侠</h3>
-                    <p>远程攻击和灵活移动</p>
-                    <p>生命: 110 | 攻击: 18 | 速度: 4</p>
+                    <p class="class-desc">远程射手，多重箭矢</p>
+                    <p class="class-stats">❤️110 ⚔️18 💨4</p>
+                    <p class="class-passive">被动：发射2支箭，攻速+20%</p>
                 </div>
                 <div class="class-card" data-class="summoner">
                     <h3>🔮 召唤师</h3>
-                    <p>召唤随从帮助战斗</p>
-                    <p>生命: 90 | 攻击: 12 | 速度: 3.2</p>
+                    <p class="class-desc">召唤幽灵作战，团队作战</p>
+                    <p class="class-stats">❤️90 ⚔️12 💨3.2</p>
+                    <p class="class-passive">被动：召唤3幽灵，击杀回血</p>
                 </div>
                 <div class="class-card" data-class="knight">
                     <h3>⚔️ 骑士</h3>
-                    <p>重甲防御和反击能力</p>
-                    <p>生命: 180 | 攻击: 18 | 速度: 2.8</p>
+                    <p class="class-desc">重甲坦克，反伤护盾</p>
+                    <p class="class-stats">❤️180 ⚔️18 💨2.8</p>
+                    <p class="class-passive">被动：减伤15%，反弹20%伤害</p>
                 </div>
                 <div class="class-card" data-class="paladin">
                     <h3>✝️ 圣骑士</h3>
-                    <p>圣光治愈和神圣护盾</p>
-                    <p>生命: 140 | 攻击: 16 | 速度: 3</p>
+                    <p class="class-desc">圣光战士，治愈与惩戒</p>
+                    <p class="class-stats">❤️140 ⚔️16 💨3</p>
+                    <p class="class-passive">被动：攻击回血，亡灵伤害+50%</p>
                 </div>
                 <div class="class-card" data-class="necromancer">
                     <h3>💀 死灵法师</h3>
-                    <p>召唤亡灵和生命汲取</p>
-                    <p>生命: 75 | 攻击: 22 | 速度: 3.3</p>
+                    <p class="class-desc">黑暗召唤，生命汲取</p>
+                    <p class="class-stats">❤️75 ⚔️22 💨3.3</p>
+                    <p class="class-passive">被动：召唤5骷髅，吸取5%生命</p>
                 </div>
             </div>
         </div>
@@ -292,6 +300,10 @@
             <div class="side-panel">
                 <div class="panel-section game-info">
                     <div class="info-row">
+                        <span class="info-label">🪙 金币</span>
+                        <span class="info-value" id="goldCount">0</span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">🌊 波次</span>
                         <span class="info-value" id="waveCount">1</span>
                     </div>
@@ -410,6 +422,7 @@
             <p>击杀数: <span id="finalKills">0</span></p>
             <p>最终等级: <span id="finalLevel">1</span></p>
             <p>最高波次: <span id="finalWave">1</span></p>
+            <p>获得金币: <span id="finalGold">0</span></p>
         </div>
         <button id="restartBtn">重新开始</button>
         <button id="returnMenuBtn">返回主菜单</button>

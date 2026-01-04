@@ -9,14 +9,28 @@ const CONFIG = {
         height: 6000  // 大地图高度
     },
     player: {
-        size: 25
+        size: 18  // 缩小角色大小
     },
     enemy: {
-        size: 18
+        size: 14  // 缩小敌人大小
     },
     obstacles: {
         rockCount: 80,
-        bushCount: 100
+        bushCount: 100,
+        treeCount: 40,
+        // 障碍物大小范围（随机生成）
+        rock: {
+            minSize: 15,
+            maxSize: 45
+        },
+        bush: {
+            minSize: 20,
+            maxSize: 50
+        },
+        tree: {
+            minSize: 40,
+            maxSize: 80
+        }
     },
     wave: {
         baseEnemyCount: 5,      // 每波基础敌人数
@@ -62,6 +76,7 @@ const CONFIG = {
             tileImage: 'assets/tiles/forest_tile.png',
             bushCount: 120,
             rockCount: 60,
+            treeCount: 60,
             specialEffect: null
         },
         desert: {
@@ -72,6 +87,7 @@ const CONFIG = {
             tileImage: 'assets/tiles/desert_tile.png',
             bushCount: 30,
             rockCount: 100,
+            treeCount: 10,
             specialEffect: null
         },
         dungeon: {
@@ -82,6 +98,7 @@ const CONFIG = {
             tileImage: 'assets/tiles/dungeon_tile.png',
             bushCount: 20,
             rockCount: 150,
+            treeCount: 5,
             specialEffect: 'darkness'
         },
         snow: {
@@ -92,6 +109,7 @@ const CONFIG = {
             tileImage: 'assets/tiles/snow_tile.png',
             bushCount: 50,
             rockCount: 80,
+            treeCount: 35,
             specialEffect: 'slow'
         },
         lava: {
@@ -102,6 +120,7 @@ const CONFIG = {
             tileImage: 'assets/tiles/lava_tile.png',
             bushCount: 10,
             rockCount: 120,
+            treeCount: 0,
             specialEffect: 'damage'
         },
         ocean: {
@@ -112,6 +131,7 @@ const CONFIG = {
             tileImage: 'assets/tiles/ocean_tile.png',
             bushCount: 60,
             rockCount: 90,
+            treeCount: 20,
             specialEffect: null
         }
     }
@@ -119,6 +139,13 @@ const CONFIG = {
 
 // 预加载地图瓦片图片
 const mapTileImages = {};
+
+// 环境素材图片
+const environmentImages = {
+    trees: [],
+    bushes: [],
+    rocks: []
+};
 
 function preloadMapTiles(callback) {
     const maps = Object.keys(CONFIG.maps);
@@ -141,5 +168,87 @@ function preloadMapTiles(callback) {
             }
         };
         img.src = CONFIG.maps[mapKey].tileImage;
+    });
+}
+
+// 预加载环境素材（树木、草丛和石头）
+// 使用从extracted文件夹提取的新素材
+function preloadEnvironmentAssets(callback) {
+    // 新提取的40种树木素材
+    const treeFiles = [];
+    for (let i = 0; i < 40; i++) {
+        treeFiles.push(`assets/environment/trees/green_tree_${i.toString().padStart(2, '0')}.png`);
+    }
+
+    // 新提取的5种灌木/草素材
+    const bushFiles = [];
+    for (let i = 0; i < 5; i++) {
+        bushFiles.push(`assets/environment/bushes/green_bushe_${i.toString().padStart(2, '0')}.png`);
+    }
+
+    // 保留原有石头素材
+    const rockFiles = [
+        'assets/environment/rock_0.png',
+        'assets/environment/rock_1.png',
+        'assets/environment/rock_2.png'
+    ];
+
+    let loaded = 0;
+    const total = treeFiles.length + bushFiles.length + rockFiles.length;
+
+    // 初始化数组
+    environmentImages.trees = [];
+    environmentImages.bushes = [];
+    environmentImages.rocks = [];
+
+    // 加载树木图片
+    treeFiles.forEach((file, index) => {
+        const img = new Image();
+        img.onload = () => {
+            environmentImages.trees[index] = img;
+            loaded++;
+            console.log(`[环境素材] 加载树木 ${index}: ${img.width}x${img.height}`);
+            if (loaded === total && callback) callback();
+        };
+        img.onerror = () => {
+            console.warn(`Failed to load tree asset: ${file}`);
+            loaded++;
+            if (loaded === total && callback) callback();
+        };
+        img.src = file;
+    });
+
+    // 加载草丛图片
+    bushFiles.forEach((file, index) => {
+        const img = new Image();
+        img.onload = () => {
+            environmentImages.bushes[index] = img;
+            loaded++;
+            console.log(`[环境素材] 加载草丛 ${index}: ${img.width}x${img.height}`);
+            if (loaded === total && callback) callback();
+        };
+        img.onerror = () => {
+            console.warn(`Failed to load bush asset: ${file}`);
+            loaded++;
+            if (loaded === total && callback) callback();
+        };
+        img.src = file;
+    });
+
+    // 加载石头图片
+    rockFiles.forEach((file, index) => {
+        const img = new Image();
+        img.onload = () => {
+            environmentImages.rocks[index] = img;
+            loaded++;
+            console.log(`[环境素材] 加载石头 ${index}: ${img.width}x${img.height}`);
+            if (loaded === total && callback) callback();
+        };
+        img.onerror = () => {
+            console.warn(`Failed to load rock asset: ${file}`);
+            loaded++;
+            if (loaded === total && callback) callback();
+        };
+        img.src = file;
     });
 }

@@ -20,6 +20,7 @@ let game = {
     weaponProjectiles: [],
     summons: [],
     obstacles: [],
+    droppedItems: [],  // 掉落物数组
     keys: {},
     lastTime: 0,
     gameTime: 0,
@@ -53,6 +54,19 @@ function generateObstacles() {
     const mapConfig = game.mapConfig || CONFIG.maps.forest;
     const rockCount = mapConfig.rockCount || CONFIG.obstacles.rockCount;
     const bushCount = mapConfig.bushCount || CONFIG.obstacles.bushCount;
+    const treeCount = mapConfig.treeCount || CONFIG.obstacles.treeCount || 30;
+
+    // 生成树木（先生成，作为主要装饰）
+    for (let i = 0; i < treeCount; i++) {
+        const x = Math.random() * (CONFIG.world.width - 200) + 100;
+        const y = Math.random() * (CONFIG.world.height - 200) + 100;
+
+        // 避免在玩家出生点附近生成
+        const distFromCenter = Math.hypot(x - CONFIG.world.width / 2, y - CONFIG.world.height / 2);
+        if (distFromCenter > 300) {
+            game.obstacles.push(new Obstacle(x, y, 'tree'));
+        }
+    }
 
     // 生成石头
     for (let i = 0; i < rockCount; i++) {
@@ -149,24 +163,64 @@ function updateWeaponProjectiles() {
             if (proj.checkHit(enemy)) {
                 const owner = proj.player;
                 let damage = proj.damage;
+
+                // 暴击判定
                 if (Math.random() < owner.critChance) {
                     damage *= owner.critDamage;
                 }
+
+                // 暗影刀片特效
                 if (proj.weapon.id === 'shadowBlade' && Math.random() < 0.3) {
                     damage *= 2;
                 }
+
+                // 嗜血斧头吸血
                 if (proj.weapon.id === 'bloodAxe') {
                     owner.health = Math.min(owner.health + damage * 0.1, owner.maxHealth);
                 }
+
+                // 死亡诅咒效果（增伤）
+                if (enemy.cursed && enemy.curseMultiplier) {
+                    damage *= enemy.curseMultiplier;
+                }
+
                 enemy.health -= damage;
+
                 for (let i = 0; i < 2; i++) {
                     game.particles.push(new Particle(enemy.x, enemy.y, '#fff'));
                 }
+
                 if (enemy.health <= 0) {
                     owner.gainExp(enemy.expValue);
                     game.killCount++;
+
+                    // 生成掉落物
+                    const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
+                    console.log('[主循环] 武器投射物击杀 - 添加掉落物:', drops.length, '当前总数:', game.droppedItems.length);
+                    game.droppedItems.push(...drops);
+
+                    // 吸血效果
                     if (owner.vampireHeal > 0) {
                         owner.health = Math.min(owner.health + owner.vampireHeal, owner.maxHealth);
+                    }
+
+                    // 死灵法师尸爆效果
+                    if (owner.corpseExplosion) {
+                        const explosionRadius = 80;
+                        const explosionDamage = owner.attack * 0.5;
+                        game.enemies.forEach(nearbyEnemy => {
+                            if (nearbyEnemy !== enemy && nearbyEnemy.health > 0) {
+                                const dist = Math.hypot(nearbyEnemy.x - enemy.x, nearbyEnemy.y - enemy.y);
+                                if (dist < explosionRadius) {
+                                    nearbyEnemy.health -= explosionDamage;
+                                    game.particles.push(new Particle(nearbyEnemy.x, nearbyEnemy.y, '#4a0080'));
+                                }
+                            }
+                        });
+                        // 尸爆特效
+                        for (let i = 0; i < 8; i++) {
+                            game.particles.push(new Particle(enemy.x, enemy.y, '#9b59b6'));
+                        }
                     }
                 }
             }
@@ -233,11 +287,14 @@ function gameOver() {
     document.getElementById('finalKills').textContent = game.killCount;
     // 显示最高等级的玩家
     let finalLevel = game.player.level;
+    let finalGold = game.player.gold;
     if (game.playerCount === 2 && game.player2) {
         finalLevel = Math.max(game.player.level, game.player2.level);
+        finalGold = Math.max(game.player.gold, game.player2.gold);
     }
     document.getElementById('finalLevel').textContent = finalLevel;
     document.getElementById('finalWave').textContent = game.wave.current;
+    document.getElementById('finalGold').textContent = finalGold;
     document.getElementById('gameOverScreen').classList.remove('hidden');
     clearSaveData();
 }
@@ -286,14 +343,36 @@ function gameLoop(timestamp) {
         game.particles.forEach(particle => particle.update());
         game.projectiles.forEach(projectile => projectile.update());
         game.summons.forEach(summon => summon.update());
+        game.droppedItems.forEach(item => item.update());
+
+        // 每秒输出一次掉落物状态（调试用）
+        if (Math.floor(game.gameTime) !== Math.floor(game.gameTime - deltaTime / 1000)) {
+            if (game.droppedItems.length > 0) {
+                console.log('[游戏状态] 当前掉落物数量:', game.droppedItems.length);
+            }
+        }
 
         // 投射物击中检测
         game.projectiles.forEach(projectile => {
             game.enemies.forEach(enemy => {
                 const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
                 if (dist < enemy.size && !projectile.hit) {
-                    enemy.health -= projectile.damage;
+                    let damage = projectile.damage;
+
+                    // 应用诅咒效果
+                    if (enemy.cursed && enemy.curseMultiplier) {
+                        damage *= enemy.curseMultiplier;
+                    }
+
+                    enemy.health -= damage;
                     projectile.hit = true;
+
+                    // 生命汲取效果（死灵法师）
+                    const owner = projectile.owner || game.player;
+                    if (owner.lifeSteal) {
+                        const healAmount = damage * owner.lifeSteal;
+                        owner.health = Math.min(owner.health + healAmount, owner.maxHealth);
+                    }
 
                     for (let i = 0; i < 2; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, projectile.color));
@@ -301,9 +380,13 @@ function gameLoop(timestamp) {
 
                     if (enemy.health <= 0) {
                         // 经验给投射物的所有者
-                        const owner = projectile.owner || game.player;
                         owner.gainExp(enemy.expValue);
                         game.killCount++;
+
+                        // 生成掉落物
+                        const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
+                        console.log('[主循环] 投射物击杀 - 添加掉落物:', drops.length, '当前总数:', game.droppedItems.length);
+                        game.droppedItems.push(...drops);
 
                         for (let i = 0; i < 6; i++) {
                             game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
@@ -311,6 +394,24 @@ function gameLoop(timestamp) {
 
                         if (owner.vampireHeal > 0) {
                             owner.health = Math.min(owner.health + owner.vampireHeal, owner.maxHealth);
+                        }
+
+                        // 死灵法师尸爆效果
+                        if (owner.corpseExplosion) {
+                            const explosionRadius = 80;
+                            const explosionDamage = owner.attack * 0.5;
+                            game.enemies.forEach(nearbyEnemy => {
+                                if (nearbyEnemy !== enemy && nearbyEnemy.health > 0) {
+                                    const d = Math.hypot(nearbyEnemy.x - enemy.x, nearbyEnemy.y - enemy.y);
+                                    if (d < explosionRadius) {
+                                        nearbyEnemy.health -= explosionDamage;
+                                        game.particles.push(new Particle(nearbyEnemy.x, nearbyEnemy.y, '#4a0080'));
+                                    }
+                                }
+                            });
+                            for (let i = 0; i < 8; i++) {
+                                game.particles.push(new Particle(enemy.x, enemy.y, '#9b59b6'));
+                            }
                         }
                     }
                 }
@@ -322,6 +423,7 @@ function gameLoop(timestamp) {
         game.particles = game.particles.filter(particle => !particle.isDead());
         game.projectiles = game.projectiles.filter(p => !p.isDead() && !p.hit);
         game.summons = game.summons.filter(summon => !summon.isDead());
+        game.droppedItems = game.droppedItems.filter(item => !item.isDead());
 
         // 清理距离玩家太远的敌人（考虑双人模式）
         game.enemies = game.enemies.filter(enemy => {
@@ -411,6 +513,9 @@ function gameLoop(timestamp) {
 
         visibleObstacles.filter(o => o.type === 'bush').forEach(obstacle => obstacle.draw(game.ctx));
         visibleObstacles.filter(o => o.type === 'rock').forEach(obstacle => obstacle.draw(game.ctx));
+
+        // 绘制掉落物
+        game.droppedItems.forEach(item => item.draw(game.ctx));
 
         game.particles.forEach(particle => particle.draw(game.ctx));
         game.projectiles.forEach(projectile => projectile.draw(game.ctx));
@@ -509,6 +614,7 @@ function restartCurrentWave() {
     game.projectiles = [];
     game.weaponProjectiles = [];
     game.summons = [];
+    game.droppedItems = [];
 
     game.wave.enemiesSpawned = 0;
     game.wave.totalEnemies = 0;
@@ -583,6 +689,7 @@ function startGame() {
     game.projectiles = [];
     game.weaponProjectiles = [];
     game.summons = [];
+    game.droppedItems = [];
     game.killCount = 0;
     game.gameTime = 0;
     game.lastTime = 0;
@@ -814,7 +921,10 @@ function initGame() {
 window.addEventListener('DOMContentLoaded', () => {
     // 预加载精灵图资源
     preloadAssets(() => {
-        console.log('Assets loaded, initializing game...');
-        initGame();
+        // 预加载环境素材（草丛和石头）
+        preloadEnvironmentAssets(() => {
+            console.log('Assets loaded, initializing game...');
+            initGame();
+        });
     });
 });

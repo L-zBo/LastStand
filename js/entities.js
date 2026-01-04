@@ -33,29 +33,351 @@ class Particle {
     }
 }
 
-// 障碍物类
+// 掉落物类（金币、Buff、道具）
+class DroppedItem {
+    constructor(x, y, type, data) {
+        this.x = x;
+        this.y = y;
+        this.type = type; // 'gold', 'buff', 'item'
+        this.data = data;
+        this.size = 12;
+        this.spawnTime = Date.now();
+        this.bobOffset = Math.random() * Math.PI * 2; // 浮动动画偏移
+        this.collected = false;
+
+        // 初始弹跳动画 - 金币直接静止，其他物品轻微散开
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 1;
+        this.gravity = 0.1;
+        this.friction = 0.9;
+        this.settleTime = 0;
+
+        // 根据类型设置外观
+        if (type === 'gold') {
+            this.color = '#ffd700';
+            this.icon = '🪙';
+            this.sprite = data.amount > 10 ? 'coinBag' : 'coin';
+            this.value = data.amount;
+            // 金币随机大小 (10-16)
+            this.size = 10 + Math.floor(Math.random() * 7);
+            // 金币直接出现在原地，不弹跳
+            this.vx = 0;
+            this.vy = 0;
+            this.settled = true;
+        } else if (type === 'buff') {
+            this.color = '#9b59b6';
+            this.icon = data.icon;
+            this.sprite = data.sprite;
+            this.effect = data.effect;
+            this.name = data.name;
+            this.description = data.description;
+            this.size = 14;
+            // Buff有轻微散开效果
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.settled = false;
+        } else if (type === 'item') {
+            this.color = '#2ecc71';
+            this.icon = data.icon;
+            this.sprite = data.sprite;
+            this.effect = data.effect;
+            this.name = data.name;
+            this.description = data.description;
+            this.size = 14;
+            // 道具有轻微散开效果
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.settled = false;
+        }
+    }
+
+    update() {
+        if (this.collected) return;
+
+        // 弹跳物理
+        if (!this.settled) {
+            this.vx *= this.friction;
+            this.vy += this.gravity;
+            this.vy *= this.friction;
+
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // 检查是否落地（速度很小时）
+            if (Math.abs(this.vx) < 0.1 && Math.abs(this.vy) < 0.3) {
+                this.settled = true;
+                this.settleTime = Date.now();
+            }
+
+            // 边界限制
+            this.x = Math.max(10, Math.min(CONFIG.world.width - 10, this.x));
+            this.y = Math.max(10, Math.min(CONFIG.world.height - 10, this.y));
+        }
+
+        // 磁铁吸引效果（检查所有玩家）
+        const players = [game.player];
+        if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+            players.push(game.player2);
+        }
+
+        for (const player of players) {
+            const dist = Math.hypot(player.x - this.x, player.y - this.y);
+
+            // 计算玩家的实际磁铁范围和拾取范围
+            const playerMagnetRange = DROP_CONFIG.magnetRange * (player.magnetRangeBonus || 1);
+            const playerPickupRange = DROP_CONFIG.pickupRange * (player.pickupRangeBonus || 1);
+
+            // 在磁铁范围内被吸引
+            if (dist < playerMagnetRange && dist > 0) {
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const speed = DROP_CONFIG.magnetSpeed * (1 - dist / playerMagnetRange);
+                this.x += (dx / dist) * speed;
+                this.y += (dy / dist) * speed;
+            }
+
+            // 拾取检测
+            if (dist < playerPickupRange) {
+                this.pickup(player);
+                break;
+            }
+        }
+    }
+
+    pickup(player) {
+        if (this.collected) return;
+        this.collected = true;
+
+        if (this.type === 'gold') {
+            const actualGold = player.gainGold(this.value);
+            showGoldNotification(this.x, this.y, actualGold);
+        } else if (this.type === 'buff' || this.type === 'item') {
+            this.effect(player);
+            showDropPickupNotification(this.x, this.y, this.icon, this.name);
+        }
+
+        // 拾取粒子效果
+        for (let i = 0; i < 5; i++) {
+            game.particles.push(new Particle(this.x, this.y, this.color));
+        }
+    }
+
+    draw(ctx) {
+        if (this.collected) return;
+
+        // 浮动动画
+        const bobY = this.settled ? Math.sin((Date.now() / 200) + this.bobOffset) * 3 : 0;
+        const drawY = this.y + bobY;
+
+        // 光晕效果
+        const glowSize = this.size + 5 + Math.sin(Date.now() / 150) * 2;
+        ctx.fillStyle = this.color + '40';
+        ctx.beginPath();
+        ctx.arc(this.x, drawY, glowSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 尝试使用精灵图
+        const spriteSize = this.size * 2;
+        const spriteDrawn = drawItemSprite(
+            ctx,
+            this.sprite,
+            this.x - spriteSize / 2,
+            drawY - spriteSize / 2,
+            spriteSize,
+            spriteSize
+        );
+
+        // 如果没有精灵图，使用emoji
+        if (!spriteDrawn) {
+            ctx.font = `${this.size * 1.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.icon, this.x, drawY);
+        }
+
+        // 金币数量显示
+        if (this.type === 'gold' && this.value > 5) {
+            ctx.font = '10px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.textAlign = 'center';
+            ctx.strokeText(this.value, this.x, drawY + this.size + 8);
+            ctx.fillText(this.value, this.x, drawY + this.size + 8);
+        }
+    }
+
+    isDead() {
+        // 已被拾取或超时消失
+        if (this.collected) return true;
+        if (Date.now() - this.spawnTime > DROP_CONFIG.despawnTime) return true;
+        return false;
+    }
+}
+
+// 生成掉落物
+function spawnDrops(x, y, enemyType) {
+    const drops = [];
+    const goldCountConfig = GOLD_COUNT[enemyType] || GOLD_COUNT.normal;
+
+    // 调试日志
+    console.log('[掉落系统] 生成掉落物 - 位置:', x, y, '敌人类型:', enemyType);
+
+    // 计算掉落的金币数量（随机）
+    const coinCount = Math.floor(Math.random() * (goldCountConfig.max - goldCountConfig.min + 1)) + goldCountConfig.min;
+    console.log('[掉落系统] 金币掉落数量:', coinCount);
+
+    // 生成多个金币，每个金币=1金
+    for (let i = 0; i < coinCount; i++) {
+        // 随机散落偏移（让金币散开）
+        const offsetX = (Math.random() - 0.5) * 50;
+        const offsetY = (Math.random() - 0.5) * 50;
+        drops.push(new DroppedItem(x + offsetX, y + offsetY, 'gold', { amount: 1 }));
+    }
+
+    // Buff掉落（低概率）
+    if (Math.random() < DROP_CONFIG.buffDropChance) {
+        const buff = DROPPABLE_BUFFS[Math.floor(Math.random() * DROPPABLE_BUFFS.length)];
+        const offsetX = (Math.random() - 0.5) * 40;
+        const offsetY = (Math.random() - 0.5) * 40;
+        drops.push(new DroppedItem(x + offsetX, y + offsetY, 'buff', buff));
+    }
+
+    // 道具掉落（很低概率）
+    if (Math.random() < DROP_CONFIG.itemDropChance) {
+        const item = DROPPABLE_ITEMS[Math.floor(Math.random() * DROPPABLE_ITEMS.length)];
+        const offsetX = (Math.random() - 0.5) * 40;
+        const offsetY = (Math.random() - 0.5) * 40;
+        drops.push(new DroppedItem(x + offsetX, y + offsetY, 'item', item));
+    }
+
+    // Boss必定掉落一个Buff
+    if (enemyType === 'boss') {
+        const buff = DROPPABLE_BUFFS[Math.floor(Math.random() * DROPPABLE_BUFFS.length)];
+        const offsetX = (Math.random() - 0.5) * 40;
+        const offsetY = (Math.random() - 0.5) * 40;
+        drops.push(new DroppedItem(x + offsetX, y + offsetY, 'buff', buff));
+    }
+
+    console.log('[掉落系统] 生成完成 - 总掉落物数量:', drops.length);
+    return drops;
+}
+
+// 障碍物类 - 使用完整图片素材，支持比例缩放
 class Obstacle {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
         this.type = type;
 
+        // 使用配置中的大小范围
+        const obstacleConfig = CONFIG.obstacles[type];
         if (type === 'rock') {
-            this.size = 20 + Math.random() * 20;
-            this.sprite = '🪨';
+            const minSize = obstacleConfig?.minSize || 15;
+            const maxSize = obstacleConfig?.maxSize || 45;
+            this.size = minSize + Math.random() * (maxSize - minSize);
             this.blocking = true;
+            // 随机选择石头图片变体（0-2）
+            this.variant = Math.floor(Math.random() * 3);
+            // 随机缩放因子（0.6 - 1.4）
+            this.scale = 0.6 + Math.random() * 0.8;
         } else if (type === 'bush') {
-            this.size = 30 + Math.random() * 20;
-            this.sprite = '🌿';
+            const minSize = obstacleConfig?.minSize || 20;
+            const maxSize = obstacleConfig?.maxSize || 50;
+            this.size = minSize + Math.random() * (maxSize - minSize);
             this.blocking = false;
+            // 随机选择草丛图片变体（0-4，共5种新提取的灌木）
+            this.variant = Math.floor(Math.random() * 5);
+            // 随机缩放因子（新素材较大）
+            this.scale = 0.8 + Math.random() * 0.6;
+        } else if (type === 'tree') {
+            // 树木类型 - 更大，阻挡移动
+            const treeConfig = CONFIG.obstacles.tree;
+            const minSize = treeConfig?.minSize || 40;
+            const maxSize = treeConfig?.maxSize || 80;
+            this.size = minSize + Math.random() * (maxSize - minSize);
+            this.blocking = true;
+            // 随机选择树木图片变体（0-39，共40种新提取的树）
+            this.variant = Math.floor(Math.random() * 40);
+            // 随机缩放因子（0.3 - 0.6，新素材较大需要缩小）
+            this.scale = 0.3 + Math.random() * 0.3;
         }
     }
 
     draw(ctx) {
-        ctx.font = `${this.size * 1.5}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(this.sprite, this.x, this.y);
+        ctx.save();
+
+        if (this.type === 'rock') {
+            const rockImg = environmentImages.rocks[this.variant % environmentImages.rocks.length];
+            if (rockImg && rockImg.complete) {
+                ctx.imageSmoothingEnabled = false;
+                // 根据原始图片比例和缩放因子计算显示大小
+                const imgWidth = rockImg.width * this.scale * 1.5;
+                const imgHeight = rockImg.height * this.scale * 1.5;
+                ctx.drawImage(rockImg, this.x - imgWidth / 2, this.y - imgHeight / 2, imgWidth, imgHeight);
+            } else {
+                this.drawRockFallback(ctx);
+            }
+        } else if (this.type === 'bush') {
+            const bushImg = environmentImages.bushes[this.variant % environmentImages.bushes.length];
+            if (bushImg && bushImg.complete) {
+                ctx.imageSmoothingEnabled = false;
+                // 根据原始图片比例和缩放因子计算显示大小
+                const imgWidth = bushImg.width * this.scale * 1.8;
+                const imgHeight = bushImg.height * this.scale * 1.8;
+                ctx.drawImage(bushImg, this.x - imgWidth / 2, this.y - imgHeight / 2, imgWidth, imgHeight);
+            } else {
+                this.drawBushFallback(ctx);
+            }
+        } else if (this.type === 'tree') {
+            const treeImg = environmentImages.trees[this.variant % environmentImages.trees.length];
+            if (treeImg && treeImg.complete) {
+                ctx.imageSmoothingEnabled = false;
+                // 根据原始图片比例和缩放因子计算显示大小
+                const imgWidth = treeImg.width * this.scale;
+                const imgHeight = treeImg.height * this.scale;
+                // 树木从底部中心对齐（让树根在碰撞点）
+                ctx.drawImage(treeImg, this.x - imgWidth / 2, this.y - imgHeight + this.size / 2, imgWidth, imgHeight);
+            } else {
+                this.drawTreeFallback(ctx);
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // 备用绘制方法 - 当图片未加载时使用
+    drawRockFallback(ctx) {
+        ctx.fillStyle = '#6b6b6b';
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y, this.size * 0.6, this.size * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.ellipse(this.x - this.size * 0.1, this.y - this.size * 0.1, this.size * 0.4, this.size * 0.25, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawBushFallback(ctx) {
+        ctx.fillStyle = '#2d5a2d';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3d7a3d';
+        ctx.beginPath();
+        ctx.arc(this.x - this.size * 0.2, this.y - this.size * 0.1, this.size * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawTreeFallback(ctx) {
+        // 树干
+        ctx.fillStyle = '#5a3d2b';
+        ctx.fillRect(this.x - this.size * 0.1, this.y - this.size * 0.3, this.size * 0.2, this.size * 0.5);
+        // 树冠
+        ctx.fillStyle = '#2d6b2d';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y - this.size * 0.5, this.size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     collidesWith(x, y, size) {
@@ -108,6 +430,43 @@ class Projectile {
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (this.type === 'holy') {
+            // 圣光投射物 - 金色光球带光芒
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            // 外圈光晕
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size + 3, 0, Math.PI * 2);
+            ctx.stroke();
+            // 十字光芒
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-this.size - 5, 0);
+            ctx.lineTo(this.size + 5, 0);
+            ctx.moveTo(0, -this.size - 5);
+            ctx.lineTo(0, this.size + 5);
+            ctx.stroke();
+        } else if (this.type === 'dark') {
+            // 暗影投射物 - 紫色暗影球
+            ctx.fillStyle = '#4a0080';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            // 内核
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            // 暗影拖尾效果
+            ctx.fillStyle = 'rgba(74, 0, 128, 0.3)';
+            ctx.beginPath();
+            ctx.arc(-4, 0, this.size * 0.8, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -183,8 +542,14 @@ class Summon {
 
                     // 检查击杀
                     if (target.health <= 0) {
-                        game.player.gainExp(target.expValue);
+                        this.owner.gainExp(target.expValue);
                         game.killCount++;
+
+                        // 生成掉落物
+                        const drops = spawnDrops(target.x, target.y, target.type);
+                        console.log('[召唤物] 击杀敌人 - 添加掉落物:', drops.length, '当前总数:', game.droppedItems.length);
+                        game.droppedItems.push(...drops);
+
                         // 灵魂链接效果
                         if (this.owner.soulLink) {
                             this.owner.health = Math.min(this.owner.health + this.owner.soulLink, this.owner.maxHealth);
@@ -542,10 +907,64 @@ class Player {
         // 被动技能系统
         this.passives = [];
 
-        // 召唤师系统
+        // 金币系统
+        this.gold = 0;
+        this.goldMultiplier = 1;
+
+        // 召唤系统（召唤师和死灵法师都可以召唤）
         this.maxSummons = classConfig.maxSummons || 0;
         this.lastSummonTime = 0;
         this.summonCooldown = 5000;
+
+        // 从职业配置中加载被动效果
+        if (classConfig.damageReduction) {
+            this.damageReduction = classConfig.damageReduction;
+        }
+        if (classConfig.knockbackPower) {
+            this.knockbackPower = classConfig.knockbackPower;
+        }
+        if (classConfig.critChance) {
+            this.critChance = classConfig.critChance;
+        }
+        if (classConfig.arrowCount) {
+            this.arrowCount = classConfig.arrowCount;
+        }
+        if (classConfig.attackSpeedBonus) {
+            this.attackCooldown = this.attackCooldown * (1 - classConfig.attackSpeedBonus);
+        }
+        if (classConfig.soulLink) {
+            this.soulLink = classConfig.soulLink;
+        }
+        if (classConfig.counterAttack) {
+            this.counterAttack = classConfig.counterAttack;
+        }
+        if (classConfig.healPower) {
+            this.healPower = classConfig.healPower;
+        }
+        if (classConfig.smite) {
+            this.smite = classConfig.smite;
+        }
+        if (classConfig.lifeSteal) {
+            this.lifeSteal = classConfig.lifeSteal;
+        }
+        if (classConfig.firstStrikeCrit) {
+            this.firstStrikeCrit = classConfig.firstStrikeCrit;
+        }
+        if (classConfig.rangeBonus) {
+            this.attackRange = this.attackRange * (1 + classConfig.rangeBonus);
+        }
+        if (classConfig.magicPenetration) {
+            this.magicPenetration = classConfig.magicPenetration;
+        }
+
+        // 职业特殊属性初始化
+        if (classType === 'knight') {
+            // 骑士：护甲减伤
+            this.armor = classConfig.armor || 15;
+        } else if (classType === 'necromancer') {
+            // 死灵法师：更短的召唤冷却
+            this.summonCooldown = 4000;
+        }
 
         // 设置控制键
         this.setupControls();
@@ -665,15 +1084,24 @@ class Player {
     autoAttack() {
         const now = Date.now();
 
-        // 召唤师召唤逻辑
-        if (this.attackType === 'summon') {
+        // 召唤师和死灵法师的召唤逻辑
+        if (this.attackType === 'summon' || this.attackType === 'dark') {
             // 自动召唤
-            if (game.summons.length < this.maxSummons && now - this.lastSummonTime >= this.summonCooldown) {
+            const currentSummons = game.summons.filter(s => s.owner === this).length;
+            if (currentSummons < this.maxSummons && now - this.lastSummonTime >= this.summonCooldown) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 50 + Math.random() * 30;
                 const summonX = this.x + Math.cos(angle) * dist;
                 const summonY = this.y + Math.sin(angle) * dist;
-                game.summons.push(new Summon(summonX, summonY, this));
+
+                // 死灵法师召唤亡灵骷髅，召唤师召唤幽灵
+                const summon = new Summon(summonX, summonY, this);
+                if (this.attackType === 'dark') {
+                    summon.sprite = '💀';
+                    summon.color = '#4a0080';
+                    summon.attack = this.attack * 0.7; // 死灵法师召唤物更强
+                }
+                game.summons.push(summon);
                 this.lastSummonTime = now;
 
                 // 召唤特效
@@ -681,8 +1109,10 @@ class Player {
                     game.particles.push(new Particle(summonX, summonY, this.color));
                 }
             }
+        }
 
-            // 召唤师也可以发射魔法弹攻击
+        // 召唤师直接攻击（发射魔法弹）
+        if (this.attackType === 'summon') {
             if (now - this.lastAttackTime < this.attackCooldown) return;
 
             const enemiesInRange = game.enemies
@@ -743,20 +1173,46 @@ class Player {
                 // 根据攻击类型处理
                 if (this.attackType === 'melee') {
                     // 近战：直接造成伤害
+                    // 应用诅咒加成
+                    if (enemy.cursed && enemy.curseMultiplier) {
+                        damage *= enemy.curseMultiplier;
+                    }
                     enemy.health -= damage;
 
                     for (let i = 0; i < 3; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, isCrit ? '#ffff00' : this.color));
                     }
+
+                    // 战士/骑士 击退效果
+                    if (this.knockbackPower && !enemy.isBoss) {
+                        const dx = enemy.x - this.x;
+                        const dy = enemy.y - this.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > 0) {
+                            enemy.x += (dx / dist) * 30 * this.knockbackPower;
+                            enemy.y += (dy / dist) * 30 * this.knockbackPower;
+                        }
+                    }
                 } else if (this.attackType === 'ranged') {
                     // 远程：发射箭
-                    game.projectiles.push(new Projectile(
-                        this.x, this.y,
-                        enemy.x, enemy.y,
-                        damage,
-                        'arrow',
-                        this.color
-                    ));
+                    const arrowCount = this.arrowCount || 1;
+                    const spreadAngle = 0.15; // 箭矢扩散角度
+
+                    for (let i = 0; i < arrowCount; i++) {
+                        const baseAngle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+                        const offset = (i - (arrowCount - 1) / 2) * spreadAngle;
+                        const angle = baseAngle + offset;
+                        const targetX = this.x + Math.cos(angle) * 300;
+                        const targetY = this.y + Math.sin(angle) * 300;
+
+                        game.projectiles.push(new Projectile(
+                            this.x, this.y,
+                            targetX, targetY,
+                            damage / arrowCount * 1.2, // 多箭时单箭伤害略低但总伤害更高
+                            'arrow',
+                            this.color
+                        ));
+                    }
                 } else if (this.attackType === 'magic') {
                     // 魔法：发射魔法弹
                     game.projectiles.push(new Projectile(
@@ -766,12 +1222,75 @@ class Player {
                         'magic',
                         this.color
                     ));
+
+                    // 法术回响
+                    if (this.spellEcho && Math.random() < this.spellEcho) {
+                        setTimeout(() => {
+                            if (enemy.health > 0) {
+                                game.projectiles.push(new Projectile(
+                                    this.x, this.y,
+                                    enemy.x, enemy.y,
+                                    damage * 0.7,
+                                    'magic',
+                                    '#9b59b6'
+                                ));
+                            }
+                        }, 200);
+                    }
+                } else if (this.attackType === 'holy') {
+                    // 圣骑士：圣光攻击，治愈自己并伤害敌人
+                    game.projectiles.push(new Projectile(
+                        this.x, this.y,
+                        enemy.x, enemy.y,
+                        damage,
+                        'holy',
+                        '#ffd700'
+                    ));
+
+                    // 圣光治愈：攻击时恢复少量生命
+                    if (this.healPower) {
+                        this.health = Math.min(this.health + this.healPower, this.maxHealth);
+                    }
+
+                    // 对亡灵敌人额外伤害
+                    if (this.smite && (enemy.type === 'elite' || enemy.sprite === '💀')) {
+                        enemy.health -= damage * 0.5; // 额外50%伤害
+                        for (let i = 0; i < 5; i++) {
+                            game.particles.push(new Particle(enemy.x, enemy.y, '#ffffff'));
+                        }
+                    }
+                } else if (this.attackType === 'dark') {
+                    // 死灵法师：暗影攻击，吸取生命
+                    game.projectiles.push(new Projectile(
+                        this.x, this.y,
+                        enemy.x, enemy.y,
+                        damage,
+                        'dark',
+                        '#4a0080'
+                    ));
+
+                    // 生命汲取
+                    if (this.lifeSteal) {
+                        const healAmount = damage * this.lifeSteal;
+                        this.health = Math.min(this.health + healAmount, this.maxHealth);
+                    }
+
+                    // 死亡诅咒效果（标记敌人受到更多伤害）
+                    if (this.deathCoil && !enemy.cursed) {
+                        enemy.cursed = true;
+                        enemy.curseMultiplier = 1.25;
+                    }
                 }
 
                 // 近战直接检查击杀
                 if (this.attackType === 'melee' && enemy.health <= 0) {
                     this.gainExp(enemy.expValue);
                     game.killCount++;
+
+                    // 生成掉落物
+                    const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
+                    console.log('[近战] 击杀敌人 - 添加掉落物:', drops.length, '当前总数:', game.droppedItems.length);
+                    game.droppedItems.push(...drops);
 
                     for (let i = 0; i < 6; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
@@ -821,6 +1340,22 @@ class Player {
         // 显示升级选择界面
         game.state = 'levelup';
         showLevelUpScreen();
+    }
+
+    // 获得金币
+    gainGold(amount) {
+        const goldGained = Math.floor(amount * this.goldMultiplier);
+        this.gold += goldGained;
+
+        // 双人模式下金币共享
+        if (game.playerCount === 2) {
+            const otherPlayer = (this === game.player) ? game.player2 : game.player;
+            if (otherPlayer && otherPlayer.health > 0 && otherPlayer !== this) {
+                otherPlayer.gold += goldGained;
+            }
+        }
+
+        return goldGained;
     }
 
     // 添加武器
@@ -892,13 +1427,6 @@ class Player {
             ctx.textBaseline = 'middle';
             ctx.fillText(this.sprite, this.x, this.y);
         }
-
-        // 绘制攻击范围（半透明）
-        ctx.strokeStyle = this.color + '30';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.attackRange, 0, Math.PI * 2);
-        ctx.stroke();
 
         // 绘制生命条
         const barWidth = 50;
@@ -1023,7 +1551,23 @@ class Enemy {
         if (game.player.health > 0) {
             const distP1 = Math.hypot(this.x - game.player.x, this.y - game.player.y);
             if (distP1 < this.size + game.player.size) {
-                game.player.health -= this.damage;
+                // 计算实际伤害（应用减伤）
+                let actualDamage = this.damage;
+                if (game.player.damageReduction) {
+                    actualDamage = Math.floor(this.damage * (1 - game.player.damageReduction));
+                }
+                game.player.health -= actualDamage;
+
+                // 骑士反伤效果
+                if (game.player.counterAttack) {
+                    const reflectDamage = Math.floor(this.damage * game.player.counterAttack);
+                    this.health -= reflectDamage;
+                    // 反伤特效
+                    for (let i = 0; i < 3; i++) {
+                        game.particles.push(new Particle(this.x, this.y, '#c0c0c0'));
+                    }
+                }
+
                 if (!this.isBoss) {
                     this.health = 0;
                 }
@@ -1034,7 +1578,23 @@ class Enemy {
         if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
             const distP2 = Math.hypot(this.x - game.player2.x, this.y - game.player2.y);
             if (distP2 < this.size + game.player2.size) {
-                game.player2.health -= this.damage;
+                // 计算实际伤害（应用减伤）
+                let actualDamage = this.damage;
+                if (game.player2.damageReduction) {
+                    actualDamage = Math.floor(this.damage * (1 - game.player2.damageReduction));
+                }
+                game.player2.health -= actualDamage;
+
+                // 骑士反伤效果
+                if (game.player2.counterAttack) {
+                    const reflectDamage = Math.floor(this.damage * game.player2.counterAttack);
+                    this.health -= reflectDamage;
+                    // 反伤特效
+                    for (let i = 0; i < 3; i++) {
+                        game.particles.push(new Particle(this.x, this.y, '#c0c0c0'));
+                    }
+                }
+
                 if (!this.isBoss) {
                     this.health = 0;
                 }

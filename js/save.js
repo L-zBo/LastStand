@@ -33,7 +33,10 @@ function getClassName(classId) {
         mage: '🧙 法师',
         assassin: '🥷 刺客',
         ranger: '🏹 游侠',
-        summoner: '🔮 召唤师'
+        summoner: '🔮 召唤师',
+        knight: '⚔️ 骑士',
+        paladin: '✝️ 圣骑士',
+        necromancer: '💀 死灵法师'
     };
     return names[classId] || classId;
 }
@@ -83,7 +86,7 @@ function renderSaveSlots() {
                 <div class="save-slot-info">
                     <p class="class-name">${getClassName(saveData.selectedClass)}</p>
                     <p>⭐ 等级 ${saveData.player.level} | 🌊 波次 ${saveData.wave}</p>
-                    <p>💀 击杀 ${saveData.killCount} | ⏱️ ${Math.floor(saveData.gameTime)}秒</p>
+                    <p>💀 击杀 ${saveData.killCount} | 🪙 ${saveData.player.gold || 0}</p>
                     <p class="save-time">保存于: ${formatSaveTime(saveData.saveTime)}</p>
                 </div>
             `;
@@ -209,7 +212,9 @@ function saveGameToSlot(slotIndex) {
             expMultiplier: game.player.expMultiplier,
             healthRegen: game.player.healthRegen,
             multiShot: game.player.multiShot,
-            maxSummons: game.player.maxSummons
+            maxSummons: game.player.maxSummons,
+            gold: game.player.gold,
+            goldMultiplier: game.player.goldMultiplier
         },
         wave: game.wave.current,
         killCount: game.killCount,
@@ -278,6 +283,8 @@ function applyLoadedSaveData(saveData) {
     game.player.healthRegen = saveData.player.healthRegen || 0;
     game.player.multiShot = saveData.player.multiShot || 1;
     game.player.maxSummons = saveData.player.maxSummons || CLASSES[game.selectedClass].maxSummons || 0;
+    game.player.gold = saveData.player.gold || 0;
+    game.player.goldMultiplier = saveData.player.goldMultiplier || 1;
 
     // 恢复被动技能
     game.player.passives = saveData.player.passives || [];

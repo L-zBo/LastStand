@@ -132,8 +132,8 @@ function checkWaveComplete() {
         wave.inBreak = true;
         wave.waveStartTime = Date.now();
 
-        // 显示波次完成奖励选择
+        // 显示商店界面让玩家购买物品
         game.state = 'waveComplete';
-        showWaveCompleteScreen();
+        showShopScreen();
     }
 }

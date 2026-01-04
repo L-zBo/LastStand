@@ -20,6 +20,7 @@ function updateUI() {
     document.getElementById('waveCount').textContent = game.wave.current;
     document.getElementById('killCount').textContent = game.killCount;
     document.getElementById('gameTime').textContent = Math.floor(game.gameTime);
+    document.getElementById('goldCount').textContent = game.player.gold;
 
     // 顶部UI新增属性
     document.getElementById('playerSpeed').textContent = game.player.speed.toFixed(1);
@@ -1052,4 +1053,198 @@ function showSaveNotification() {
         notification.classList.add('fade-out');
         setTimeout(() => notification.remove(), 300);
     }, 2000);
+}
+
+// 显示金币掉落通知
+function showGoldNotification(worldX, worldY, amount) {
+    // 将世界坐标转换为屏幕坐标
+    const screenX = worldX - game.camera.x;
+    const screenY = worldY - game.camera.y;
+
+    // 获取画布位置
+    const canvas = document.getElementById('gameCanvas');
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const notification = document.createElement('div');
+    notification.className = 'gold-notification';
+    notification.textContent = `+${amount}`;
+    notification.style.left = (canvasRect.left + screenX) + 'px';
+    notification.style.top = (canvasRect.top + screenY - 20) + 'px';
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 500);
+    }, 800);
+}
+
+// 显示掉落物拾取通知
+function showDropPickupNotification(worldX, worldY, icon, name) {
+    // 将世界坐标转换为屏幕坐标
+    const screenX = worldX - game.camera.x;
+    const screenY = worldY - game.camera.y;
+
+    // 获取画布位置
+    const canvas = document.getElementById('gameCanvas');
+    const canvasRect = canvas.getBoundingClientRect();
+
+    const notification = document.createElement('div');
+    notification.className = 'drop-pickup-notification';
+    notification.innerHTML = `<span class="drop-icon">${icon}</span><span class="drop-name">${name}</span>`;
+    notification.style.left = (canvasRect.left + screenX) + 'px';
+    notification.style.top = (canvasRect.top + screenY - 30) + 'px';
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 500);
+    }, 1200);
+}
+
+// 商店系统
+let shopState = {
+    isOpen: false,
+    items: []
+};
+
+// 生成商店物品（随机选择）
+function generateShopItems() {
+    const availableItems = [...SHOP_ITEMS];
+    const selectedItems = [];
+    const itemCount = Math.min(6, availableItems.length);
+
+    for (let i = 0; i < itemCount; i++) {
+        const index = Math.floor(Math.random() * availableItems.length);
+        selectedItems.push(availableItems[index]);
+        availableItems.splice(index, 1);
+    }
+
+    shopState.items = selectedItems;
+    return selectedItems;
+}
+
+// 显示商店界面
+function showShopScreen() {
+    shopState.isOpen = true;
+    generateShopItems();
+
+    const shopScreen = document.getElementById('shopScreen');
+    if (!shopScreen) {
+        createShopScreen();
+    }
+
+    updateShopUI();
+    document.getElementById('shopScreen').classList.remove('hidden');
+}
+
+// 创建商店界面DOM
+function createShopScreen() {
+    const shopScreen = document.createElement('div');
+    shopScreen.id = 'shopScreen';
+    shopScreen.className = 'screen shop-screen';
+    shopScreen.innerHTML = `
+        <div class="shop-content">
+            <div class="shop-header">
+                <h2>🏪 商店</h2>
+                <div class="shop-gold">
+                    <span class="gold-icon">🪙</span>
+                    <span id="shopGoldDisplay">0</span>
+                </div>
+            </div>
+            <div class="shop-items" id="shopItems"></div>
+            <div class="shop-buttons">
+                <button id="shopContinueBtn" class="shop-btn">继续下一波</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(shopScreen);
+
+    document.getElementById('shopContinueBtn').addEventListener('click', closeShopAndContinue);
+}
+
+// 更新商店UI
+function updateShopUI() {
+    const goldDisplay = document.getElementById('shopGoldDisplay');
+    if (goldDisplay) {
+        goldDisplay.textContent = game.player.gold;
+    }
+
+    const itemsContainer = document.getElementById('shopItems');
+    if (!itemsContainer) return;
+
+    itemsContainer.innerHTML = '';
+
+    shopState.items.forEach((item, index) => {
+        const canAfford = game.player.gold >= item.price;
+        const itemCard = document.createElement('div');
+        itemCard.className = 'shop-item' + (canAfford ? '' : ' disabled');
+        itemCard.innerHTML = `
+            <div class="shop-item-icon">${item.icon}</div>
+            <div class="shop-item-info">
+                <h3>${item.name}</h3>
+                <p>${item.description}</p>
+            </div>
+            <div class="shop-item-price ${canAfford ? '' : 'unaffordable'}">
+                <span class="price-icon">🪙</span>
+                <span>${item.price}</span>
+            </div>
+        `;
+
+        if (canAfford) {
+            itemCard.onclick = () => purchaseItem(index);
+        }
+
+        itemsContainer.appendChild(itemCard);
+    });
+}
+
+// 购买物品
+function purchaseItem(index) {
+    const item = shopState.items[index];
+    if (!item || game.player.gold < item.price) return;
+
+    // 扣除金币
+    game.player.gold -= item.price;
+
+    // 应用效果
+    item.effect(game.player);
+
+    // 双人模式下也给P2扣钱
+    if (game.playerCount === 2 && game.player2) {
+        game.player2.gold = game.player.gold;
+    }
+
+    // 显示购买成功提示
+    showPurchaseNotification(item);
+
+    // 从商店移除该物品
+    shopState.items.splice(index, 1);
+
+    // 更新商店UI
+    updateShopUI();
+}
+
+// 显示购买成功提示
+function showPurchaseNotification(item) {
+    const notification = document.createElement('div');
+    notification.className = 'purchase-notification';
+    notification.innerHTML = `
+        <span class="purchase-icon">${item.icon}</span>
+        <span>购买成功!</span>
+    `;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 300);
+    }, 1500);
+}
+
+// 关闭商店并继续游戏
+function closeShopAndContinue() {
+    shopState.isOpen = false;
+    document.getElementById('shopScreen').classList.add('hidden');
+    game.state = 'playing';
+    game.wave.current++;
+    startNewWave();
 }
