@@ -60,7 +60,7 @@
 
 ```
 LastStand/
-├── index.html      # 主页面，包含所有UI结构和CSS引用
+├── game.html      # 主页面，包含所有UI结构和CSS引用
 ├── README.md       # 本文档
 ├── assets/         # 游戏素材目录
 │   ├── sprites/
@@ -95,7 +95,7 @@ LastStand/
 
 ## 文件说明
 
-### index.html
+### game.html
 主HTML文件，定义了游戏的所有界面元素：
 - 开始界面（人数选择、职业选择）
 - 存档选择界面
@@ -106,7 +106,7 @@ LastStand/
 
 ### CSS文件
 
-所有CSS模块文件直接在index.html中引用。
+所有CSS模块文件直接在game.html中引用。
 
 #### css/base.css
 基础样式：
@@ -229,6 +229,6 @@ UI相关函数：
 
 ## 开始游戏
 
-直接在浏览器中打开 `index.html` 即可开始游戏。
+直接在浏览器中打开 `game.html` 即可开始游戏。
 
 推荐使用现代浏览器（Chrome、Firefox、Edge）获得最佳体验。
