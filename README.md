@@ -1,4 +1,4 @@
-# 肉鸽冒险 - Roguelike Game
+# LastStand - Roguelike Survival Game
 
 一款基于网页的肉鸽类（Roguelike）动作生存游戏，支持单人/双人模式。
 
@@ -59,7 +59,7 @@
 ## 项目结构
 
 ```
-roge game/
+LastStand/
 ├── index.html      # 主页面，包含所有UI结构和CSS引用
 ├── README.md       # 本文档
 ├── assets/         # 游戏素材目录
