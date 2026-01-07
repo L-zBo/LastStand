@@ -541,19 +541,24 @@ function gameLoop(timestamp) {
 
 // 自适应屏幕大小
 function resizeCanvas() {
-    const container = document.getElementById('gameScreen');
-    const ui = document.getElementById('ui');
+    const gameScreen = document.getElementById('gameScreen');
+    const topBar = document.querySelector('.top-bar');
+    const p1Panel = document.getElementById('p1Panel');
+    const p2Panel = document.getElementById('p2Panel');
 
-    const padding = 40;
-    const uiHeight = ui ? ui.offsetHeight + 30 : 100;
+    const padding = 20;
+    const topBarHeight = topBar ? topBar.offsetHeight + 10 : 50;
+    const panelWidth = p1Panel ? p1Panel.offsetWidth : 220;
+    const p2Visible = p2Panel && !p2Panel.classList.contains('hidden');
 
-    let availableWidth = window.innerWidth - padding * 2;
-    let availableHeight = window.innerHeight - uiHeight - padding * 2;
+    // 计算可用空间
+    let availableWidth = window.innerWidth - padding * 2 - panelWidth - (p2Visible ? panelWidth : 0) - 30;
+    let availableHeight = window.innerHeight - topBarHeight - padding * 2;
 
-    const minWidth = 800;
-    const minHeight = 500;
-    const maxWidth = 1920;
-    const maxHeight = 1080;
+    const minWidth = 600;
+    const minHeight = 400;
+    const maxWidth = 1600;
+    const maxHeight = 900;
     const aspectRatio = 16 / 10;
 
     let canvasWidth = Math.max(minWidth, Math.min(maxWidth, availableWidth));
@@ -578,11 +583,6 @@ function resizeCanvas() {
     if (game.canvas) {
         game.canvas.width = canvasWidth;
         game.canvas.height = canvasHeight;
-    }
-
-    if (ui) {
-        ui.style.minWidth = canvasWidth + 'px';
-        ui.style.maxWidth = canvasWidth + 'px';
     }
 
     console.log(`Canvas resized to: ${canvasWidth}x${canvasHeight}`);
@@ -677,11 +677,11 @@ function startGame() {
     // 双人模式创建P2
     if (game.playerCount === 2 && game.selectedClass2) {
         game.player2 = new Player(game.selectedClass2, 2);
-        document.getElementById('p2UI').classList.remove('hidden');
+        document.getElementById('p2Panel').classList.remove('hidden');
         document.getElementById('p2ClassName').textContent = classNames[game.selectedClass2] || game.selectedClass2;
     } else {
         game.player2 = null;
-        document.getElementById('p2UI').classList.add('hidden');
+        document.getElementById('p2Panel').classList.add('hidden');
     }
 
     game.enemies = [];
@@ -906,10 +906,17 @@ function initGame() {
     // 返回主菜单
     document.getElementById('returnMenuBtn').addEventListener('click', returnToMenu);
 
-    // 游戏内重新开始按钮
-    document.getElementById('inGameRestartBtn').addEventListener('click', () => {
-        restartCurrentWave();
-    });
+    // 暂停按钮（顶部栏）
+    const pauseBtn = document.getElementById('pauseBtn');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+            if (game.state === 'playing') {
+                pauseGame();
+            } else if (game.state === 'paused') {
+                resumeGame();
+            }
+        });
+    }
 
     // 武器详情弹窗关闭
     document.querySelector('#weaponDetailModal .modal-close').addEventListener('click', () => {

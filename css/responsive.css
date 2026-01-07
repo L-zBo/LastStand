@@ -1,25 +1,42 @@
 /* ==================== 响应式设计 ==================== */
 
-@media (max-width: 1400px) {
-    #levelUpScreen {
-        min-width: 900px;
+/* 大屏幕 */
+@media (min-width: 1400px) {
+    .player-side-panel {
+        width: 250px;
     }
 
-    .buff-card {
+    .stat-tag {
+        font-size: 0.45em;
+    }
+}
+
+/* 中等屏幕 */
+@media (max-width: 1200px) {
+    .player-side-panel {
+        width: 200px;
         min-width: 160px;
-        max-width: 180px;
+    }
+
+    .stat-tag {
+        font-size: 0.35em;
+        padding: 3px 5px;
+    }
+
+    .top-bar {
+        gap: 10px;
+        padding: 6px 10px;
+    }
+
+    .top-bar .info-item {
+        font-size: 0.45em;
+        padding: 3px 8px;
     }
 }
 
 @media (max-width: 1000px) {
     .class-cards {
         grid-template-columns: repeat(2, 1fr);
-    }
-
-    #ui {
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px 20px;
     }
 
     #levelUpScreen {
@@ -38,11 +55,6 @@
         min-width: auto;
     }
 
-    #gameCanvas {
-        width: 100%;
-        height: auto;
-    }
-
     .stat-bar {
         flex-wrap: wrap;
         gap: 10px;
@@ -52,15 +64,13 @@
         flex-wrap: wrap;
     }
 
-    .left-panel {
+    .player-side-panel {
         width: 180px;
-    }
-
-    .side-panel {
-        width: 140px;
+        min-width: 150px;
     }
 }
 
+/* 小屏幕 - 垂直布局 */
 @media (max-width: 900px) {
     .save-slot-content {
         min-width: auto;
@@ -77,10 +87,29 @@
         align-items: center;
     }
 
-    .left-panel,
-    .side-panel {
+    .player-side-panel {
         width: 100%;
+        max-width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .player-side-panel .player-panel {
+        flex: 1;
+        min-width: 280px;
         max-width: 400px;
+    }
+
+    #gameCanvas {
+        order: -1;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .top-bar {
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
 
@@ -108,7 +137,7 @@
     }
 
     #gameScreen {
-        padding: 10px;
+        padding: 5px;
     }
 
     .weapon-slot {
@@ -128,5 +157,20 @@
 
     .player-count-btn {
         padding: 20px 30px;
+    }
+
+    .top-bar .info-item {
+        font-size: 0.4em;
+        padding: 2px 6px;
+    }
+
+    .top-bar .top-btn {
+        font-size: 0.4em;
+        padding: 4px 8px;
+    }
+
+    .stat-tag {
+        font-size: 0.32em;
+        padding: 2px 4px;
     }
 }
