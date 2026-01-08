@@ -234,8 +234,13 @@ function updatePassiveBar2() {
     });
 }
 
-// 显示武器详情弹窗
+// 显示武器详情弹窗（暂停游戏）
 function showWeaponDetail(weapon) {
+    // 暂停游戏
+    if (game.state === 'playing') {
+        game.state = 'paused';
+    }
+
     const modal = document.getElementById('weaponDetailModal');
     document.getElementById('weaponDetailIcon').textContent = weapon.icon;
     document.getElementById('weaponDetailName').textContent = weapon.name;
@@ -263,6 +268,15 @@ function showWeaponDetail(weapon) {
     }
 
     modal.classList.remove('hidden');
+}
+
+// 关闭武器详情弹窗（恢复游戏）
+function closeWeaponDetail() {
+    document.getElementById('weaponDetailModal').classList.add('hidden');
+    if (game.state === 'paused') {
+        game.state = 'playing';
+        game.lastTime = 0;
+    }
 }
 
 // 显示武器进化提示

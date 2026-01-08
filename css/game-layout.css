@@ -168,19 +168,19 @@
 /* 玩家属性 - CSS Grid 自适应布局 */
 .player-stats {
     display: grid;
-    /* 自动填充，每个标签最小60px，最大自适应 */
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    gap: 4px;
+    /* 自动填充，每个标签最小70px，最大自适应 */
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 5px;
 }
 
 .stat-tag {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    font-size: 0.38em;
+    gap: 3px;
+    font-size: 0.42em;
     font-family: 'Press Start 2P', monospace;
-    padding: 4px 5px;
+    padding: 6px 6px;
     background: #1a1a3a;
     border: 2px solid #3a3a5a;
     white-space: nowrap;
@@ -194,7 +194,7 @@
     background: rgba(255, 107, 107, 0.2);
     border-color: #8a4040;
     color: #ff6b6b;
-    font-size: 0.42em;
+    font-size: 0.48em;
     /* 生命值占满整行 */
     grid-column: 1 / -1;
 }

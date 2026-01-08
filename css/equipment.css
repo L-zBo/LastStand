@@ -3,20 +3,20 @@
 /* 武器栏 */
 .weapon-bar {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
 .weapon-slot {
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     background: #2a2a4a;
     border: 3px solid;
     border-color: #4a4a6a #1a1a2a #1a1a2a #4a4a6a;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1em;
+    font-size: 1.4em;
     position: relative;
     cursor: pointer;
     transition: all 0.1s ease;
@@ -35,7 +35,7 @@
 }
 
 .weapon-icon {
-    font-size: 0.9em;
+    font-size: 1.2em;
 }
 
 .weapon-slot.evolved {
@@ -49,8 +49,8 @@
     right: -1px;
     background: #1a1a3a;
     color: #fff;
-    font-size: 0.4em;
-    padding: 1px 3px;
+    font-size: 0.45em;
+    padding: 2px 4px;
     font-family: 'Press Start 2P', monospace;
     border: 1px solid #4a4a6a;
 }
@@ -80,20 +80,20 @@
 /* 被动技能栏 */
 .passive-bar {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
 .passive-slot {
-    width: 26px;
-    height: 26px;
+    width: 36px;
+    height: 36px;
     background: #2a2a4a;
     border: 2px solid;
     border-color: #5a3080 #2a1040 #2a1040 #5a3080;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8em;
+    font-size: 1.1em;
     cursor: pointer;
     transition: all 0.1s ease;
     position: relative;

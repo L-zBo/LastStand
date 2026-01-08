@@ -56,10 +56,15 @@ function generateObstacles() {
     const bushCount = mapConfig.bushCount || CONFIG.obstacles.bushCount;
     const treeCount = mapConfig.treeCount || CONFIG.obstacles.treeCount || 30;
 
+    // 边界缓冲区，确保障碍物完全在地图内显示
+    const treeBorder = 150;  // 树木需要更大的边界（图片较大）
+    const rockBorder = 80;
+    const bushBorder = 60;
+
     // 生成树木（先生成，作为主要装饰）
     for (let i = 0; i < treeCount; i++) {
-        const x = Math.random() * (CONFIG.world.width - 200) + 100;
-        const y = Math.random() * (CONFIG.world.height - 200) + 100;
+        const x = Math.random() * (CONFIG.world.width - treeBorder * 2) + treeBorder;
+        const y = Math.random() * (CONFIG.world.height - treeBorder * 2) + treeBorder;
 
         // 避免在玩家出生点附近生成
         const distFromCenter = Math.hypot(x - CONFIG.world.width / 2, y - CONFIG.world.height / 2);
@@ -70,8 +75,8 @@ function generateObstacles() {
 
     // 生成石头
     for (let i = 0; i < rockCount; i++) {
-        const x = Math.random() * (CONFIG.world.width - 100) + 50;
-        const y = Math.random() * (CONFIG.world.height - 100) + 50;
+        const x = Math.random() * (CONFIG.world.width - rockBorder * 2) + rockBorder;
+        const y = Math.random() * (CONFIG.world.height - rockBorder * 2) + rockBorder;
 
         const distFromCenter = Math.hypot(x - CONFIG.world.width / 2, y - CONFIG.world.height / 2);
         if (distFromCenter > 200) {
@@ -81,8 +86,8 @@ function generateObstacles() {
 
     // 生成草丛
     for (let i = 0; i < bushCount; i++) {
-        const x = Math.random() * (CONFIG.world.width - 100) + 50;
-        const y = Math.random() * (CONFIG.world.height - 100) + 50;
+        const x = Math.random() * (CONFIG.world.width - bushBorder * 2) + bushBorder;
+        const y = Math.random() * (CONFIG.world.height - bushBorder * 2) + bushBorder;
 
         game.obstacles.push(new Obstacle(x, y, 'bush'));
     }
@@ -943,9 +948,7 @@ function initGame() {
     }
 
     // 武器详情弹窗关闭
-    document.querySelector('#weaponDetailModal .modal-close').addEventListener('click', () => {
-        document.getElementById('weaponDetailModal').classList.add('hidden');
-    });
+    document.querySelector('#weaponDetailModal .modal-close').addEventListener('click', closeWeaponDetail);
 }
 
 // 页面加载完成后初始化
