@@ -545,20 +545,38 @@ function resizeCanvas() {
     const topBar = document.querySelector('.top-bar');
     const p1Panel = document.getElementById('p1Panel');
     const p2Panel = document.getElementById('p2Panel');
+    const gameMainArea = document.querySelector('.game-main-area');
 
     const padding = 20;
-    const topBarHeight = topBar ? topBar.offsetHeight + 10 : 50;
-    const panelWidth = p1Panel ? p1Panel.offsetWidth : 220;
+    const topBarHeight = topBar ? topBar.offsetHeight + 15 : 55;
     const p2Visible = p2Panel && !p2Panel.classList.contains('hidden');
 
-    // 计算可用空间
-    let availableWidth = window.innerWidth - padding * 2 - panelWidth - (p2Visible ? panelWidth : 0) - 30;
-    let availableHeight = window.innerHeight - topBarHeight - padding * 2;
+    // 检测是否为小屏幕（垂直布局）
+    const isSmallScreen = window.innerWidth <= 900;
 
-    const minWidth = 600;
-    const minHeight = 400;
+    let panelWidth = 0;
+    if (!isSmallScreen) {
+        // 大屏幕：面板在两侧
+        panelWidth = p1Panel ? Math.min(p1Panel.offsetWidth, 280) : 220;
+    }
+
+    // 计算可用空间
+    let availableWidth, availableHeight;
+
+    if (isSmallScreen) {
+        // 小屏幕：画布占满宽度，面板在下方
+        availableWidth = window.innerWidth - padding * 2;
+        availableHeight = window.innerHeight - topBarHeight - padding * 2 - 150; // 预留面板空间
+    } else {
+        // 大屏幕：画布在中间，面板在两侧
+        availableWidth = window.innerWidth - padding * 2 - panelWidth - (p2Visible ? panelWidth : 0) - 40;
+        availableHeight = window.innerHeight - topBarHeight - padding * 2;
+    }
+
+    const minWidth = 400;
+    const minHeight = 300;
     const maxWidth = 1600;
-    const maxHeight = 900;
+    const maxHeight = 1000;
     const aspectRatio = 16 / 10;
 
     let canvasWidth = Math.max(minWidth, Math.min(maxWidth, availableWidth));
@@ -570,7 +588,7 @@ function resizeCanvas() {
     }
 
     if (canvasWidth > availableWidth) {
-        canvasWidth = availableWidth;
+        canvasWidth = Math.max(minWidth, availableWidth);
         canvasHeight = canvasWidth / aspectRatio;
     }
 
@@ -583,9 +601,12 @@ function resizeCanvas() {
     if (game.canvas) {
         game.canvas.width = canvasWidth;
         game.canvas.height = canvasHeight;
+        // 设置 CSS 尺寸确保显示正确
+        game.canvas.style.width = canvasWidth + 'px';
+        game.canvas.style.height = canvasHeight + 'px';
     }
 
-    console.log(`Canvas resized to: ${canvasWidth}x${canvasHeight}`);
+    console.log(`Canvas resized to: ${canvasWidth}x${canvasHeight}, smallScreen: ${isSmallScreen}`);
 }
 
 // 暂停游戏
@@ -683,6 +704,9 @@ function startGame() {
         game.player2 = null;
         document.getElementById('p2Panel').classList.add('hidden');
     }
+
+    // 重新计算画布大小（双人模式下需要考虑P2面板）
+    resizeCanvas();
 
     game.enemies = [];
     game.particles = [];
