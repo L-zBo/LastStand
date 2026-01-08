@@ -11,7 +11,7 @@
     box-sizing: border-box;
 }
 
-/* 顶部控制栏 */
+/* 顶部控制栏 - 固定在最顶部 */
 .top-bar {
     display: flex;
     justify-content: center;
@@ -24,6 +24,10 @@
     margin-bottom: 10px;
     flex-wrap: wrap;
     box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+    /* 确保顶部栏不会被压缩 */
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
 }
 
 .top-bar .info-item {
@@ -101,11 +105,13 @@
     padding: 10px;
     width: 220px;
     min-width: 180px;
-    max-width: 250px;
+    max-width: 280px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    overflow-y: auto;
+    /* 移除滚动条，内容自适应 */
+    overflow: visible;
+    flex-shrink: 0;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
 }
 
@@ -156,33 +162,38 @@
     font-family: 'Press Start 2P', monospace;
 }
 
-/* 玩家属性 - 弹性盒子布局 */
+/* 玩家属性 - CSS Grid 自适应布局 */
 .player-stats {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    /* 自动填充，每个标签最小60px，最大自适应 */
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     gap: 4px;
 }
 
 .stat-tag {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 3px;
-    font-size: 0.4em;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.38em;
     font-family: 'Press Start 2P', monospace;
-    padding: 4px 6px;
+    padding: 4px 5px;
     background: #1a1a3a;
     border: 2px solid #3a3a5a;
     white-space: nowrap;
     color: #ddd;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .stat-tag.health {
     background: rgba(255, 107, 107, 0.2);
     border-color: #8a4040;
     color: #ff6b6b;
-    font-size: 0.45em;
-    width: 100%;
-    justify-content: center;
+    font-size: 0.42em;
+    /* 生命值占满整行 */
+    grid-column: 1 / -1;
 }
 
 .stat-tag.level {

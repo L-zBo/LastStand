@@ -3,11 +3,16 @@
 /* 大屏幕 */
 @media (min-width: 1400px) {
     .player-side-panel {
-        width: 250px;
+        width: 280px;
+        max-width: 300px;
     }
 
     .stat-tag {
-        font-size: 0.45em;
+        font-size: 0.42em;
+    }
+
+    .player-stats {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
     }
 }
 
@@ -20,7 +25,11 @@
 
     .stat-tag {
         font-size: 0.35em;
-        padding: 3px 5px;
+        padding: 3px 4px;
+    }
+
+    .player-stats {
+        grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
     }
 
     .top-bar {
@@ -68,6 +77,10 @@
         width: 180px;
         min-width: 150px;
     }
+
+    .player-stats {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    }
 }
 
 /* 小屏幕 - 垂直布局 */
@@ -93,12 +106,17 @@
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
+        padding: 8px;
     }
 
     .player-side-panel .player-panel {
         flex: 1;
         min-width: 280px;
         max-width: 400px;
+    }
+
+    .player-stats {
+        grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
     }
 
     #gameCanvas {
@@ -171,6 +189,10 @@
 
     .stat-tag {
         font-size: 0.32em;
-        padding: 2px 4px;
+        padding: 2px 3px;
+    }
+
+    .player-stats {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
     }
 }
