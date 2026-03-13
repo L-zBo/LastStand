@@ -67,16 +67,14 @@ const BOSS_ASSETS = {
     frog: { file: 'frog.png', name: '青蛙王' },
     eyeball: { file: 'eyeball.png', name: '眼球怪' },
     flame: { file: 'flame.png', name: '火焰魔' },
-    dragon: { file: 'dragon.png', name: '绿龙' },
+    dragon: { file: 'dragon.png', name: '巨龙' },
     beetle: { file: 'beetle.png', name: '蓝甲虫' },
-    spider: { file: 'spider.png', name: '毒蜘蛛' },
     snakeBoss: { file: 'snakeBoss.png', name: '蛇妖' },
-    oneEyeDemon: { file: 'oneEyeDemon.png', name: '独眼魔' },
-    dragonHead: { file: 'dragonHead.png', name: '龙首' }
+    oneEyeDemon: { file: 'oneEyeDemon.png', name: '独眼魔' }
 };
 
-// Boss出场顺序
-const BOSS_ORDER = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'spider', 'snakeBoss', 'oneEyeDemon', 'dragonHead', 'dragon'];
+// Boss出场顺序（每10波一个Boss，dragon作为最终Boss）
+const BOSS_ORDER = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'snakeBoss', 'oneEyeDemon', 'dragon'];
 
 // 武器配置 - 扩充到27种武器
 const WEAPON_ASSETS = {

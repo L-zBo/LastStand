@@ -309,9 +309,9 @@ function preloadEnvironmentAssets(callback) {
         treeFiles.push(`assets/environment/trees/green_tree_${i.toString().padStart(2, '0')}.png`);
     }
 
-    // 新提取的5种灌木/草素材
+    // 3种灌木素材（移除了错误分类的03树和04树干）
     const bushFiles = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
         bushFiles.push(`assets/environment/bushes/green_bushe_${i.toString().padStart(2, '0')}.png`);
     }
 

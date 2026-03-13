@@ -348,8 +348,8 @@ class Obstacle {
             const maxSize = obstacleConfig?.maxSize || 50;
             this.size = minSize + Math.random() * (maxSize - minSize);
             this.blocking = false;
-            // 随机选择草丛图片变体（0-4，共5种新提取的灌木）
-            this.variant = Math.floor(Math.random() * 5);
+            // 随机选择草丛图片变体（0-2，共3种灌木）
+            this.variant = Math.floor(Math.random() * 3);
             // 随机缩放因子（新素材较大）
             this.scale = 0.8 + Math.random() * 0.6;
         } else if (type === 'tree') {
