@@ -353,12 +353,12 @@ class Obstacle {
             // 随机缩放因子（新素材较大）
             this.scale = 0.8 + Math.random() * 0.6;
         } else if (type === 'tree') {
-            // 树木类型 - 更大，阻挡移动
+            // 树木类型 - 装饰性，不阻挡移动（角色可穿过）
             const treeConfig = CONFIG.obstacles.tree;
             const minSize = treeConfig?.minSize || 40;
             const maxSize = treeConfig?.maxSize || 80;
             this.size = minSize + Math.random() * (maxSize - minSize);
-            this.blocking = true;
+            this.blocking = false;
             // 随机选择树木图片变体（0-39，共40种新提取的树）
             this.variant = Math.floor(Math.random() * 40);
             // 随机缩放因子（0.3 - 0.6，新素材较大需要缩小）
@@ -373,9 +373,9 @@ class Obstacle {
             const rockImg = environmentImages.rocks[this.variant % environmentImages.rocks.length];
             if (rockImg && rockImg.complete) {
                 ctx.imageSmoothingEnabled = false;
-                // 石头原始图片较小(~24px)，需要较大缩放因子
-                const imgWidth = rockImg.width * this.scale * 3;
-                const imgHeight = rockImg.height * this.scale * 3;
+                // 石头图片(56-72px)，适度缩放
+                const imgWidth = rockImg.width * this.scale * 1.2;
+                const imgHeight = rockImg.height * this.scale * 1.2;
                 ctx.drawImage(rockImg, this.x - imgWidth / 2, this.y - imgHeight / 2, imgWidth, imgHeight);
             } else {
                 this.drawRockFallback(ctx);

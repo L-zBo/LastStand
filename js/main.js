@@ -749,9 +749,9 @@ function gameLoop(timestamp) {
         const tileImage = mapTileImages[game.selectedMap || 'forest'];
 
         if (tileImage) {
-            // 使用瓦片图片平铺背景
+            // 使用512x512大尺寸瓦片平铺背景（减少重复感）
             game.ctx.imageSmoothingEnabled = false;
-            const tileSize = 64;
+            const tileSize = 512;
             const startTileX = Math.floor(game.camera.x / tileSize);
             const startTileY = Math.floor(game.camera.y / tileSize);
             const endTileX = Math.ceil((game.camera.x + CONFIG.canvas.width) / tileSize) + 1;

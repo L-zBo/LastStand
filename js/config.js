@@ -171,9 +171,9 @@ function preloadMapTiles(callback) {
     });
 }
 
-// 程序化生成像素风格地图瓦片（64x64）
+// 程序化生成像素风格地图瓦片（512x512，作为PNG加载失败的备用）
 function generateMapTile(mapKey) {
-    const size = 64;
+    const size = 512;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
