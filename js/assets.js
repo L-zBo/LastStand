@@ -21,7 +21,7 @@ const PLAYER_ASSETS = {
     necromancer: { file: 'necromancer.png', name: '死灵法师' }
 };
 
-// 敌人配置 - 扩充到28种敌人
+// 敌人配置 - 扩充到84种敌人（含56个新怪物）
 const ENEMY_ASSETS = {
     normal: [
         { id: 'skeleton', file: 'skeleton.png', name: '骷髅' },
@@ -31,7 +31,23 @@ const ENEMY_ASSETS = {
         { id: 'snake', file: 'snake.png', name: '毒蛇' },
         { id: 'bat', file: 'bat.png', name: '蝙蝠' },
         { id: 'spider', file: 'spider.png', name: '蜘蛛' },
-        { id: 'zombie', file: 'zombie.png', name: '僵尸' }
+        { id: 'zombie', file: 'zombie.png', name: '僵尸' },
+        { id: 'monster_03', file: 'monster_03.png', name: '蓝触角怪' },
+        { id: 'monster_04', file: 'monster_04.png', name: '绿花怪' },
+        { id: 'monster_08', file: 'monster_08.png', name: '绿毛球' },
+        { id: 'monster_10', file: 'monster_10.png', name: '蛋壳小鸡' },
+        { id: 'monster_16', file: 'monster_16.png', name: '云绵羊' },
+        { id: 'monster_17', file: 'monster_17.png', name: '绿水滴' },
+        { id: 'monster_19', file: 'monster_19.png', name: '雪猫' },
+        { id: 'monster_20', file: 'monster_20.png', name: '蓝毛球' },
+        { id: 'monster_21', file: 'monster_21.png', name: '蜗牛' },
+        { id: 'monster_22', file: 'monster_22.png', name: '蜡烛鬼' },
+        { id: 'monster_32', file: 'monster_32.png', name: '青猫' },
+        { id: 'monster_37', file: 'monster_37.png', name: '萌芽怪' },
+        { id: 'monster_46', file: 'monster_46.png', name: '蘑菇怪' },
+        { id: 'monster_50', file: 'monster_50.png', name: '金虫' },
+        { id: 'monster_52', file: 'monster_52.png', name: '绿外星人' },
+        { id: 'monster_56', file: 'monster_56.png', name: '毛毛虫' }
     ],
     fast: [
         { id: 'redImp', file: 'redImp.png', name: '红色小鬼' },
@@ -39,7 +55,20 @@ const ENEMY_ASSETS = {
         { id: 'blackCat', file: 'blackCat.png', name: '黑猫' },
         { id: 'wolf', file: 'wolf.png', name: '灰狼' },
         { id: 'ghost', file: 'ghost.png', name: '幽灵' },
-        { id: 'shadowFiend', file: 'shadowFiend.png', name: '暗影魔' }
+        { id: 'shadowFiend', file: 'shadowFiend.png', name: '暗影魔' },
+        { id: 'monster_06', file: 'monster_06.png', name: '黑刺客' },
+        { id: 'monster_07', file: 'monster_07.png', name: '绿飞龙' },
+        { id: 'monster_09', file: 'monster_09.png', name: '飞鸟怪' },
+        { id: 'monster_14', file: 'monster_14.png', name: '翼龙' },
+        { id: 'monster_18', file: 'monster_18.png', name: '红狐' },
+        { id: 'monster_27', file: 'monster_27.png', name: '蓝海豚' },
+        { id: 'monster_29', file: 'monster_29.png', name: '拳击袋鼠' },
+        { id: 'monster_30', file: 'monster_30.png', name: '蓝鲸' },
+        { id: 'monster_34', file: 'monster_34.png', name: '小恐龙' },
+        { id: 'monster_38', file: 'monster_38.png', name: '金鱼怪' },
+        { id: 'monster_39', file: 'monster_39.png', name: '紫鸟' },
+        { id: 'monster_48', file: 'monster_48.png', name: '浣熊' },
+        { id: 'monster_55', file: 'monster_55.png', name: '双头怪' }
     ],
     tank: [
         { id: 'stoneGolem', file: 'stoneGolem.png', name: '石头傀儡' },
@@ -47,7 +76,20 @@ const ENEMY_ASSETS = {
         { id: 'greenOrc', file: 'greenOrc.png', name: '绿皮兽人' },
         { id: 'troll', file: 'troll.png', name: '巨魔' },
         { id: 'ogre', file: 'ogre.png', name: '食人魔' },
-        { id: 'ironGolem', file: 'ironGolem.png', name: '铁傀儡' }
+        { id: 'ironGolem', file: 'ironGolem.png', name: '铁傀儡' },
+        { id: 'monster_01', file: 'monster_01.png', name: '黄色大块头' },
+        { id: 'monster_05', file: 'monster_05.png', name: '蓝龙兽' },
+        { id: 'monster_12', file: 'monster_12.png', name: '火甲虫' },
+        { id: 'monster_13', file: 'monster_13.png', name: '紫犀牛' },
+        { id: 'monster_23', file: 'monster_23.png', name: '海狸熊' },
+        { id: 'monster_25', file: 'monster_25.png', name: '暗刺球' },
+        { id: 'monster_35', file: 'monster_35.png', name: '棕河马' },
+        { id: 'monster_36', file: 'monster_36.png', name: '橙恐龙' },
+        { id: 'monster_41', file: 'monster_41.png', name: '岩石巨人' },
+        { id: 'monster_42', file: 'monster_42.png', name: '泥鳄' },
+        { id: 'monster_43', file: 'monster_43.png', name: '黑野牛' },
+        { id: 'monster_44', file: 'monster_44.png', name: '青龙' },
+        { id: 'monster_51', file: 'monster_51.png', name: '甲壳兽' }
     ],
     elite: [
         { id: 'demon', file: 'demon.png', name: '恶魔' },
@@ -57,7 +99,21 @@ const ENEMY_ASSETS = {
         { id: 'darkKnight', file: 'darkKnight.png', name: '黑暗骑士' },
         { id: 'lich', file: 'lich.png', name: '巫妖' },
         { id: 'vampire', file: 'vampire.png', name: '吸血鬼' },
-        { id: 'warlock', file: 'warlock.png', name: '术士' }
+        { id: 'warlock', file: 'warlock.png', name: '术士' },
+        { id: 'monster_02', file: 'monster_02.png', name: '机械蜂' },
+        { id: 'monster_11', file: 'monster_11.png', name: '海龙' },
+        { id: 'monster_15', file: 'monster_15.png', name: '瓢虫骑士' },
+        { id: 'monster_24', file: 'monster_24.png', name: '猫头鹰' },
+        { id: 'monster_26', file: 'monster_26.png', name: '眼镜蛇' },
+        { id: 'monster_28', file: 'monster_28.png', name: '触手九头蛇' },
+        { id: 'monster_31', file: 'monster_31.png', name: '钢铁机器人' },
+        { id: 'monster_33', file: 'monster_33.png', name: '银甲骑士' },
+        { id: 'monster_40', file: 'monster_40.png', name: '幽冥鬼火' },
+        { id: 'monster_45', file: 'monster_45.png', name: '蝠翼怪' },
+        { id: 'monster_47', file: 'monster_47.png', name: '梦魇马' },
+        { id: 'monster_49', file: 'monster_49.png', name: '白龙' },
+        { id: 'monster_53', file: 'monster_53.png', name: '灰蜘蛛' },
+        { id: 'monster_54', file: 'monster_54.png', name: '赤龙' }
     ]
 };
 
@@ -70,11 +126,15 @@ const BOSS_ASSETS = {
     dragon: { file: 'dragon.png', name: '巨龙' },
     beetle: { file: 'beetle.png', name: '蓝甲虫' },
     snakeBoss: { file: 'snakeBoss.png', name: '蛇妖' },
-    oneEyeDemon: { file: 'oneEyeDemon.png', name: '独眼魔' }
+    oneEyeDemon: { file: 'oneEyeDemon.png', name: '独眼魔' },
+    stoneGiant: { file: 'stoneGiant.png', name: '岩石巨人' },
+    hydra: { file: 'hydra.png', name: '九头蛇' },
+    rhinoDemon: { file: 'rhinoDemon.png', name: '犀牛魔' },
+    nightmareSteed: { file: 'nightmareSteed.png', name: '梦魇兽' }
 };
 
 // Boss出场顺序（每10波一个Boss，dragon作为最终Boss）
-const BOSS_ORDER = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'snakeBoss', 'oneEyeDemon', 'dragon'];
+const BOSS_ORDER = ['bear', 'frog', 'eyeball', 'flame', 'beetle', 'snakeBoss', 'oneEyeDemon', 'stoneGiant', 'hydra', 'rhinoDemon', 'nightmareSteed', 'dragon'];
 
 // 武器配置 - 扩充到27种武器
 const WEAPON_ASSETS = {

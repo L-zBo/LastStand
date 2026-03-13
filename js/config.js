@@ -149,11 +149,26 @@ const environmentImages = {
 
 function preloadMapTiles(callback) {
     const maps = Object.keys(CONFIG.maps);
-    // 为每个地图程序化生成 64x64 的像素风格瓦片
+    let loaded = 0;
+    const total = maps.length;
+
+    // 尝试加载实际PNG瓦片图片，失败则回退到程序化生成
     maps.forEach(mapKey => {
-        mapTileImages[mapKey] = generateMapTile(mapKey);
+        const tilePath = CONFIG.maps[mapKey].tileImage;
+        const img = new Image();
+        img.onload = () => {
+            mapTileImages[mapKey] = img;
+            loaded++;
+            if (loaded === total && callback) callback();
+        };
+        img.onerror = () => {
+            console.warn(`Tile image not found: ${tilePath}, using generated tile`);
+            mapTileImages[mapKey] = generateMapTile(mapKey);
+            loaded++;
+            if (loaded === total && callback) callback();
+        };
+        img.src = tilePath;
     });
-    if (callback) callback();
 }
 
 // 程序化生成像素风格地图瓦片（64x64）
@@ -309,9 +324,9 @@ function preloadEnvironmentAssets(callback) {
         treeFiles.push(`assets/environment/trees/green_tree_${i.toString().padStart(2, '0')}.png`);
     }
 
-    // 3种灌木素材（移除了错误分类的03树和04树干）
+    // 4种灌木素材
     const bushFiles = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
         bushFiles.push(`assets/environment/bushes/green_bushe_${i.toString().padStart(2, '0')}.png`);
     }
 
