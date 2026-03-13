@@ -1,5 +1,43 @@
 // ==================== 存档系统 ====================
 
+// 存档版本号 —— 新增/删除属性时递增
+const SAVE_VERSION = 2;
+
+// 玩家属性序列化映射表：[属性名, 默认值]
+// 序列化时从player读取，反序列化时写入player
+// 默认值用于反序列化时属性缺失的情况（兼容旧存档）
+const PLAYER_SAVE_PROPS = [
+    // 核心属性
+    ['x', 0], ['y', 0],
+    ['health', 100], ['maxHealth', 100],
+    ['attack', 10], ['speed', 3],
+    ['level', 1], ['exp', 0], ['maxExp', 100],
+    ['critChance', 0], ['critDamage', 2],
+    ['vampireHeal', 0], ['expMultiplier', 1],
+    ['healthRegen', 0], ['multiShot', 1],
+    ['maxSummons', 0],
+    ['gold', 0], ['goldMultiplier', 1],
+    ['damageReduction', 0], ['armor', 0],
+    ['attackCooldown', 500], ['attackRange', 200],
+    ['dashMaxCooldown', 3000],
+    // 职业特殊属性
+    ['knockbackPower', 0], ['arrowCount', 0],
+    ['soulLink', 0], ['counterAttack', 0],
+    ['healPower', 0], ['smite', false],
+    ['lifeSteal', 0], ['firstStrikeCrit', false],
+    ['magicPenetration', 0],
+    // 升级buff属性
+    ['pickupRangeBonus', 1], ['magnetRangeBonus', 1],
+    ['berserkerMode', false], ['knockbackChance', 0],
+    ['magicDamageBonus', 1], ['manaShield', false],
+    ['spellEcho', 0], ['backstab', false],
+    ['poisonDamage', 0], ['hunterMark', false],
+    ['summonDamageBonus', 1], ['summonDurationBonus', 1],
+    ['knockbackImmune', false],
+    ['holyHeal', 0], ['divineShield', false],
+    ['corpseExplosion', false], ['deathCoil', false],
+];
+
 // 检查是否有任何存档
 function hasAnySaveData() {
     for (let i = 1; i <= 6; i++) {
@@ -205,62 +243,19 @@ function showClassSelection() {
 
 // 序列化单个玩家数据
 function serializePlayer(player) {
-    return {
-        x: player.x,
-        y: player.y,
-        health: player.health,
-        maxHealth: player.maxHealth,
-        attack: player.attack,
-        speed: player.speed,
-        level: player.level,
-        exp: player.exp,
-        maxExp: player.maxExp,
-        weapons: player.weapons.map(w => ({ id: w.id, level: w.level })),
-        passives: player.passives,
-        critChance: player.critChance,
-        critDamage: player.critDamage,
-        vampireHeal: player.vampireHeal,
-        expMultiplier: player.expMultiplier,
-        healthRegen: player.healthRegen,
-        multiShot: player.multiShot,
-        maxSummons: player.maxSummons,
-        gold: player.gold,
-        goldMultiplier: player.goldMultiplier,
-        damageReduction: player.damageReduction || 0,
-        armor: player.armor || 0,
-        attackCooldown: player.attackCooldown,
-        attackRange: player.attackRange,
-        relics: (player.relics || []).map(r => r.id),
-        // 职业特殊属性
-        knockbackPower: player.knockbackPower || 0,
-        arrowCount: player.arrowCount || 0,
-        soulLink: player.soulLink || 0,
-        counterAttack: player.counterAttack || 0,
-        healPower: player.healPower || 0,
-        smite: player.smite || false,
-        lifeSteal: player.lifeSteal || 0,
-        firstStrikeCrit: player.firstStrikeCrit || false,
-        magicPenetration: player.magicPenetration || 0,
-        // 升级获得的buff属性
-        pickupRangeBonus: player.pickupRangeBonus || 1,
-        magnetRangeBonus: player.magnetRangeBonus || 1,
-        berserkerMode: player.berserkerMode || false,
-        knockbackChance: player.knockbackChance || 0,
-        magicDamageBonus: player.magicDamageBonus || 1,
-        manaShield: player.manaShield || false,
-        spellEcho: player.spellEcho || 0,
-        backstab: player.backstab || false,
-        poisonDamage: player.poisonDamage || 0,
-        hunterMark: player.hunterMark || false,
-        summonDamageBonus: player.summonDamageBonus || 1,
-        summonDurationBonus: player.summonDurationBonus || 1,
-        knockbackImmune: player.knockbackImmune || false,
-        holyHeal: player.holyHeal || 0,
-        divineShield: player.divineShield || false,
-        corpseExplosion: player.corpseExplosion || false,
-        deathCoil: player.deathCoil || false,
-        dashMaxCooldown: player.dashMaxCooldown
-    };
+    const data = {};
+    for (const [prop, defaultVal] of PLAYER_SAVE_PROPS) {
+        const val = player[prop];
+        // 只保存和默认值不同的属性，减小存档体积
+        if (val !== undefined && val !== defaultVal) {
+            data[prop] = val;
+        }
+    }
+    // 特殊字段：武器、被动、遗物需要自定义序列化
+    data.weapons = player.weapons.map(w => ({ id: w.id, level: w.level }));
+    data.passives = player.passives;
+    data.relics = (player.relics || []).map(r => r.id);
+    return data;
 }
 
 // 保存游戏到指定存档位
