@@ -77,6 +77,11 @@ function renderSaveSlots() {
         slot.dataset.slot = i;
 
         if (saveData) {
+            const diffNames = { easy: '简单', normal: '普通', hard: '困难', nightmare: '噩梦' };
+            const mapNames = { forest: '森林', desert: '沙漠', dungeon: '地牢', snow: '雪地', lava: '熔岩', ocean: '海洋' };
+            const diffText = diffNames[saveData.selectedDifficulty] || '普通';
+            const mapText = mapNames[saveData.selectedMap] || '森林';
+            const p2Text = saveData.playerCount === 2 ? ` | 👥 双人` : '';
             slot.innerHTML = `
                 <span class="save-slot-delete" role="button" tabindex="0" data-slot="${i}" title="删除存档" aria-label="删除存档 ${i}">×</span>
                 <div class="save-slot-header">
@@ -87,6 +92,7 @@ function renderSaveSlots() {
                     <p class="class-name">${getClassName(saveData.selectedClass)}</p>
                     <p>⭐ 等级 ${saveData.player.level} | 🌊 波次 ${saveData.wave}</p>
                     <p>💀 击杀 ${saveData.killCount} | 🪙 ${saveData.player.gold || 0}</p>
+                    <p>🗺️ ${mapText} | ⚔️ ${diffText}${p2Text}</p>
                     <p class="save-time">保存于: ${formatSaveTime(saveData.saveTime)}</p>
                 </div>
             `;
@@ -197,37 +203,57 @@ function showClassSelection() {
     document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
 }
 
+// 序列化单个玩家数据
+function serializePlayer(player) {
+    return {
+        x: player.x,
+        y: player.y,
+        health: player.health,
+        maxHealth: player.maxHealth,
+        attack: player.attack,
+        speed: player.speed,
+        level: player.level,
+        exp: player.exp,
+        maxExp: player.maxExp,
+        weapons: player.weapons.map(w => ({ id: w.id, level: w.level })),
+        passives: player.passives,
+        critChance: player.critChance,
+        critDamage: player.critDamage,
+        vampireHeal: player.vampireHeal,
+        expMultiplier: player.expMultiplier,
+        healthRegen: player.healthRegen,
+        multiShot: player.multiShot,
+        maxSummons: player.maxSummons,
+        gold: player.gold,
+        goldMultiplier: player.goldMultiplier,
+        damageReduction: player.damageReduction || 0,
+        armor: player.armor || 0,
+        attackCooldown: player.attackCooldown,
+        attackRange: player.attackRange,
+        relics: (player.relics || []).map(r => r.id)
+    };
+}
+
 // 保存游戏到指定存档位
 function saveGameToSlot(slotIndex) {
     const saveData = {
         selectedClass: game.selectedClass,
-        player: {
-            x: game.player.x,
-            y: game.player.y,
-            health: game.player.health,
-            maxHealth: game.player.maxHealth,
-            attack: game.player.attack,
-            speed: game.player.speed,
-            level: game.player.level,
-            exp: game.player.exp,
-            maxExp: game.player.maxExp,
-            weapons: game.player.weapons.map(w => ({ id: w.id, level: w.level })),
-            passives: game.player.passives,
-            critChance: game.player.critChance,
-            critDamage: game.player.critDamage,
-            vampireHeal: game.player.vampireHeal,
-            expMultiplier: game.player.expMultiplier,
-            healthRegen: game.player.healthRegen,
-            multiShot: game.player.multiShot,
-            maxSummons: game.player.maxSummons,
-            gold: game.player.gold,
-            goldMultiplier: game.player.goldMultiplier
-        },
+        selectedDifficulty: game.selectedDifficulty,
+        selectedMap: game.selectedMap,
+        playerCount: game.playerCount,
+        player: serializePlayer(game.player),
         wave: game.wave.current,
         killCount: game.killCount,
         gameTime: game.gameTime,
         saveTime: Date.now()
     };
+
+    // 双人模式保存P2
+    if (game.playerCount === 2 && game.player2) {
+        saveData.selectedClass2 = game.selectedClass2;
+        saveData.player2 = serializePlayer(game.player2);
+    }
+
     localStorage.setItem(`roguelikeSave_${slotIndex}`, JSON.stringify(saveData));
     game.currentSaveSlot = slotIndex;
 }
@@ -263,53 +289,96 @@ function loadGame() {
     showSaveSlotScreen('load');
 }
 
+// 恢复单个玩家的属性
+function restorePlayer(player, data, classType) {
+    player.x = data.x;
+    player.y = data.y;
+    player.health = data.health;
+    player.maxHealth = data.maxHealth;
+    player.attack = data.attack;
+    player.speed = data.speed;
+    player.level = data.level;
+    player.exp = data.exp;
+    player.maxExp = data.maxExp;
+    player.critChance = data.critChance || 0;
+    player.critDamage = data.critDamage || 2;
+    player.vampireHeal = data.vampireHeal || 0;
+    player.expMultiplier = data.expMultiplier || 1;
+    player.healthRegen = data.healthRegen || 0;
+    player.multiShot = data.multiShot || 1;
+    player.maxSummons = data.maxSummons || CLASSES[classType].maxSummons || 0;
+    player.gold = data.gold || 0;
+    player.goldMultiplier = data.goldMultiplier || 1;
+    player.damageReduction = data.damageReduction || 0;
+    player.armor = data.armor || 0;
+    if (data.attackCooldown) player.attackCooldown = data.attackCooldown;
+    if (data.attackRange) player.attackRange = data.attackRange;
+
+    // 恢复被动技能
+    player.passives = data.passives || [];
+
+    // 恢复武器
+    player.weapons = [];
+    (data.weapons || []).forEach(w => {
+        const weaponData = WEAPONS[w.id];
+        if (weaponData) {
+            player.weapons.push({ ...weaponData, level: w.level });
+        }
+    });
+
+    // 恢复遗物
+    player.relics = [];
+    (data.relics || []).forEach(relicId => {
+        equipRelic(player, relicId);
+    });
+}
+
 // 应用读取的存档数据
 function applyLoadedSaveData(saveData) {
     game.selectedClass = saveData.selectedClass;
+    game.selectedDifficulty = saveData.selectedDifficulty || 'normal';
+    game.selectedMap = saveData.selectedMap || 'forest';
+    game.difficultyMod = CONFIG.difficulty[game.selectedDifficulty];
+    game.mapConfig = CONFIG.maps[game.selectedMap];
+    game.playerCount = saveData.playerCount || 1;
 
     // 重置UI缓存
     resetUICache();
 
     generateObstacles();
+    generateMapEvents();
 
-    game.player = new Player(game.selectedClass);
-    // 恢复玩家属性
-    game.player.x = saveData.player.x;
-    game.player.y = saveData.player.y;
-    game.player.health = saveData.player.health;
-    game.player.maxHealth = saveData.player.maxHealth;
-    game.player.attack = saveData.player.attack;
-    game.player.speed = saveData.player.speed;
-    game.player.level = saveData.player.level;
-    game.player.exp = saveData.player.exp;
-    game.player.maxExp = saveData.player.maxExp;
-    game.player.critChance = saveData.player.critChance || 0;
-    game.player.critDamage = saveData.player.critDamage || 2;
-    game.player.vampireHeal = saveData.player.vampireHeal || 0;
-    game.player.expMultiplier = saveData.player.expMultiplier || 1;
-    game.player.healthRegen = saveData.player.healthRegen || 0;
-    game.player.multiShot = saveData.player.multiShot || 1;
-    game.player.maxSummons = saveData.player.maxSummons || CLASSES[game.selectedClass].maxSummons || 0;
-    game.player.gold = saveData.player.gold || 0;
-    game.player.goldMultiplier = saveData.player.goldMultiplier || 1;
+    // 创建并恢复P1
+    game.player = new Player(game.selectedClass, 1);
+    restorePlayer(game.player, saveData.player, game.selectedClass);
 
-    // 恢复被动技能
-    game.player.passives = saveData.player.passives || [];
+    // 双人模式恢复P2
+    if (game.playerCount === 2 && saveData.player2 && saveData.selectedClass2) {
+        game.selectedClass2 = saveData.selectedClass2;
+        game.player2 = new Player(game.selectedClass2, 2);
+        restorePlayer(game.player2, saveData.player2, game.selectedClass2);
+        document.getElementById('p2Panel').classList.remove('hidden');
+        const classNames = {
+            warrior: '战士', mage: '法师', assassin: '刺客',
+            ranger: '游侠', summoner: '召唤师',
+            knight: '骑士', paladin: '圣骑士', necromancer: '死灵法师'
+        };
+        document.getElementById('p2ClassName').textContent = classNames[game.selectedClass2] || game.selectedClass2;
+    } else {
+        game.player2 = null;
+        document.getElementById('p2Panel').classList.add('hidden');
+    }
 
-    // 恢复武器
-    game.player.weapons = [];
-    saveData.player.weapons.forEach(w => {
-        const weaponData = WEAPONS[w.id];
-        if (weaponData) {
-            game.player.weapons.push({ ...weaponData, level: w.level });
-        }
-    });
+    resizeCanvas();
 
     game.enemies = [];
     game.particles = [];
     game.projectiles = [];
     game.weaponProjectiles = [];
     game.summons = [];
+    game.droppedItems = [];
+    game.enemyProjectiles = [];
+    game.timers = [];
     game.killCount = saveData.killCount;
     game.gameTime = saveData.gameTime;
     game.lastTime = 0;

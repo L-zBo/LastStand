@@ -120,6 +120,40 @@ function showDamageNumber(x, y, text, color, isCrit) {
     game.damageNumbers.push(new DamageNumber(x, y, text, color, isCrit));
 }
 
+// ==================== 空间网格系统 ====================
+const GRID_CELL_SIZE = 200;
+
+// 构建障碍物空间网格（障碍物是静态的，只需建一次）
+function buildObstacleGrid() {
+    game.obstacleGrid = {};
+    game.obstacles.forEach(obstacle => {
+        const cellX = Math.floor(obstacle.x / GRID_CELL_SIZE);
+        const cellY = Math.floor(obstacle.y / GRID_CELL_SIZE);
+        const key = cellX + ',' + cellY;
+        if (!game.obstacleGrid[key]) game.obstacleGrid[key] = [];
+        game.obstacleGrid[key].push(obstacle);
+    });
+}
+
+// 查询坐标附近的障碍物（只查9个格子）
+function getNearbyObstacles(x, y) {
+    const cellX = Math.floor(x / GRID_CELL_SIZE);
+    const cellY = Math.floor(y / GRID_CELL_SIZE);
+    const result = [];
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const key = (cellX + dx) + ',' + (cellY + dy);
+            const cell = game.obstacleGrid[key];
+            if (cell) {
+                for (let i = 0; i < cell.length; i++) {
+                    result.push(cell[i]);
+                }
+            }
+        }
+    }
+    return result;
+}
+
 // 生成障碍物
 function generateObstacles() {
     game.obstacles = [];
@@ -165,6 +199,9 @@ function generateObstacles() {
 
         game.obstacles.push(new Obstacle(x, y, 'bush'));
     }
+
+    // 构建空间网格索引
+    buildObstacleGrid();
 }
 
 // 生成地图事件
@@ -582,8 +619,11 @@ function gameLoop(timestamp) {
         // 更新摄像机
         updateCamera();
 
-        // 更新UI
-        updateUI();
+        // 更新UI（每200ms更新一次，降低DOM操作频率）
+        if (!game._lastUIUpdate || timestamp - game._lastUIUpdate > 200) {
+            game._lastUIUpdate = timestamp;
+            updateUI();
+        }
     }
 
     // 绘制
@@ -630,18 +670,32 @@ function gameLoop(timestamp) {
         game.ctx.lineWidth = 5;
         game.ctx.strokeRect(0, 0, CONFIG.world.width, CONFIG.world.height);
 
-        // 只绘制可见区域内的障碍物（树木较大，需要更大缓冲区）
-        const visibleObstacles = game.obstacles.filter(obstacle => {
-            const buffer = obstacle.type === 'tree' ? 200 : 100;
-            return obstacle.x > game.camera.x - buffer &&
-                   obstacle.x < game.camera.x + CONFIG.canvas.width + buffer &&
-                   obstacle.y > game.camera.y - buffer &&
-                   obstacle.y < game.camera.y + CONFIG.canvas.height + buffer;
-        });
+        // 只绘制可见区域内的障碍物（使用空间网格加速）
+        const camBuffer = 200;
+        const minCellX = Math.floor((game.camera.x - camBuffer) / GRID_CELL_SIZE);
+        const maxCellX = Math.floor((game.camera.x + CONFIG.canvas.width + camBuffer) / GRID_CELL_SIZE);
+        const minCellY = Math.floor((game.camera.y - camBuffer) / GRID_CELL_SIZE);
+        const maxCellY = Math.floor((game.camera.y + CONFIG.canvas.height + camBuffer) / GRID_CELL_SIZE);
 
-        visibleObstacles.filter(o => o.type === 'bush').forEach(obstacle => obstacle.draw(game.ctx));
-        visibleObstacles.filter(o => o.type === 'rock').forEach(obstacle => obstacle.draw(game.ctx));
-        visibleObstacles.filter(o => o.type === 'tree').forEach(obstacle => obstacle.draw(game.ctx));
+        const visibleBushes = [];
+        const visibleRocks = [];
+        const visibleTrees = [];
+        for (let cx = minCellX; cx <= maxCellX; cx++) {
+            for (let cy = minCellY; cy <= maxCellY; cy++) {
+                const cell = game.obstacleGrid[cx + ',' + cy];
+                if (!cell) continue;
+                for (let i = 0; i < cell.length; i++) {
+                    const o = cell[i];
+                    if (o.type === 'bush') visibleBushes.push(o);
+                    else if (o.type === 'rock') visibleRocks.push(o);
+                    else if (o.type === 'tree') visibleTrees.push(o);
+                }
+            }
+        }
+
+        visibleBushes.forEach(obstacle => obstacle.draw(game.ctx));
+        visibleRocks.forEach(obstacle => obstacle.draw(game.ctx));
+        visibleTrees.forEach(obstacle => obstacle.draw(game.ctx));
 
         // 绘制地图事件
         if (game.mapEvents) {

@@ -1443,11 +1443,8 @@ class Player {
             const newX = this.x + dx * this.speed * dt;
             const newY = this.y + dy * this.speed * dt;
 
-            // 只检查附近的障碍物（性能优化）
-            const nearbyObstacles = game.obstacles.filter(obstacle => {
-                const dist = Math.hypot(obstacle.x - this.x, obstacle.y - this.y);
-                return dist < 200;
-            });
+            // 使用空间网格查询附近障碍物
+            const nearbyObstacles = getNearbyObstacles(this.x, this.y);
 
             // 检查与石头的碰撞
             let canMove = true;
@@ -1468,15 +1465,13 @@ class Player {
             this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
         }
 
-        // 检查是否在草丛中（独立计算附近障碍物）
+        // 检查是否在草丛中（使用空间网格）
         this.inBush = false;
-        for (const obstacle of game.obstacles) {
-            if (obstacle.type === 'bush') {
-                const dist = Math.hypot(obstacle.x - this.x, obstacle.y - this.y);
-                if (dist < 100 && obstacle.collidesWith(this.x, this.y, this.size)) {
-                    this.inBush = true;
-                    break;
-                }
+        const nearBushes = getNearbyObstacles(this.x, this.y);
+        for (const obstacle of nearBushes) {
+            if (obstacle.type === 'bush' && obstacle.collidesWith(this.x, this.y, this.size)) {
+                this.inBush = true;
+                break;
             }
         }
 
