@@ -155,6 +155,7 @@ function updateWaveSpawning() {
         type = 'boss';
         wave.bossSpawned = true;
         SFX.play('bossSpawn');
+        ScreenFX.shake(8, 400);
     }
     // 普通敌人随机类型
     else {

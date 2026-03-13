@@ -742,7 +742,7 @@ function gameLoop(timestamp) {
         game.ctx.fillRect(0, 0, CONFIG.canvas.width, CONFIG.canvas.height);
 
         game.ctx.save();
-        game.ctx.translate(-game.camera.x, -game.camera.y);
+        game.ctx.translate(-game.camera.x + ScreenFX.shakeOffsetX, -game.camera.y + ScreenFX.shakeOffsetY);
 
         // 绘制地图背景（使用瓦片图片）
         const mapConfig = game.mapConfig || CONFIG.maps.forest;
@@ -841,6 +841,9 @@ function gameLoop(timestamp) {
         game.damageNumbers.forEach(dn => dn.draw(game.ctx));
 
         game.ctx.restore();
+
+        // 绘制屏幕特效（受击闪烁等，在UI层之上）
+        ScreenFX.draw(game.ctx);
 
         drawMinimap();
     }

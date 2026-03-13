@@ -31,6 +31,8 @@ function handleEnemyKill(enemy, killer) {
     if (killer.corpseExplosion) {
         const explosionRadius = 80;
         const explosionDamage = killer.attack * 0.5;
+        ScreenFX.shake(3, 100);
+        SFX.play('explosion');
         const nearbyEnemies = getNearbyEnemies(enemy.x, enemy.y);
         for (let i = 0; i < nearbyEnemies.length; i++) {
             const nearbyEnemy = nearbyEnemies[i];
@@ -796,6 +798,8 @@ class EnemyProjectile {
                 }
                 p.health -= actualDamage;
                 this.hit = true;
+                ScreenFX.shake(3, 100);
+                ScreenFX.hitFlash(0.15);
                 if (typeof showDamageNumber === 'function') {
                     showDamageNumber(p.x, p.y - 20, actualDamage, '#e74c3c', false);
                 }
@@ -2763,6 +2767,8 @@ class Enemy {
                     }
                     game.player.health -= actualDamage;
                     SFX.play('playerHit');
+                    ScreenFX.shake(4, 150);
+                    ScreenFX.hitFlash(0.25);
                     if (typeof showDamageNumber === 'function') {
                         showDamageNumber(game.player.x, game.player.y - 20, actualDamage, '#e74c3c', false);
                     }
@@ -2804,6 +2810,8 @@ class Enemy {
                         actualDamage = Math.floor(this.damage * (1 - game.player2.damageReduction));
                     }
                     game.player2.health -= actualDamage;
+                    ScreenFX.shake(3, 120);
+                    ScreenFX.hitFlash(0.2);
                     if (typeof showDamageNumber === 'function') {
                         showDamageNumber(game.player2.x, game.player2.y - 20, actualDamage, '#e74c3c', false);
                     }
