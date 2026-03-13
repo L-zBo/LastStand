@@ -921,6 +921,7 @@ function startGame() {
     game.droppedItems = [];
     game.enemyProjectiles = [];
     game.timers = [];
+    game.damageNumbers = [];
     game.killCount = 0;
     game.gameTime = 0;
     game.lastTime = 0;

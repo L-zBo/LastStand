@@ -326,10 +326,13 @@ function restorePlayer(player, data, classType) {
         }
     });
 
-    // 恢复遗物
+    // 恢复遗物（不触发onEquip，因为保存的属性已包含加成）
     player.relics = [];
     (data.relics || []).forEach(relicId => {
-        equipRelic(player, relicId);
+        const relicDef = RELICS[relicId];
+        if (relicDef && !player.relics.some(r => r.id === relicId)) {
+            player.relics.push({ id: relicId, ...relicDef });
+        }
     });
 }
 
@@ -379,6 +382,7 @@ function applyLoadedSaveData(saveData) {
     game.droppedItems = [];
     game.enemyProjectiles = [];
     game.timers = [];
+    game.damageNumbers = [];
     game.killCount = saveData.killCount;
     game.gameTime = saveData.gameTime;
     game.lastTime = 0;
