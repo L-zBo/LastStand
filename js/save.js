@@ -314,61 +314,25 @@ function loadGame() {
     showSaveSlotScreen('load');
 }
 
-// 恢复单个玩家的属性
+// 存档迁移：处理旧版本存档的兼容性
+function migrateSaveData(saveData) {
+    const ver = saveData.version || 1;
+    // v1 → v2：无需修改数据结构，只是加了版本号和属性映射表
+    // 未来版本迁移在这里添加
+    saveData.version = SAVE_VERSION;
+    return saveData;
+}
+
+// 恢复单个玩家的属性（使用属性映射表驱动）
 function restorePlayer(player, data, classType) {
-    player.x = data.x;
-    player.y = data.y;
-    player.health = data.health;
-    player.maxHealth = data.maxHealth;
-    player.attack = data.attack;
-    player.speed = data.speed;
-    player.level = data.level;
-    player.exp = data.exp;
-    player.maxExp = data.maxExp;
-    player.critChance = data.critChance || 0;
-    player.critDamage = data.critDamage || 2;
-    player.vampireHeal = data.vampireHeal || 0;
-    player.expMultiplier = data.expMultiplier || 1;
-    player.healthRegen = data.healthRegen || 0;
-    player.multiShot = data.multiShot || 1;
-    player.maxSummons = data.maxSummons || CLASSES[classType].maxSummons || 0;
-    player.gold = data.gold || 0;
-    player.goldMultiplier = data.goldMultiplier || 1;
-    player.damageReduction = data.damageReduction || 0;
-    player.armor = data.armor || 0;
-    if (data.attackCooldown) player.attackCooldown = data.attackCooldown;
-    if (data.attackRange) player.attackRange = data.attackRange;
-
-    // 职业特殊属性
-    if (data.knockbackPower) player.knockbackPower = data.knockbackPower;
-    if (data.arrowCount) player.arrowCount = data.arrowCount;
-    if (data.soulLink) player.soulLink = data.soulLink;
-    if (data.counterAttack) player.counterAttack = data.counterAttack;
-    if (data.healPower) player.healPower = data.healPower;
-    if (data.smite) player.smite = data.smite;
-    if (data.lifeSteal) player.lifeSteal = data.lifeSteal;
-    if (data.firstStrikeCrit) player.firstStrikeCrit = data.firstStrikeCrit;
-    if (data.magicPenetration) player.magicPenetration = data.magicPenetration;
-
-    // 升级获得的buff属性
-    if (data.pickupRangeBonus && data.pickupRangeBonus !== 1) player.pickupRangeBonus = data.pickupRangeBonus;
-    if (data.magnetRangeBonus && data.magnetRangeBonus !== 1) player.magnetRangeBonus = data.magnetRangeBonus;
-    if (data.berserkerMode) player.berserkerMode = data.berserkerMode;
-    if (data.knockbackChance) player.knockbackChance = data.knockbackChance;
-    if (data.magicDamageBonus && data.magicDamageBonus !== 1) player.magicDamageBonus = data.magicDamageBonus;
-    if (data.manaShield) player.manaShield = data.manaShield;
-    if (data.spellEcho) player.spellEcho = data.spellEcho;
-    if (data.backstab) player.backstab = data.backstab;
-    if (data.poisonDamage) player.poisonDamage = data.poisonDamage;
-    if (data.hunterMark) player.hunterMark = data.hunterMark;
-    if (data.summonDamageBonus && data.summonDamageBonus !== 1) player.summonDamageBonus = data.summonDamageBonus;
-    if (data.summonDurationBonus && data.summonDurationBonus !== 1) player.summonDurationBonus = data.summonDurationBonus;
-    if (data.knockbackImmune) player.knockbackImmune = data.knockbackImmune;
-    if (data.holyHeal) player.holyHeal = data.holyHeal;
-    if (data.divineShield) player.divineShield = data.divineShield;
-    if (data.corpseExplosion) player.corpseExplosion = data.corpseExplosion;
-    if (data.deathCoil) player.deathCoil = data.deathCoil;
-    if (data.dashMaxCooldown) player.dashMaxCooldown = data.dashMaxCooldown;
+    // 使用映射表统一恢复所有属性
+    for (const [prop, defaultVal] of PLAYER_SAVE_PROPS) {
+        player[prop] = (data[prop] !== undefined) ? data[prop] : defaultVal;
+    }
+    // maxSummons 特殊处理：需要参考职业配置
+    if (!data.maxSummons && CLASSES[classType]) {
+        player.maxSummons = CLASSES[classType].maxSummons || 0;
+    }
 
     // 恢复被动技能
     player.passives = data.passives || [];
@@ -394,6 +358,10 @@ function restorePlayer(player, data, classType) {
 
 // 应用读取的存档数据
 function applyLoadedSaveData(saveData) {
+    // 迁移旧版本存档
+    if (!saveData.version || saveData.version < SAVE_VERSION) {
+        saveData = migrateSaveData(saveData);
+    }
     game.selectedClass = saveData.selectedClass;
     game.selectedDifficulty = saveData.selectedDifficulty || 'normal';
     game.selectedMap = saveData.selectedMap || 'forest';

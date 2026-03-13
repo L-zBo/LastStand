@@ -70,6 +70,71 @@ function updateGameTimers(deltaTime) {
     }
 }
 
+// ==================== 屏幕震动系统 ====================
+const ScreenFX = {
+    // 屏幕震动
+    shakeIntensity: 0,
+    shakeDuration: 0,
+    shakeTime: 0,
+    shakeOffsetX: 0,
+    shakeOffsetY: 0,
+
+    // 受击闪烁（屏幕边缘红色叠加）
+    hitFlashAlpha: 0,
+
+    // 触发屏幕震动
+    shake(intensity, duration) {
+        // 取较大的震动值，不会被弱震动覆盖强震动
+        if (intensity > this.shakeIntensity) {
+            this.shakeIntensity = intensity;
+            this.shakeDuration = duration || 200;
+            this.shakeTime = 0;
+        }
+    },
+
+    // 触发受击闪烁
+    hitFlash(alpha) {
+        this.hitFlashAlpha = Math.max(this.hitFlashAlpha, alpha || 0.3);
+    },
+
+    // 每帧更新
+    update(deltaTime) {
+        // 更新震动
+        if (this.shakeIntensity > 0) {
+            this.shakeTime += deltaTime;
+            if (this.shakeTime >= this.shakeDuration) {
+                this.shakeIntensity = 0;
+                this.shakeOffsetX = 0;
+                this.shakeOffsetY = 0;
+            } else {
+                const decay = 1 - this.shakeTime / this.shakeDuration;
+                this.shakeOffsetX = (Math.random() * 2 - 1) * this.shakeIntensity * decay;
+                this.shakeOffsetY = (Math.random() * 2 - 1) * this.shakeIntensity * decay;
+            }
+        }
+
+        // 衰减闪烁
+        if (this.hitFlashAlpha > 0) {
+            this.hitFlashAlpha -= deltaTime * 0.003;
+            if (this.hitFlashAlpha < 0) this.hitFlashAlpha = 0;
+        }
+    },
+
+    // 绘制屏幕效果（在所有游戏内容之后绘制）
+    draw(ctx) {
+        // 受击闪烁：屏幕边缘红色渐变叠加
+        if (this.hitFlashAlpha > 0) {
+            const w = CONFIG.canvas.width;
+            const h = CONFIG.canvas.height;
+            const gradient = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.7);
+            gradient.addColorStop(0, 'rgba(255, 0, 0, 0)');
+            gradient.addColorStop(1, `rgba(255, 0, 0, ${this.hitFlashAlpha})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+        }
+    }
+};
+
 // ==================== 伤害飘字系统 ====================
 class DamageNumber {
     constructor(x, y, text, color, isCrit) {
@@ -374,6 +439,7 @@ function updateWeaponProjectiles() {
                 }
 
                 enemy.health -= damage;
+                SFX.play('hit');
 
                 // 武器伤害飘字
                 showDamageNumber(enemy.x, enemy.y - 10, Math.floor(damage), '#ffaa00');
@@ -660,6 +726,9 @@ function gameLoop(timestamp) {
         // 更新摄像机
         updateCamera();
 
+        // 更新屏幕特效
+        ScreenFX.update(deltaTime);
+
         // 更新UI（每200ms更新一次，降低DOM操作频率）
         if (!game._lastUIUpdate || timestamp - game._lastUIUpdate > 200) {
             game._lastUIUpdate = timestamp;
@@ -905,6 +974,9 @@ function returnToMenu() {
 
 // 开始游戏
 function startGame() {
+    // 初始化音效系统（需要在用户交互后）
+    SFX.init();
+
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('mapSelection').classList.add('hidden');
     document.getElementById('difficultySelection').classList.add('hidden');

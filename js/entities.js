@@ -3,6 +3,7 @@
 // ==================== 统一击杀处理 ====================
 // 所有击杀逻辑（近战、远程、武器投射物、召唤物）统一走这里
 function handleEnemyKill(enemy, killer) {
+    SFX.play('kill');
     // 给击杀者加经验
     killer.gainExp(enemy.expValue);
     game.killCount++;
@@ -208,6 +209,7 @@ class DroppedItem {
     pickup(player) {
         if (this.collected) return;
         this.collected = true;
+        SFX.play('pickup');
 
         if (this.type === 'gold') {
             const actualGold = player.gainGold(this.value);
@@ -1394,6 +1396,7 @@ class Player {
                 this.dashDirX = dx / len;
                 this.dashDirY = dy / len;
                 this.isDashing = true;
+                SFX.play('dash');
                 this.dashDuration = this.dashMaxDuration;
                 this.dashCooldown = this.dashMaxCooldown;
                 this.invincible = true; // 冲刺期间无敌
@@ -1568,6 +1571,7 @@ class Player {
         if (!skill) return;
 
         this.skillCooldown = skill.cooldown;
+        SFX.play('skill');
         const now = Date.now();
 
         switch (skill.type) {
@@ -2220,6 +2224,7 @@ class Player {
 
     levelUp() {
         this.level++;
+        SFX.play('levelUp');
         this.exp -= this.maxExp;
         this.maxExp = Math.floor(this.maxExp * 1.2);
 
@@ -2757,6 +2762,7 @@ class Enemy {
                         actualDamage = Math.floor(this.damage * (1 - game.player.damageReduction));
                     }
                     game.player.health -= actualDamage;
+                    SFX.play('playerHit');
                     if (typeof showDamageNumber === 'function') {
                         showDamageNumber(game.player.x, game.player.y - 20, actualDamage, '#e74c3c', false);
                     }

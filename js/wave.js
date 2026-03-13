@@ -41,6 +41,7 @@ function getSpawnPosition() {
 
 // 开始新波次
 function startNewWave() {
+    SFX.play('waveStart');
     const wave = game.wave;
     wave.isSpawning = true;
     wave.inBreak = false;
@@ -153,6 +154,7 @@ function updateWaveSpawning() {
              wave.enemiesSpawned >= wave.totalEnemies - 1 && !wave.bossSpawned) {
         type = 'boss';
         wave.bossSpawned = true;
+        SFX.play('bossSpawn');
     }
     // 普通敌人随机类型
     else {
