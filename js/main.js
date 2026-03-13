@@ -154,6 +154,38 @@ function getNearbyObstacles(x, y) {
     return result;
 }
 
+// 构建敌人空间网格（敌人是动态的，每帧重建）
+function buildEnemyGrid() {
+    game.enemyGrid = {};
+    for (let i = 0; i < game.enemies.length; i++) {
+        const enemy = game.enemies[i];
+        const cellX = Math.floor(enemy.x / GRID_CELL_SIZE);
+        const cellY = Math.floor(enemy.y / GRID_CELL_SIZE);
+        const key = cellX + ',' + cellY;
+        if (!game.enemyGrid[key]) game.enemyGrid[key] = [];
+        game.enemyGrid[key].push(enemy);
+    }
+}
+
+// 查询坐标附近的敌人（只查9个格子）
+function getNearbyEnemies(x, y) {
+    const cellX = Math.floor(x / GRID_CELL_SIZE);
+    const cellY = Math.floor(y / GRID_CELL_SIZE);
+    const result = [];
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const key = (cellX + dx) + ',' + (cellY + dy);
+            const cell = game.enemyGrid[key];
+            if (cell) {
+                for (let i = 0; i < cell.length; i++) {
+                    result.push(cell[i]);
+                }
+            }
+        }
+    }
+    return result;
+}
+
 // 生成障碍物
 function generateObstacles() {
     game.obstacles = [];
@@ -284,7 +316,7 @@ function updateWeaponAttacksForPlayer(player) {
 
         if (now - weapon.lastAttackTime < cooldown) return;
 
-        const nearestEnemy = game.enemies.reduce((closest, enemy) => {
+        const nearestEnemy = getNearbyEnemies(player.x, player.y).reduce((closest, enemy) => {
             const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
             return dist < closest.dist ? { enemy, dist } : closest;
         }, { enemy: null, dist: Infinity });
@@ -310,11 +342,13 @@ function updateWeaponAttacks() {
     }
 }
 
-// 更新武器投射物
+// 更新武器投射物（使用空间网格加速碰撞检测）
 function updateWeaponProjectiles() {
     game.weaponProjectiles.forEach(proj => {
         proj.update();
-        game.enemies.forEach(enemy => {
+        const nearbyEnemies = getNearbyEnemies(proj.x, proj.y);
+        for (let i = 0; i < nearbyEnemies.length; i++) {
+            const enemy = nearbyEnemies[i];
             if (proj.checkHit(enemy)) {
                 const owner = proj.player;
                 let damage = proj.damage;
@@ -344,7 +378,7 @@ function updateWeaponProjectiles() {
                 // 武器伤害飘字
                 showDamageNumber(enemy.x, enemy.y - 10, Math.floor(damage), '#ffaa00');
 
-                for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 2; j++) {
                     game.particles.push(new Particle(enemy.x, enemy.y, '#fff'));
                 }
 
@@ -352,7 +386,7 @@ function updateWeaponProjectiles() {
                     handleEnemyKill(enemy, owner);
                 }
             }
-        });
+        }
     });
     game.weaponProjectiles = game.weaponProjectiles.filter(p => !p.isDead());
 }
@@ -512,6 +546,9 @@ function gameLoop(timestamp) {
         game.droppedItems.forEach(item => item.update());
         game.enemyProjectiles.forEach(ep => ep.update());
 
+        // 构建敌人空间网格（每帧重建，用于碰撞检测加速）
+        buildEnemyGrid();
+
         // 更新地图事件
         if (game.mapEvents) {
             game.mapEvents.forEach(event => event.update());
@@ -521,9 +558,12 @@ function gameLoop(timestamp) {
         // 更新伤害飘字
         game.damageNumbers.forEach(dn => dn.update());
         game.damageNumbers = game.damageNumbers.filter(dn => !dn.isDead());
-        // 投射物击中检测
+        // 投射物击中检测（使用空间网格加速）
         game.projectiles.forEach(projectile => {
-            game.enemies.forEach(enemy => {
+            if (projectile.hit) return;
+            const nearbyEnemies = getNearbyEnemies(projectile.x, projectile.y);
+            for (let i = 0; i < nearbyEnemies.length; i++) {
+                const enemy = nearbyEnemies[i];
                 const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
                 if (dist < enemy.size && !projectile.hit) {
                     let damage = projectile.damage;
@@ -554,15 +594,16 @@ function gameLoop(timestamp) {
                         owner.health = Math.min(owner.health + healAmount, owner.maxHealth);
                     }
 
-                    for (let i = 0; i < 2; i++) {
+                    for (let j = 0; j < 2; j++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, projectile.color));
                     }
 
                     if (enemy.health <= 0) {
                         handleEnemyKill(enemy, owner);
                     }
+                    break; // 一颗弹只命中一个敌人
                 }
-            });
+            }
         });
 
         // 分裂怪死亡生成子体

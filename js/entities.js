@@ -30,7 +30,9 @@ function handleEnemyKill(enemy, killer) {
     if (killer.corpseExplosion) {
         const explosionRadius = 80;
         const explosionDamage = killer.attack * 0.5;
-        game.enemies.forEach(nearbyEnemy => {
+        const nearbyEnemies = getNearbyEnemies(enemy.x, enemy.y);
+        for (let i = 0; i < nearbyEnemies.length; i++) {
+            const nearbyEnemy = nearbyEnemies[i];
             if (nearbyEnemy !== enemy && nearbyEnemy.health > 0) {
                 const dist = Math.hypot(nearbyEnemy.x - enemy.x, nearbyEnemy.y - enemy.y);
                 if (dist < explosionRadius) {
@@ -38,7 +40,7 @@ function handleEnemyKill(enemy, killer) {
                     game.particles.push(new Particle(nearbyEnemy.x, nearbyEnemy.y, '#4a0080'));
                 }
             }
-        });
+        }
         for (let i = 0; i < 8; i++) {
             game.particles.push(new Particle(enemy.x, enemy.y, '#9b59b6'));
         }
@@ -844,16 +846,18 @@ class Summon {
             return;
         }
 
-        // 找最近的敌人
+        // 找最近的敌人（使用空间网格加速）
         let target = null;
         let minDist = Infinity;
-        game.enemies.forEach(enemy => {
+        const nearbyEnemies = getNearbyEnemies(this.x, this.y);
+        for (let i = 0; i < nearbyEnemies.length; i++) {
+            const enemy = nearbyEnemies[i];
             const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
             if (dist < minDist) {
                 minDist = dist;
                 target = enemy;
             }
-        });
+        }
 
         // 移动向敌人
         if (target) {
@@ -1016,7 +1020,8 @@ class WeaponProjectile {
                 break;
             case 'arrow':
                 if (this.tracking && game.enemies.length > 0) {
-                    const nearest = game.enemies.reduce((closest, enemy) => {
+                    const nearbyEnemies = getNearbyEnemies(this.x, this.y);
+                    const nearest = nearbyEnemies.reduce((closest, enemy) => {
                         const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                         return dist < closest.dist ? { enemy, dist } : closest;
                     }, { enemy: null, dist: Infinity });
@@ -1172,7 +1177,7 @@ class WeaponProjectile {
                     if (this.bounce > 0) {
                         this.bounce--;
                         this.hitEnemies.push(enemy);
-                        const nextTarget = game.enemies.find(e => !this.hitEnemies.includes(e));
+                        const nextTarget = getNearbyEnemies(this.x, this.y).find(e => !this.hitEnemies.includes(e));
                         if (nextTarget) {
                             const newAngle = Math.atan2(nextTarget.y - this.y, nextTarget.x - this.x);
                             this.vx = Math.cos(newAngle) * this.speed;
@@ -1573,7 +1578,7 @@ class Player {
                 this.skillData = { attackBoost: skill.attackBoost, originalAttack: this.attack };
                 this.attack *= (1 + skill.attackBoost);
                 // 范围内敌人眩晕
-                game.enemies.forEach(enemy => {
+                getNearbyEnemies(this.x, this.y).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist <= skill.radius) {
                         enemy.stunned = true;
@@ -1603,7 +1608,7 @@ class Player {
                 // 刺客：影步 - 瞬移到最近敌人并暴击
                 let closestEnemy = null;
                 let closestDist = skill.blinkRange;
-                game.enemies.forEach(enemy => {
+                getNearbyEnemies(this.x, this.y).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist < closestDist) {
                         closestDist = dist;
@@ -1641,7 +1646,7 @@ class Player {
                 // 游侠：箭雨 - 在最近敌人位置降下箭雨
                 let target = null;
                 let minDist = skill.range;
-                game.enemies.forEach(enemy => {
+                getNearbyEnemies(this.x, this.y).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist < minDist) {
                         minDist = dist;
@@ -1671,7 +1676,7 @@ class Player {
                 if (mySummons.length > 0) {
                     mySummons.forEach(summon => {
                         // 范围伤害
-                        game.enemies.forEach(enemy => {
+                        getNearbyEnemies(summon.x, summon.y).forEach(enemy => {
                             const dist = Math.hypot(enemy.x - summon.x, enemy.y - summon.y);
                             if (dist <= skill.radius) {
                                 const damage = Math.floor(this.attack * skill.damageMultiplier);
@@ -1717,7 +1722,7 @@ class Player {
             }
             case 'holywave': {
                 // 圣骑士：圣光审判 - 范围伤害+回复
-                game.enemies.forEach(enemy => {
+                getNearbyEnemies(this.x, this.y).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist <= skill.radius) {
                         const damage = Math.floor(this.attack * skill.damageMultiplier);
@@ -1807,7 +1812,7 @@ class Player {
                 // 每tick对范围内敌人造成伤害
                 if (now - data.lastTick >= data.tickInterval) {
                     data.lastTick = now;
-                    game.enemies.forEach(enemy => {
+                    getNearbyEnemies(this.x, this.y).forEach(enemy => {
                         const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                         if (dist <= data.radius) {
                             const damage = Math.floor(this.attack * data.damagePercent);
@@ -1839,7 +1844,7 @@ class Player {
                     data.hitCount++;
                     data.lastHit = now;
                     // 对目标区域内敌人造成伤害
-                    game.enemies.forEach(enemy => {
+                    getNearbyEnemies(data.targetX, data.targetY).forEach(enemy => {
                         const dist = Math.hypot(enemy.x - data.targetX, enemy.y - data.targetY);
                         if (dist <= data.radius) {
                             const damage = Math.floor(this.attack * data.damagePercent);
@@ -1859,7 +1864,7 @@ class Player {
             case 'fortress': {
                 // 骑士堡垒：持续嘲讽附近敌人
                 const data = this.skillData;
-                game.enemies.forEach(enemy => {
+                getNearbyEnemies(this.x, this.y).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist <= data.tauntRadius) {
                         enemy.tauntTarget = this;
