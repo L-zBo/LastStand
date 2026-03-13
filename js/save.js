@@ -230,7 +230,36 @@ function serializePlayer(player) {
         armor: player.armor || 0,
         attackCooldown: player.attackCooldown,
         attackRange: player.attackRange,
-        relics: (player.relics || []).map(r => r.id)
+        relics: (player.relics || []).map(r => r.id),
+        // 职业特殊属性
+        knockbackPower: player.knockbackPower || 0,
+        arrowCount: player.arrowCount || 0,
+        soulLink: player.soulLink || 0,
+        counterAttack: player.counterAttack || 0,
+        healPower: player.healPower || 0,
+        smite: player.smite || false,
+        lifeSteal: player.lifeSteal || 0,
+        firstStrikeCrit: player.firstStrikeCrit || false,
+        magicPenetration: player.magicPenetration || 0,
+        // 升级获得的buff属性
+        pickupRangeBonus: player.pickupRangeBonus || 1,
+        magnetRangeBonus: player.magnetRangeBonus || 1,
+        berserkerMode: player.berserkerMode || false,
+        knockbackChance: player.knockbackChance || 0,
+        magicDamageBonus: player.magicDamageBonus || 1,
+        manaShield: player.manaShield || false,
+        spellEcho: player.spellEcho || 0,
+        backstab: player.backstab || false,
+        poisonDamage: player.poisonDamage || 0,
+        hunterMark: player.hunterMark || false,
+        summonDamageBonus: player.summonDamageBonus || 1,
+        summonDurationBonus: player.summonDurationBonus || 1,
+        knockbackImmune: player.knockbackImmune || false,
+        holyHeal: player.holyHeal || 0,
+        divineShield: player.divineShield || false,
+        corpseExplosion: player.corpseExplosion || false,
+        deathCoil: player.deathCoil || false,
+        dashMaxCooldown: player.dashMaxCooldown
     };
 }
 
@@ -314,6 +343,37 @@ function restorePlayer(player, data, classType) {
     if (data.attackCooldown) player.attackCooldown = data.attackCooldown;
     if (data.attackRange) player.attackRange = data.attackRange;
 
+    // 职业特殊属性
+    if (data.knockbackPower) player.knockbackPower = data.knockbackPower;
+    if (data.arrowCount) player.arrowCount = data.arrowCount;
+    if (data.soulLink) player.soulLink = data.soulLink;
+    if (data.counterAttack) player.counterAttack = data.counterAttack;
+    if (data.healPower) player.healPower = data.healPower;
+    if (data.smite) player.smite = data.smite;
+    if (data.lifeSteal) player.lifeSteal = data.lifeSteal;
+    if (data.firstStrikeCrit) player.firstStrikeCrit = data.firstStrikeCrit;
+    if (data.magicPenetration) player.magicPenetration = data.magicPenetration;
+
+    // 升级获得的buff属性
+    if (data.pickupRangeBonus && data.pickupRangeBonus !== 1) player.pickupRangeBonus = data.pickupRangeBonus;
+    if (data.magnetRangeBonus && data.magnetRangeBonus !== 1) player.magnetRangeBonus = data.magnetRangeBonus;
+    if (data.berserkerMode) player.berserkerMode = data.berserkerMode;
+    if (data.knockbackChance) player.knockbackChance = data.knockbackChance;
+    if (data.magicDamageBonus && data.magicDamageBonus !== 1) player.magicDamageBonus = data.magicDamageBonus;
+    if (data.manaShield) player.manaShield = data.manaShield;
+    if (data.spellEcho) player.spellEcho = data.spellEcho;
+    if (data.backstab) player.backstab = data.backstab;
+    if (data.poisonDamage) player.poisonDamage = data.poisonDamage;
+    if (data.hunterMark) player.hunterMark = data.hunterMark;
+    if (data.summonDamageBonus && data.summonDamageBonus !== 1) player.summonDamageBonus = data.summonDamageBonus;
+    if (data.summonDurationBonus && data.summonDurationBonus !== 1) player.summonDurationBonus = data.summonDurationBonus;
+    if (data.knockbackImmune) player.knockbackImmune = data.knockbackImmune;
+    if (data.holyHeal) player.holyHeal = data.holyHeal;
+    if (data.divineShield) player.divineShield = data.divineShield;
+    if (data.corpseExplosion) player.corpseExplosion = data.corpseExplosion;
+    if (data.deathCoil) player.deathCoil = data.deathCoil;
+    if (data.dashMaxCooldown) player.dashMaxCooldown = data.dashMaxCooldown;
+
     // 恢复被动技能
     player.passives = data.passives || [];
 
@@ -355,17 +415,20 @@ function applyLoadedSaveData(saveData) {
     game.player = new Player(game.selectedClass, 1);
     restorePlayer(game.player, saveData.player, game.selectedClass);
 
+    // 设置P1职业名称
+    const classNames = {
+        warrior: '战士', mage: '法师', assassin: '刺客',
+        ranger: '游侠', summoner: '召唤师',
+        knight: '骑士', paladin: '圣骑士', necromancer: '死灵法师'
+    };
+    document.getElementById('p1ClassName').textContent = classNames[game.selectedClass] || game.selectedClass;
+
     // 双人模式恢复P2
     if (game.playerCount === 2 && saveData.player2 && saveData.selectedClass2) {
         game.selectedClass2 = saveData.selectedClass2;
         game.player2 = new Player(game.selectedClass2, 2);
         restorePlayer(game.player2, saveData.player2, game.selectedClass2);
         document.getElementById('p2Panel').classList.remove('hidden');
-        const classNames = {
-            warrior: '战士', mage: '法师', assassin: '刺客',
-            ranger: '游侠', summoner: '召唤师',
-            knight: '骑士', paladin: '圣骑士', necromancer: '死灵法师'
-        };
         document.getElementById('p2ClassName').textContent = classNames[game.selectedClass2] || game.selectedClass2;
     } else {
         game.player2 = null;
