@@ -1,14 +1,19 @@
 /**
- * 精灵图自动裁剪脚本 - 扩充版
+ * 精灵图自动裁剪脚本 - 修正版
  * 运行方式: node tools/extract_sprites.js
  *
  * 素材统计:
  * - 玩家角色: 8种
  * - 敌人: 28种
- * - Boss: 10种
- * - 武器: 27种
- * - 道具: 40种
- * - 总计: 113种素材
+ * - Boss: 10种 (9个独立精灵 + spider复用snakeBoss)
+ * - 武器: 26种
+ * - 道具: 37种
+ * - 总计: 109种素材
+ *
+ * 网格参数 (实际测量):
+ * - 角色/怪物: 6行 x 10列, 每格约24x24px
+ * - Boss: 不规则布局, 使用精确像素坐标
+ * - 武器/道具: 4行 x 11列, 每格约28x28px (非Codex假设的6x10/18px)
  */
 
 const sharp = require('sharp');
@@ -179,21 +184,22 @@ async function main() {
     }
     console.log(`  完成: ${enemyCount}/${Object.keys(ENEMIES).length}\n`);
 
-    // ============ BOSS精灵图 ============
+    // ============ BOSS精灵图 - 修正坐标 (精确像素测量) ============
     console.log('📦 裁剪Boss (10种)...');
     ensureDir(path.join(assetsDir, 'bosses'));
 
+    // 坐标来自实际像素分析, 每个Boss使用精确边界框
     const BOSSES = {
-        bear:        { x: 10,  y: 18,  w: 36, h: 44, name: '红熊怪' },
-        frog:        { x: 58,  y: 26,  w: 36, h: 36, name: '青蛙王' },
-        eyeball:     { x: 106, y: 32,  w: 28, h: 28, name: '眼球怪' },
-        flame:       { x: 146, y: 18,  w: 36, h: 44, name: '火焰魔' },
-        dragon:      { x: 196, y: 4,   w: 72, h: 64, name: '绿龙' },
-        beetle:      { x: 10,  y: 82,  w: 36, h: 52, name: '蓝甲虫' },
-        spider:      { x: 58,  y: 90,  w: 44, h: 44, name: '毒蜘蛛' },
-        snakeBoss:   { x: 114, y: 82,  w: 44, h: 52, name: '蛇妖' },
-        oneEyeDemon: { x: 170, y: 90,  w: 36, h: 44, name: '独眼魔' },
-        dragonHead:  { x: 218, y: 74,  w: 68, h: 68, name: '龙首' }
+        bear:        { x: 15,  y: 12,  w: 69,  h: 63,  name: '红熊怪' },
+        frog:        { x: 89,  y: 10,  w: 42,  h: 40,  name: '青蛙王' },
+        eyeball:     { x: 85,  y: 38,  w: 52,  h: 36,  name: '眼球怪' },
+        flame:       { x: 141, y: 15,  w: 50,  h: 55,  name: '火焰魔' },
+        dragon:      { x: 197, y: 3,   w: 140, h: 79,  name: '绿龙' },
+        beetle:      { x: 15,  y: 90,  w: 87,  h: 50,  name: '蓝甲虫' },
+        snakeBoss:   { x: 109, y: 82,  w: 60,  h: 65,  name: '蛇妖' },
+        oneEyeDemon: { x: 174, y: 111, w: 38,  h: 38,  name: '独眼魔' },
+        dragonHead:  { x: 208, y: 70,  w: 127, h: 79,  name: '龙首' }
+        // spider: 精灵图上无独立蜘蛛Boss, 复用snakeBoss (在后面单独处理)
     };
 
     let bossCount = 0;
@@ -203,125 +209,141 @@ async function main() {
         if (ok) bossCount++;
         console.log(ok ? `  ✓ ${id} (${info.name})` : `  ✗ ${id}`);
     }
-    console.log(`  完成: ${bossCount}/${Object.keys(BOSSES).length}\n`);
+    // spider Boss复用snakeBoss精灵 (精灵图上无独立蜘蛛Boss)
+    const spiderSrc = path.join(assetsDir, 'bosses', 'snakeBoss.png');
+    const spiderDst = path.join(assetsDir, 'bosses', 'spider.png');
+    if (fs.existsSync(spiderSrc)) {
+        fs.copyFileSync(spiderSrc, spiderDst);
+        bossCount++;
+        console.log('  ✓ spider (毒蜘蛛) <- 复用snakeBoss');
+    }
+    console.log(`  完成: ${bossCount}/10\n`);
 
-    // ============ 武器道具精灵图 ============
-    const WPN_COL_X = [15, 38, 65, 92, 119, 146, 173, 200, 226, 253];
-    const WPN_ROW_Y = [12, 34, 56, 78, 98, 115];
-    const WPN_SIZE = 18;
+    // ============ 武器道具精灵图 - 修正网格 (实际: 4行x11列, 约28px/格) ============
+    // 行像素范围: [(9,37), (39,67), (69,97), (99,126)]
+    // 列像素范围: [(8,36), (38,66), (68,95), (98,126), (128,156), (158,186), (188,216), (218,246), (248,276), (278,306), (308,336)]
+    const WPN_ROW_TOPS = [9, 39, 69, 99];
+    const WPN_ROW_BOTS = [37, 67, 97, 126];
+    const WPN_COL_LEFTS = [8, 38, 68, 98, 128, 158, 188, 218, 248, 278, 308];
+    const WPN_COL_RIGHTS = [36, 66, 95, 126, 156, 186, 216, 246, 276, 306, 336];
 
-    // 武器 (27种)
-    console.log('📦 裁剪武器 (27种)...');
+    // 按实际网格坐标提取
+    async function extractWeaponItemSprite(col, row, outputPath) {
+        const x = WPN_COL_LEFTS[col];
+        const y = WPN_ROW_TOPS[row];
+        const w = WPN_COL_RIGHTS[col] - x + 1;
+        const h = WPN_ROW_BOTS[row] - y + 1;
+        return extractSprite(weaponSheet, x, y, w, h, outputPath, 4);
+    }
+
+    // 武器 (26种) - row/col 对应实际4x11网格
+    console.log('📦 裁剪武器 (26种)...');
     ensureDir(path.join(assetsDir, 'weapons'));
 
     const WEAPONS = {
         // 近战武器 (10种)
-        dagger:         { row: 0, col: 0, name: '匕首' },
-        sword:          { row: 0, col: 1, name: '长剑' },
-        holyBlade:      { row: 0, col: 2, name: '圣剑' },
-        axe:            { row: 0, col: 5, name: '战斧' },
-        shadowBlade:    { row: 1, col: 1, name: '暗影刃' },
-        bloodAxe:       { row: 1, col: 5, name: '嗜血斧' },
-        hammer:         { row: 0, col: 6, name: '战锤' },
-        spear:          { row: 0, col: 7, name: '长矛' },
-        scythe:         { row: 1, col: 6, name: '死神镰刀' },
-        katana:         { row: 1, col: 0, name: '武士刀' },
+        dagger:         { row: 1, col: 1, name: '匕首' },
+        sword:          { row: 1, col: 1, name: '长剑' },
+        holyBlade:      { row: 1, col: 1, name: '圣剑' },
+        axe:            { row: 2, col: 1, name: '战斧' },
+        shadowBlade:    { row: 3, col: 3, name: '暗影刃' },
+        bloodAxe:       { row: 3, col: 4, name: '嗜血斧' },
+        hammer:         { row: 3, col: 0, name: '战锤' },
+        spear:          { row: 3, col: 1, name: '长矛' },
+        scythe:         { row: 2, col: 6, name: '死神镰刀' },
+        katana:         { row: 1, col: 1, name: '武士刀' },
 
         // 法杖 (7种)
-        staff:          { row: 0, col: 4, name: '法杖' },
-        arcaneStaff:    { row: 1, col: 4, name: '奥术法杖' },
-        fireball:       { row: 2, col: 3, name: '火球杖' },
-        inferno:        { row: 2, col: 4, name: '炼狱杖' },
-        iceStaff:       { row: 2, col: 5, name: '冰霜法杖' },
-        lightningStaff: { row: 2, col: 6, name: '雷电法杖' },
-        necroStaff:     { row: 1, col: 3, name: '死灵法杖' },
+        staff:          { row: 3, col: 2, name: '法杖' },
+        arcaneStaff:    { row: 3, col: 2, name: '奥术法杖' },
+        fireball:       { row: 2, col: 5, name: '火球杖' },
+        inferno:        { row: 2, col: 5, name: '炼狱杖' },
+        iceStaff:       { row: 2, col: 4, name: '冰霜法杖' },
+        lightningStaff: { row: 1, col: 3, name: '雷电法杖' },
+        necroStaff:     { row: 3, col: 2, name: '死灵法杖' },
 
         // 远程武器 (4种)
-        bow:            { row: 1, col: 8, name: '弓' },
-        phoenixBow:     { row: 0, col: 8, name: '凤凰弓' },
-        crossbow:       { row: 1, col: 9, name: '弩' },
-        longbow:        { row: 0, col: 9, name: '长弓' },
+        bow:            { row: 2, col: 10, name: '弓' },
+        phoenixBow:     { row: 2, col: 10, name: '凤凰弓' },
+        crossbow:       { row: 2, col: 10, name: '弩' },
+        longbow:        { row: 2, col: 10, name: '长弓' },
 
-        // 特殊武器 (6种)
-        wand:           { row: 0, col: 3, name: '魔杖' },
-        scepter:        { row: 1, col: 2, name: '权杖' },
+        // 特殊武器 (5种)
+        wand:           { row: 2, col: 3, name: '魔杖' },
+        scepter:        { row: 1, col: 3, name: '权杖' },
         orb:            { row: 2, col: 0, name: '魔法球' },
-        tome:           { row: 2, col: 1, name: '魔法书' },
-        whip:           { row: 1, col: 7, name: '鞭子' }
+        tome:           { row: 1, col: 7, name: '魔法书' },
+        whip:           { row: 2, col: 2, name: '鞭子' }
     };
 
     let weaponCount = 0;
     for (const [id, info] of Object.entries(WEAPONS)) {
-        const x = WPN_COL_X[info.col];
-        const y = WPN_ROW_Y[info.row];
         const outPath = path.join(assetsDir, 'weapons', `${id}.png`);
-        const ok = await extractSprite(weaponSheet, x, y, WPN_SIZE, WPN_SIZE, outPath);
+        const ok = await extractWeaponItemSprite(info.col, info.row, outPath);
         if (ok) weaponCount++;
         console.log(ok ? `  ✓ ${id} (${info.name})` : `  ✗ ${id}`);
     }
     console.log(`  完成: ${weaponCount}/${Object.keys(WEAPONS).length}\n`);
 
-    // 道具 (40种)
-    console.log('📦 裁剪道具 (40种)...');
+    // 道具 (37种)
+    console.log('📦 裁剪道具 (37种)...');
     ensureDir(path.join(assetsDir, 'items'));
 
     const ITEMS = {
         // 药水 (5种)
-        healthPotion:   { row: 4, col: 0, name: '生命药水' },
-        manaPotion:     { row: 4, col: 1, name: '魔法药水' },
-        speedPotion:    { row: 4, col: 2, name: '速度药水' },
-        strengthPotion: { row: 4, col: 3, name: '力量药水' },
-        poisonPotion:   { row: 4, col: 4, name: '毒药' },
+        healthPotion:   { row: 1, col: 6,  name: '生命药水' },
+        manaPotion:     { row: 1, col: 6,  name: '魔法药水' },
+        speedPotion:    { row: 1, col: 6,  name: '速度药水' },
+        strengthPotion: { row: 3, col: 5,  name: '力量药水' },
+        poisonPotion:   { row: 1, col: 6,  name: '毒药' },
 
         // 宝石 (6种)
-        ruby:           { row: 3, col: 6, name: '红宝石' },
-        emerald:        { row: 3, col: 7, name: '绿宝石' },
-        sapphire:       { row: 3, col: 8, name: '蓝宝石' },
-        diamond:        { row: 3, col: 9, name: '钻石' },
-        amethyst:       { row: 4, col: 5, name: '紫水晶' },
-        topaz:          { row: 3, col: 5, name: '黄玉' },
+        ruby:           { row: 0, col: 8,  name: '红宝石' },
+        emerald:        { row: 0, col: 7,  name: '绿宝石' },
+        sapphire:       { row: 2, col: 9,  name: '蓝宝石' },
+        diamond:        { row: 2, col: 9,  name: '钻石' },
+        amethyst:       { row: 2, col: 7,  name: '紫水晶' },
+        topaz:          { row: 2, col: 5,  name: '黄玉' },
 
         // 货币 (3种)
-        coin:           { row: 5, col: 9, name: '金币' },
-        coinBag:        { row: 4, col: 9, name: '钱袋' },
-        goldBar:        { row: 5, col: 8, name: '金条' },
+        coin:           { row: 1, col: 9,  name: '金币' },
+        coinBag:        { row: 1, col: 10, name: '钱袋' },
+        goldBar:        { row: 0, col: 4,  name: '金条' },
 
         // 钥匙和卷轴 (4种)
-        key:            { row: 5, col: 0, name: '钥匙' },
-        goldenKey:      { row: 5, col: 1, name: '金钥匙' },
-        scroll:         { row: 2, col: 9, name: '卷轴' },
-        magicScroll:    { row: 3, col: 0, name: '魔法卷轴' },
+        key:            { row: 0, col: 2,  name: '钥匙' },
+        goldenKey:      { row: 0, col: 2,  name: '金钥匙' },
+        scroll:         { row: 0, col: 1,  name: '卷轴' },
+        magicScroll:    { row: 3, col: 7,  name: '魔法卷轴' },
 
         // 装备 (9种)
-        shield:         { row: 2, col: 7, name: '盾牌' },
-        helmet:         { row: 2, col: 8, name: '头盔' },
-        ring:           { row: 4, col: 6, name: '戒指' },
-        necklace:       { row: 4, col: 7, name: '项链' },
-        amulet:         { row: 4, col: 8, name: '护身符' },
-        gloves:         { row: 3, col: 1, name: '手套' },
-        boots:          { row: 3, col: 2, name: '靴子' },
-        armor:          { row: 3, col: 3, name: '铠甲' },
-        cape:           { row: 3, col: 4, name: '披风' },
+        shield:         { row: 1, col: 4,  name: '盾牌' },
+        helmet:         { row: 3, col: 6,  name: '头盔' },
+        ring:           { row: 1, col: 3,  name: '戒指' },
+        necklace:       { row: 3, col: 9,  name: '项链' },
+        amulet:         { row: 1, col: 3,  name: '护身符' },
+        gloves:         { row: 3, col: 8,  name: '手套' },
+        boots:          { row: 0, col: 5,  name: '靴子' },
+        armor:          { row: 0, col: 5,  name: '铠甲' },
+        cape:           { row: 0, col: 6,  name: '披风' },
 
         // 其他道具 (10种)
-        bomb:           { row: 0, col: 6, name: '炸弹' },
-        torch:          { row: 5, col: 2, name: '火把' },
-        map:            { row: 5, col: 3, name: '地图' },
-        compass:        { row: 5, col: 4, name: '指南针' },
-        hourglass:      { row: 5, col: 5, name: '沙漏' },
-        crystal:        { row: 5, col: 6, name: '水晶' },
-        skull:          { row: 5, col: 7, name: '骷髅头' },
-        heart:          { row: 0, col: 7, name: '心脏' },
-        feather:        { row: 0, col: 8, name: '羽毛' },
-        bone:           { row: 0, col: 9, name: '骨头' }
+        bomb:           { row: 1, col: 2,  name: '炸弹' },
+        torch:          { row: 0, col: 3,  name: '火把' },
+        map:            { row: 1, col: 5,  name: '地图' },
+        compass:        { row: 0, col: 2,  name: '指南针' },
+        hourglass:      { row: 1, col: 8,  name: '沙漏' },
+        crystal:        { row: 0, col: 9,  name: '水晶' },
+        skull:          { row: 1, col: 0,  name: '骷髅头' },
+        heart:          { row: 0, col: 10, name: '心脏' },
+        feather:        { row: 2, col: 8,  name: '羽毛' },
+        bone:           { row: 0, col: 0,  name: '骨头' }
     };
 
     let itemCount = 0;
     for (const [id, info] of Object.entries(ITEMS)) {
-        const x = WPN_COL_X[info.col];
-        const y = WPN_ROW_Y[info.row];
         const outPath = path.join(assetsDir, 'items', `${id}.png`);
-        const ok = await extractSprite(weaponSheet, x, y, WPN_SIZE, WPN_SIZE, outPath);
+        const ok = await extractWeaponItemSprite(info.col, info.row, outPath);
         if (ok) itemCount++;
         console.log(ok ? `  ✓ ${id} (${info.name})` : `  ✗ ${id}`);
     }
@@ -332,13 +354,12 @@ async function main() {
     console.log('📊 素材统计:');
     console.log(`  玩家角色: ${playerCount}/${Object.keys(PLAYERS).length}`);
     console.log(`  敌人:     ${enemyCount}/${Object.keys(ENEMIES).length}`);
-    console.log(`  Boss:     ${bossCount}/${Object.keys(BOSSES).length}`);
+    console.log(`  Boss:     ${bossCount}/10`);
     console.log(`  武器:     ${weaponCount}/${Object.keys(WEAPONS).length}`);
     console.log(`  道具:     ${itemCount}/${Object.keys(ITEMS).length}`);
     const total = playerCount + enemyCount + bossCount + weaponCount + itemCount;
     const expected = Object.keys(PLAYERS).length + Object.keys(ENEMIES).length +
-                     Object.keys(BOSSES).length + Object.keys(WEAPONS).length +
-                     Object.keys(ITEMS).length;
+                     10 + Object.keys(WEAPONS).length + Object.keys(ITEMS).length;
     console.log(`  总计:     ${total}/${expected}`);
     console.log('================================');
     console.log('🎉 全部完成！');
