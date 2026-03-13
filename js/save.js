@@ -72,13 +72,13 @@ function renderSaveSlots() {
 
     for (let i = 1; i <= 6; i++) {
         const saveData = getSaveData(i);
-        const slot = document.createElement('div');
+        const slot = document.createElement('button');
         slot.className = 'save-slot' + (saveData ? '' : ' empty');
         slot.dataset.slot = i;
 
         if (saveData) {
             slot.innerHTML = `
-                <button class="save-slot-delete" data-slot="${i}" title="删除存档">×</button>
+                <span class="save-slot-delete" role="button" tabindex="0" data-slot="${i}" title="删除存档" aria-label="删除存档 ${i}">×</span>
                 <div class="save-slot-header">
                     <span class="slot-icon">📁</span>
                     <span>存档 ${i}</span>
@@ -110,10 +110,17 @@ function renderSaveSlots() {
 
     // 绑定删除按钮事件
     document.querySelectorAll('.save-slot-delete').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        const handler = (e) => {
             e.stopPropagation();
             const slotIndex = parseInt(btn.dataset.slot);
             deleteSaveSlot(slotIndex);
+        };
+        btn.addEventListener('click', handler);
+        btn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handler(e);
+            }
         });
     });
 }

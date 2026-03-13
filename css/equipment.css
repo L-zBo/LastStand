@@ -19,7 +19,7 @@
     font-size: 1.4em;
     position: relative;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
     image-rendering: pixelated;
 }
 
@@ -95,7 +95,7 @@
     justify-content: center;
     font-size: 1.1em;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
     position: relative;
 }
 
@@ -128,7 +128,7 @@
     z-index: 100;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.1s ease;
+    transition: opacity 0.1s ease, visibility 0.1s ease;
     margin-bottom: 4px;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
 }
@@ -159,4 +159,103 @@
     font-size: 0.4em;
     margin-top: 3px;
     font-family: 'Press Start 2P', monospace;
+}
+
+/* ==================== 遗物栏 ==================== */
+.relic-bar {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.relic-slot {
+    width: 30px;
+    height: 30px;
+    border: 2px solid #6a6a9a;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    position: relative;
+}
+
+.relic-slot-icon {
+    font-size: 1.1em;
+}
+
+/* ==================== 主动技能栏 ==================== */
+.skill-info {
+    margin-top: 4px;
+}
+
+.skill-slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: #2a2a4a;
+    border: 2px solid;
+    border-color: #4a4a6a #1a1a2a #1a1a2a #4a4a6a;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.skill-slot.skill-ready {
+    border-color: #ff6348 #aa3320 #aa3320 #ff6348;
+    background: rgba(255, 99, 72, 0.15);
+}
+
+.skill-slot.skill-active {
+    border-color: #ffd700 #aa8800 #aa8800 #ffd700;
+    background: rgba(255, 215, 0, 0.2);
+    animation: skill-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.skill-slot.skill-cooldown {
+    opacity: 0.7;
+}
+
+@keyframes skill-pulse {
+    from { box-shadow: 0 0 4px rgba(255, 215, 0, 0.3); }
+    to { box-shadow: 0 0 10px rgba(255, 215, 0, 0.6); }
+}
+
+.skill-icon {
+    font-size: 1.3em;
+}
+
+.skill-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.skill-name {
+    color: #ffd700;
+    font-size: 0.45em;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.skill-key {
+    color: #aaa;
+    font-size: 0.9em;
+}
+
+.skill-status {
+    font-size: 0.4em;
+    font-family: 'Press Start 2P', monospace;
+}
+
+.skill-ready .skill-status {
+    color: #2ecc71;
+}
+
+.skill-active .skill-status {
+    color: #ffd700;
+}
+
+.skill-cooldown .skill-status {
+    color: #e74c3c;
 }

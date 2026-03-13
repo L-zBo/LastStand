@@ -49,6 +49,16 @@ function startNewWave() {
     wave.enemiesSpawned = 0;
     wave.waveStartTime = Date.now();
 
+    // 保险：清理所有玩家残留技能状态和冷却
+    [game.player, game.player2].forEach(p => {
+        if (p) {
+            if (p.skillActive && p.endActiveSkill) {
+                p.endActiveSkill();
+            }
+            p.skillCooldown = 0;
+        }
+    });
+
     // 计算本波敌人数量
     wave.totalEnemies = CONFIG.wave.baseEnemyCount + (wave.current - 1) * CONFIG.wave.enemyIncrement;
     wave.enemiesRemaining = wave.totalEnemies;
@@ -61,6 +71,43 @@ function startNewWave() {
 
     // 显示波次提示
     showWaveNotification(wave.current);
+
+    // 遗物 onWaveStart 钩子
+    [game.player, game.player2].forEach(p => {
+        if (p && p.health > 0 && p.relics && p.relics.length > 0) {
+            p.relics.forEach(relic => {
+                if (relic.onWaveStart) relic.onWaveStart(p);
+            });
+        }
+    });
+
+    // 每波开始补充地图事件
+    if (game.mapEvents && wave.current > 1) {
+        const centerX = CONFIG.world.width / 2;
+        const centerY = CONFIG.world.height / 2;
+        const border = 200;
+        // 补充1-2个宝箱
+        const extraChests = 1 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < extraChests; i++) {
+            const x = border + Math.random() * (CONFIG.world.width - border * 2);
+            const y = border + Math.random() * (CONFIG.world.height - border * 2);
+            if (Math.hypot(x - centerX, y - centerY) > 250) {
+                game.mapEvents.push(new MapEvent(x, y, 'chest'));
+            }
+        }
+        // 每3波补充一个祭坛
+        if (wave.current % 3 === 0) {
+            const x = border + Math.random() * (CONFIG.world.width - border * 2);
+            const y = border + Math.random() * (CONFIG.world.height - border * 2);
+            game.mapEvents.push(new MapEvent(x, y, 'altar'));
+        }
+        // 补充2个陷阱
+        for (let i = 0; i < 2; i++) {
+            const x = border + Math.random() * (CONFIG.world.width - border * 2);
+            const y = border + Math.random() * (CONFIG.world.height - border * 2);
+            game.mapEvents.push(new MapEvent(x, y, 'trap'));
+        }
+    }
 }
 
 // 波次敌人生成逻辑
@@ -112,6 +159,8 @@ function updateWaveSpawning() {
         const rand = Math.random();
         if (rand > 0.85) type = 'tank';
         else if (rand > 0.7) type = 'fast';
+        else if (rand > 0.6 && wave.current >= 3) type = 'ranged';
+        else if (rand > 0.52 && wave.current >= 5) type = 'splitter';
     }
 
     game.enemies.push(new Enemy(pos.x, pos.y, type));
@@ -132,8 +181,27 @@ function checkWaveComplete() {
         wave.inBreak = true;
         wave.waveStartTime = Date.now();
 
-        // 显示商店界面让玩家购买物品
-        game.state = 'waveComplete';
-        showShopScreen();
+        // 强制结束所有玩家的活跃技能，防止buff在商店期间永久保留，并重置冷却
+        [game.player, game.player2].forEach(p => {
+            if (p) {
+                if (p.skillActive && p.endActiveSkill) {
+                    p.endActiveSkill();
+                }
+                p.skillCooldown = 0;
+            }
+        });
+
+        // Boss波：先选遗物再进商店
+        if (wave.current % CONFIG.wave.bossWaveInterval === 0) {
+            game.state = 'relicSelection';
+            startRelicSelectionFlow(() => {
+                game.state = 'waveComplete';
+                showShopScreen();
+            });
+        } else {
+            // 普通波：直接进商店
+            game.state = 'waveComplete';
+            showShopScreen();
+        }
     }
 }

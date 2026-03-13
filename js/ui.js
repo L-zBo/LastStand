@@ -8,6 +8,10 @@ let lastWeaponBar2State = '';
 let lastPassiveBarState = '';
 let lastPassiveBar2State = '';
 
+// 上次遗物栏状态的缓存
+let lastRelicBarState = '';
+let lastRelicBar2State = '';
+
 // 更新UI
 function updateUI() {
     // P1 UI
@@ -56,11 +60,15 @@ function updateUI() {
         // 更新P2的武器栏和被动栏
         updateWeaponBar2IfNeeded();
         updatePassiveBar2IfNeeded();
+        updateRelicBarIfNeeded('relicBar2', game.player2);
+        updateSkillInfo('skillInfo2', game.player2);
     }
 
     // 只在数据变化时更新武器栏和被动栏
     updateWeaponBarIfNeeded();
     updatePassiveBarIfNeeded();
+    updateRelicBarIfNeeded('relicBar', game.player);
+    updateSkillInfo('skillInfo', game.player);
 }
 
 // 更新武器栏（仅在变化时）
@@ -149,6 +157,38 @@ function resetUICache() {
     lastPassiveBarState = '';
     lastWeaponBar2State = '';
     lastPassiveBar2State = '';
+    lastRelicBarState = '';
+    lastRelicBar2State = '';
+}
+
+// 遗物栏更新（仅在变化时）
+function updateRelicBarIfNeeded(barId, player) {
+    if (!player || !player.relics) return;
+    const currentState = player.relics.map(r => r.id).join(',');
+    const isP2 = barId === 'relicBar2';
+    const lastState = isP2 ? lastRelicBar2State : lastRelicBarState;
+
+    if (currentState === lastState) return;
+
+    if (isP2) {
+        lastRelicBar2State = currentState;
+    } else {
+        lastRelicBarState = currentState;
+    }
+
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+
+    bar.innerHTML = '';
+    player.relics.forEach(relic => {
+        const rarityColor = RARITY_COLORS[relic.rarity] || '#8b8b8b';
+        const slot = document.createElement('div');
+        slot.className = 'relic-slot';
+        slot.style.borderColor = rarityColor;
+        slot.innerHTML = `<span class="relic-slot-icon">${relic.icon}</span>`;
+        slot.title = `${relic.name}: ${relic.desc}`;
+        bar.appendChild(slot);
+    });
 }
 
 // P2武器栏更新（仅在变化时）
@@ -479,7 +519,7 @@ function showWeaponOptionsForPlayer(container, player, playerNum) {
 
     selectedOptions.forEach(option => {
         const w = option.weapon;
-        const card = document.createElement('div');
+        const card = document.createElement('button');
         card.className = 'buff-card weapon-card';
 
         let evolveInfo = '';
@@ -557,7 +597,7 @@ function showBuffOptionsForPlayer(container, player, playerNum) {
     }
 
     selectedBuffs.forEach(buff => {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
         card.className = 'buff-card';
         card.innerHTML = `
             <span class="option-type-tag tag-buff">属性强化</span>
@@ -615,7 +655,7 @@ function showClassBuffOptionsForPlayer(container, player, playerNum) {
     }
 
     selectedOptions.forEach(buff => {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
         const isClassBuff = buff.classOnly;
         card.className = 'buff-card' + (isClassBuff ? ' class-buff' : '');
         card.innerHTML = `
@@ -837,7 +877,7 @@ function showWaveOptionsForPlayer(container, player, playerNum, isWaveReward = f
     }
 
     selectedOptions.forEach(option => {
-        const card = document.createElement('div');
+        const card = document.createElement('button');
         card.className = 'buff-card';
 
         if (option.type === 'weaponUpgrade' || option.type === 'weaponNew') {
@@ -1190,7 +1230,7 @@ function updateShopUI() {
 
     shopState.items.forEach((item, index) => {
         const canAfford = game.player.gold >= item.price;
-        const itemCard = document.createElement('div');
+        const itemCard = document.createElement('button');
         itemCard.className = 'shop-item' + (canAfford ? '' : ' disabled');
         itemCard.innerHTML = `
             <div class="shop-item-icon">${item.icon}</div>
@@ -1261,4 +1301,144 @@ function closeShopAndContinue() {
     game.state = 'playing';
     game.wave.current++;
     startNewWave();
+}
+
+// ==================== 遗物选择系统 ====================
+
+const RARITY_COLORS = {
+    common: '#8b8b8b',
+    rare: '#4a9eff',
+    legendary: '#ffd700'
+};
+
+const RARITY_NAMES = {
+    common: '普通',
+    rare: '稀有',
+    legendary: '传说'
+};
+
+// 显示遗物选择面板
+function showRelicSelection(player, callback) {
+    const options = getRandomRelicOptions(player, 3);
+    if (options.length === 0) {
+        // 没有可选遗物了，直接跳过
+        if (callback) callback();
+        return;
+    }
+
+    game.state = 'relicSelection';
+
+    let relicScreen = document.getElementById('relicSelectionScreen');
+    if (!relicScreen) {
+        relicScreen = document.createElement('div');
+        relicScreen.id = 'relicSelectionScreen';
+        relicScreen.className = 'screen';
+        document.body.appendChild(relicScreen);
+    }
+
+    const playerTag = player === game.player ? 'P1' : 'P2';
+
+    let html = `
+        <div class="relic-selection-content">
+            <h2>🏆 Boss 掉落遗物！</h2>
+            <p class="relic-subtitle">${playerTag} 选择一个遗物</p>
+            <div class="relic-options">
+    `;
+
+    options.forEach(relic => {
+        const rarityColor = RARITY_COLORS[relic.rarity] || '#8b8b8b';
+        const rarityName = RARITY_NAMES[relic.rarity] || '普通';
+        html += `
+            <button class="relic-option" data-relic-id="${relic.id}" style="border-color: ${rarityColor}">
+                <div class="relic-option-icon">${relic.icon}</div>
+                <div class="relic-option-rarity" style="color: ${rarityColor}">${rarityName}</div>
+                <div class="relic-option-name">${relic.name}</div>
+                <div class="relic-option-desc">${relic.desc}</div>
+            </button>
+        `;
+    });
+
+    html += `
+            </div>
+            <button class="relic-skip-btn">跳过</button>
+        </div>
+    `;
+
+    relicScreen.innerHTML = html;
+    relicScreen.classList.remove('hidden');
+
+    // 绑定点击事件
+    relicScreen.querySelectorAll('.relic-option').forEach(el => {
+        el.addEventListener('click', () => {
+            const relicId = el.dataset.relicId;
+            equipRelic(player, relicId);
+            const relicDef = RELICS[relicId];
+            showDamageNumber(player.x, player.y - 30, `${relicDef.icon} ${relicDef.name}`, RARITY_COLORS[relicDef.rarity] || '#fff', true);
+            closeRelicSelection(callback);
+        });
+    });
+
+    // 跳过按钮
+    relicScreen.querySelector('.relic-skip-btn').addEventListener('click', () => {
+        closeRelicSelection(callback);
+    });
+}
+
+function closeRelicSelection(callback) {
+    const relicScreen = document.getElementById('relicSelectionScreen');
+    if (relicScreen) {
+        relicScreen.classList.add('hidden');
+    }
+    if (callback) callback();
+}
+
+// Boss 波通关后的遗物选择流程（支持双人模式）
+function startRelicSelectionFlow(callback) {
+    if (game.playerCount === 1) {
+        showRelicSelection(game.player, callback);
+    } else {
+        // 双人模式：P1先选，再P2选
+        showRelicSelection(game.player, () => {
+            if (game.player2 && game.player2.health > 0) {
+                showRelicSelection(game.player2, callback);
+            } else {
+                if (callback) callback();
+            }
+        });
+    }
+}
+
+// 更新侧面板技能信息
+function updateSkillInfo(elementId, player) {
+    const el = document.getElementById(elementId);
+    if (!el || !player || !player.activeSkill) return;
+
+    const skill = player.activeSkill;
+    const cdRemaining = Math.max(0, player.skillCooldown);
+    const isReady = cdRemaining <= 0;
+    const isActive = player.skillActive;
+    const keyLabel = player.controls.skill ? player.controls.skill[0].toUpperCase() : '?';
+
+    let statusText = '';
+    let statusClass = '';
+    if (isActive) {
+        statusText = '释放中';
+        statusClass = 'skill-active';
+    } else if (isReady) {
+        statusText = '就绪';
+        statusClass = 'skill-ready';
+    } else {
+        statusText = (cdRemaining / 1000).toFixed(1) + 's';
+        statusClass = 'skill-cooldown';
+    }
+
+    el.innerHTML = `
+        <div class="skill-slot ${statusClass}">
+            <span class="skill-icon">${skill.icon}</span>
+            <div class="skill-details">
+                <div class="skill-name">${skill.name} <span class="skill-key">[${keyLabel}]</span></div>
+                <div class="skill-status">${statusText}</div>
+            </div>
+        </div>
+    `;
 }

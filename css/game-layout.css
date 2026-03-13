@@ -103,17 +103,40 @@
     background: #1a1a2e;
     border: 4px solid;
     border-color: #4a4a7a #1a1a3a #1a1a3a #4a4a7a;
-    padding: 10px;
-    width: 220px;
+    padding: 8px;
+    width: 200px;
     min-width: 180px;
     max-width: 280px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    /* 移除滚动条，内容自适应 */
-    overflow: visible;
+    /* 超出时内部滚动 */
+    overflow-y: auto;
+    overflow-x: hidden;
     flex-shrink: 0;
+    /* 面板高度自适应内容，最大不超过父容器 */
+    align-self: flex-start;
+    max-height: 100%;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+/* 面板像素风格滚动条 */
+.player-side-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.player-side-panel::-webkit-scrollbar-track {
+    background: #0a0a1a;
+    border-left: 2px solid #2a2a4a;
+}
+
+.player-side-panel::-webkit-scrollbar-thumb {
+    background: #4a4a7a;
+    border: 1px solid #6a6a9a;
+}
+
+.player-side-panel::-webkit-scrollbar-thumb:hover {
+    background: #5a5a8a;
 }
 
 .player-side-panel.right-panel {
@@ -165,38 +188,34 @@
     font-family: 'Press Start 2P', monospace;
 }
 
-/* 玩家属性 - CSS Grid 自适应布局 */
+/* 玩家属性 - Flex 自适应布局 */
 .player-stats {
-    display: grid;
-    /* 自动填充，每个标签最小70px，最大自适应 */
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
 }
 
 .stat-tag {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 3px;
-    font-size: 0.42em;
+    gap: 2px;
+    font-size: 0.35em;
     font-family: 'Press Start 2P', monospace;
-    padding: 6px 6px;
+    padding: 3px 5px;
     background: #1a1a3a;
     border: 2px solid #3a3a5a;
     white-space: nowrap;
     color: #ddd;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
 }
 
 .stat-tag.health {
     background: rgba(255, 107, 107, 0.2);
     border-color: #8a4040;
     color: #ff6b6b;
-    font-size: 0.48em;
+    font-size: 0.4em;
     /* 生命值占满整行 */
-    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
 }
 
 .stat-tag.level {
@@ -285,7 +304,7 @@
     color: white;
     font-size: 0.45em;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease, border-color 0.1s ease;
     text-align: left;
     font-family: 'Press Start 2P', monospace;
     box-shadow: 3px 3px 0 rgba(0,0,0,0.5);

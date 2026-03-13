@@ -15,7 +15,19 @@ const CLASSES = {
         // 被动效果
         passiveDesc: '受到伤害减少10%，近战攻击有击退效果',
         damageReduction: 0.1,
-        knockbackPower: 0.3
+        knockbackPower: 0.3,
+        // 主动技能
+        activeSkill: {
+            name: '战吼',
+            icon: '📢',
+            description: '发出战吼，120范围内敌人眩晕1.5秒，自身攻击+50%持续4秒',
+            cooldown: 12000,
+            radius: 120,
+            stunDuration: 1500,
+            buffDuration: 4000,
+            attackBoost: 0.5,
+            type: 'warcry'
+        }
     },
     mage: {
         name: '法师',
@@ -29,7 +41,18 @@ const CLASSES = {
         attackRange: 150,
         passiveDesc: '魔法攻击穿透敌人，攻击范围+30%',
         magicPenetration: true,
-        rangeBonus: 0.3
+        rangeBonus: 0.3,
+        activeSkill: {
+            name: '暴风雪',
+            icon: '❄️',
+            description: '召唤暴风雪，150范围内每0.3秒造成攻击力60%伤害，持续3秒',
+            cooldown: 15000,
+            radius: 150,
+            duration: 3000,
+            tickInterval: 300,
+            damagePercent: 0.6,
+            type: 'blizzard'
+        }
     },
     assassin: {
         name: '刺客',
@@ -43,7 +66,16 @@ const CLASSES = {
         attackRange: 45,
         passiveDesc: '移动速度+30%，首次攻击必定暴击',
         critChance: 0.25,
-        firstStrikeCrit: true
+        firstStrikeCrit: true,
+        activeSkill: {
+            name: '影步',
+            icon: '👤',
+            description: '瞬移到最近敌人身后，造成300%暴击伤害',
+            cooldown: 8000,
+            damageMultiplier: 3.0,
+            blinkRange: 300,
+            type: 'shadowstep'
+        }
     },
     ranger: {
         name: '游侠',
@@ -57,7 +89,19 @@ const CLASSES = {
         attackRange: 200,
         passiveDesc: '攻击发射多支箭矢，攻击速度+20%',
         arrowCount: 2,
-        attackSpeedBonus: 0.2
+        attackSpeedBonus: 0.2,
+        activeSkill: {
+            name: '箭雨',
+            icon: '🌧️',
+            description: '向目标区域倾泻箭雨，200范围内造成10次伤害',
+            cooldown: 14000,
+            radius: 200,
+            duration: 2500,
+            hitCount: 10,
+            damagePercent: 0.8,
+            range: 350,
+            type: 'arrowrain'
+        }
     },
     summoner: {
         name: '召唤师',
@@ -71,7 +115,16 @@ const CLASSES = {
         attackRange: 180,
         maxSummons: 3,
         passiveDesc: '可召唤3个幽灵助战，召唤物击杀恢复生命',
-        soulLink: 5
+        soulLink: 5,
+        activeSkill: {
+            name: '灵魂爆破',
+            icon: '💥',
+            description: '引爆所有召唤物，每个造成150范围内攻击力200%伤害',
+            cooldown: 18000,
+            radius: 150,
+            damageMultiplier: 2.0,
+            type: 'soulburst'
+        }
     },
     knight: {
         name: '骑士',
@@ -86,7 +139,16 @@ const CLASSES = {
         armor: 15,
         passiveDesc: '受到伤害减少15%，受击时反弹20%伤害',
         damageReduction: 0.15,
-        counterAttack: 0.2
+        counterAttack: 0.2,
+        activeSkill: {
+            name: '堡垒',
+            icon: '🏰',
+            description: '进入堡垒状态3秒，完全无敌并吸引周围敌人',
+            cooldown: 20000,
+            duration: 3000,
+            tauntRadius: 200,
+            type: 'fortress'
+        }
     },
     paladin: {
         name: '圣骑士',
@@ -100,7 +162,17 @@ const CLASSES = {
         attackRange: 80,
         healPower: 3,
         passiveDesc: '攻击时恢复生命，对亡灵敌人伤害+50%',
-        smite: true
+        smite: true,
+        activeSkill: {
+            name: '圣光审判',
+            icon: '✨',
+            description: '释放圣光波，180范围内造成攻击力250%伤害并回复30%最大生命',
+            cooldown: 16000,
+            radius: 180,
+            damageMultiplier: 2.5,
+            healPercent: 0.3,
+            type: 'holywave'
+        }
     },
     necromancer: {
         name: '死灵法师',
@@ -114,7 +186,16 @@ const CLASSES = {
         attackRange: 160,
         maxSummons: 5,
         passiveDesc: '召唤亡灵骷髅，攻击吸取5%生命',
-        lifeSteal: 0.05
+        lifeSteal: 0.05,
+        activeSkill: {
+            name: '亡灵大军',
+            icon: '☠️',
+            description: '召唤8个临时骷髅战士，持续8秒后消散',
+            cooldown: 22000,
+            summonCount: 8,
+            duration: 8000,
+            type: 'undeadarmy'
+        }
     }
 };
 
@@ -547,6 +628,9 @@ const GOLD_COUNT = {
     normal: { min: 1, max: 2 },   // 普通怪物掉落1-2个金币
     fast: { min: 1, max: 2 },
     tank: { min: 2, max: 3 },
+    ranged: { min: 1, max: 3 },   // 远程敌人掉落1-3个金币
+    splitter: { min: 1, max: 2 },
+    splitter_child: { min: 0, max: 1 },
     elite: { min: 2, max: 4 },    // 精英掉落2-4个金币
     boss: { min: 5, max: 8 }      // Boss掉落5-8个金币
 };
@@ -974,3 +1058,198 @@ const WEAPONS = {
         special: '对范围内所有敌人造成持续伤害'
     }
 };
+
+// ==================== 遗物系统 ====================
+// 遗物在每局中通过Boss掉落或特定波数奖励获取，每个遗物只能持有一次
+const RELICS = {
+    bloodPendant: {
+        name: '血色吊坠',
+        icon: '💎',
+        desc: '击杀敌人时恢复2%最大生命',
+        rarity: 'common',
+        onKill: (player, enemy) => {
+            player.health = Math.min(player.health + player.maxHealth * 0.02, player.maxHealth);
+        }
+    },
+    soulCatcher: {
+        name: '灵魂捕手',
+        icon: '👻',
+        desc: '获得的经验增加25%',
+        rarity: 'common',
+        onEquip: (player) => {
+            player.expBonus = (player.expBonus || 1) + 0.25;
+        }
+    },
+    thornArmor: {
+        name: '荆棘铠甲',
+        icon: '🌿',
+        desc: '受到伤害时反弹30%',
+        rarity: 'common',
+        onEquip: (player) => {
+            player.counterAttack = (player.counterAttack || 0) + 0.3;
+        }
+    },
+    swiftBoots: {
+        name: '迅捷之靴',
+        icon: '👢',
+        desc: '移动速度+15%，冲刺冷却-1秒',
+        rarity: 'common',
+        onEquip: (player) => {
+            player.speed *= 1.15;
+            player.dashMaxCooldown = Math.max(500, player.dashMaxCooldown - 1000);
+        }
+    },
+    berserkerHeart: {
+        name: '狂战之心',
+        icon: '🫀',
+        desc: '攻击力+20%，但最大生命-15%',
+        rarity: 'rare',
+        onEquip: (player) => {
+            player.attack *= 1.2;
+            player.maxHealth = Math.floor(player.maxHealth * 0.85);
+            player.health = Math.min(player.health, player.maxHealth);
+        }
+    },
+    frozenOrb: {
+        name: '冰封宝珠',
+        icon: '🔮',
+        desc: '攻击有20%概率冻结敌人1秒',
+        rarity: 'rare',
+        onHit: (player, enemy) => {
+            if (Math.random() < 0.2 && !enemy.frozen) {
+                enemy.frozen = true;
+                enemy.originalSpeed = enemy.speed;
+                enemy.speed = 0;
+                setTimeout(() => {
+                    if (enemy.health > 0) {
+                        enemy.frozen = false;
+                        enemy.speed = enemy.originalSpeed || 1;
+                    }
+                }, 1000);
+            }
+        }
+    },
+    gamblersDice: {
+        name: '赌徒骰子',
+        icon: '🎲',
+        desc: '暴击率+15%，暴击伤害+50%',
+        rarity: 'rare',
+        onEquip: (player) => {
+            player.critChance = (player.critChance || 0) + 0.15;
+            player.critDamage = (player.critDamage || 2) + 0.5;
+        }
+    },
+    vampireFang: {
+        name: '吸血鬼之牙',
+        icon: '🦷',
+        desc: '攻击吸取5%伤害为生命',
+        rarity: 'rare',
+        onEquip: (player) => {
+            player.lifeSteal = (player.lifeSteal || 0) + 0.05;
+        }
+    },
+    phoenixFeather: {
+        name: '凤凰之羽',
+        icon: '🪶',
+        desc: '死亡时复活一次（50%生命）',
+        rarity: 'legendary',
+        onDeath: (player) => {
+            if (!player.phoenixUsed) {
+                player.phoenixUsed = true;
+                player.health = Math.floor(player.maxHealth * 0.5);
+                for (let i = 0; i < 20; i++) {
+                    game.particles.push(new Particle(player.x, player.y, '#ff6b35'));
+                }
+                showDamageNumber(player.x, player.y - 30, '浴火重生!', '#ff6b35', true);
+                return true;
+            }
+            return false;
+        }
+    },
+    chronoShift: {
+        name: '时间裂隙',
+        icon: '⏳',
+        desc: '攻击速度+30%，冲刺冷却-50%',
+        rarity: 'legendary',
+        onEquip: (player) => {
+            player.attackCooldown = Math.floor((player.attackCooldown || 500) * 0.7);
+            player.dashMaxCooldown = Math.floor(player.dashMaxCooldown * 0.5);
+        }
+    },
+    dragonScale: {
+        name: '龙鳞护甲',
+        icon: '🐉',
+        desc: '减伤+20%，每波开始恢复20%生命',
+        rarity: 'legendary',
+        onEquip: (player) => {
+            player.damageReduction = (player.damageReduction || 0) + 0.2;
+        },
+        onWaveStart: (player) => {
+            player.health = Math.min(player.health + player.maxHealth * 0.2, player.maxHealth);
+        }
+    },
+    infinityGem: {
+        name: '无尽宝石',
+        icon: '💠',
+        desc: '每击杀10个敌人，攻击力永久+1',
+        rarity: 'legendary',
+        onKill: (player, enemy) => {
+            const relic = player.relics.find(r => r.id === 'infinityGem');
+            if (relic) {
+                relic._killCount = (relic._killCount || 0) + 1;
+                if (relic._killCount >= 10) {
+                    relic._killCount = 0;
+                    player.attack += 1;
+                    showDamageNumber(player.x, player.y - 20, 'ATK+1', '#ffd700', true);
+                }
+            }
+        }
+    }
+};
+
+// 遗物稀有度权重
+const RELIC_RARITY_WEIGHTS = {
+    common: 50,
+    rare: 30,
+    legendary: 15
+};
+
+// 获取随机遗物选项（排除已拥有的）
+function getRandomRelicOptions(player, count = 3) {
+    const ownedIds = (player.relics || []).map(r => r.id);
+    const available = Object.entries(RELICS)
+        .filter(([id]) => !ownedIds.includes(id))
+        .map(([id, relic]) => ({ id, ...relic }));
+
+    if (available.length === 0) return [];
+
+    const weighted = [];
+    available.forEach(relic => {
+        const weight = RELIC_RARITY_WEIGHTS[relic.rarity] || 30;
+        for (let i = 0; i < weight; i++) weighted.push(relic);
+    });
+
+    const selected = [];
+    const usedIds = new Set();
+    while (selected.length < count && selected.length < available.length) {
+        const pick = weighted[Math.floor(Math.random() * weighted.length)];
+        if (!usedIds.has(pick.id)) {
+            usedIds.add(pick.id);
+            selected.push(pick);
+        }
+    }
+    return selected;
+}
+
+// 给玩家装备遗物
+function equipRelic(player, relicId) {
+    if (!player.relics) player.relics = [];
+    const relicDef = RELICS[relicId];
+    if (!relicDef) return false;
+    if (player.relics.some(r => r.id === relicId)) return false;
+
+    const relic = { id: relicId, ...relicDef };
+    player.relics.push(relic);
+    if (relic.onEquip) relic.onEquip(player);
+    return true;
+}

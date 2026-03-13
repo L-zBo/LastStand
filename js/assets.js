@@ -193,7 +193,6 @@ function loadImage(src) {
 
 // 预加载所有素材
 async function preloadAssets(callback) {
-    console.log('开始加载游戏素材...');
 
     // 计算总数
     totalAssets = Object.keys(PLAYER_ASSETS).length +
@@ -259,7 +258,6 @@ async function preloadAssets(callback) {
     await Promise.all(promises);
 
     assetsLoaded = true;
-    console.log(`素材加载完成: ${loadedCount}/${totalAssets}`);
 
     if (callback) callback();
 }

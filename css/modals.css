@@ -12,6 +12,7 @@
     justify-content: center;
     align-items: center;
     z-index: 2000;
+    overscroll-behavior: contain;
 }
 
 .modal-content {
@@ -53,7 +54,7 @@
     font-size: 0.7em;
     border: 4px solid;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease, border-color 0.1s ease;
     font-family: 'Press Start 2P', monospace;
     text-shadow: 2px 2px 0 #000;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
@@ -97,6 +98,10 @@
     color: #888;
     transition: color 0.1s;
     font-family: monospace;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
 }
 
 .modal-close:hover {
@@ -196,6 +201,7 @@
     justify-content: center;
     align-items: center;
     z-index: 1500;
+    overscroll-behavior: contain;
 }
 
 .pause-content {
@@ -232,7 +238,7 @@
     border: 4px solid;
     border-color: #7a7aaa #2a2a5a #2a2a5a #7a7aaa;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease, border-color 0.1s ease;
     font-family: 'Press Start 2P', monospace;
     text-shadow: 2px 2px 0 #000;
     box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
@@ -298,4 +304,106 @@
     0% { transform: scale(1.2); opacity: 0; }
     50% { transform: scale(1); opacity: 1; }
     100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* ==================== 遗物选择面板 ==================== */
+#relicSelectionScreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    overscroll-behavior: contain;
+}
+
+.relic-selection-content {
+    text-align: center;
+    max-width: 700px;
+}
+
+.relic-selection-content h2 {
+    font-size: 1.3em;
+    color: #ffd700;
+    text-shadow: 3px 3px 0 #000;
+    margin-bottom: 8px;
+}
+
+.relic-subtitle {
+    font-size: 0.6em;
+    color: #aaa;
+    margin-bottom: 20px;
+}
+
+.relic-options {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.relic-option {
+    background: #2a2a4a;
+    padding: 20px 15px;
+    border: 4px solid #6a6a9a;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+    width: 180px;
+    text-align: center;
+}
+
+.relic-option:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+    background: #3a3a5a;
+}
+
+.relic-option:active {
+    transform: translate(4px, 4px);
+    box-shadow: none;
+}
+
+.relic-option-icon {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.relic-option-rarity {
+    font-size: 0.5em;
+    font-family: 'Press Start 2P', monospace;
+    text-shadow: 1px 1px 0 #000;
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+}
+
+.relic-option-name {
+    font-size: 0.75em;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    margin-bottom: 8px;
+}
+
+.relic-option-desc {
+    font-size: 0.5em;
+    color: #aaa;
+    line-height: 1.8;
+}
+
+.relic-skip-btn {
+    padding: 10px 30px;
+    font-size: 0.7em;
+    font-family: 'Press Start 2P', monospace;
+    background: #4a4a7a;
+    color: #888;
+    border: 3px solid;
+    border-color: #6a6a9a #2a2a4a #2a2a4a #6a6a9a;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.relic-skip-btn:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+    background: #5a5a8a;
+    color: #ccc;
 }

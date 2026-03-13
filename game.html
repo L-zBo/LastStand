@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" style="color-scheme: dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
     <title>LastStand - Roguelike Survival Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/game-layout.css">
@@ -21,6 +24,7 @@
         <div class="menu-buttons">
             <button id="newGameBtn" class="menu-btn">🎮 新游戏</button>
             <button id="loadGameBtn" class="menu-btn" disabled>📂 读取存档</button>
+            <button id="metaBtn" class="menu-btn">💎 永久强化</button>
         </div>
         <!-- 人数选择 -->
         <div id="playerCountSelection" class="player-count-selection hidden">
@@ -42,7 +46,7 @@
         <div id="difficultySelection" class="difficulty-selection hidden">
             <h2>选择难度</h2>
             <div class="difficulty-cards">
-                <div class="difficulty-card" data-difficulty="easy">
+                <button class="difficulty-card" data-difficulty="easy">
                     <div class="difficulty-icon easy"></div>
                     <h3>简单</h3>
                     <p>敌人较弱，适合新手</p>
@@ -51,8 +55,8 @@
                         <li>敌人伤害 -30%</li>
                         <li>经验获取 +20%</li>
                     </ul>
-                </div>
-                <div class="difficulty-card selected" data-difficulty="normal">
+                </button>
+                <button class="difficulty-card selected" data-difficulty="normal">
                     <div class="difficulty-icon normal"></div>
                     <h3>普通</h3>
                     <p>标准难度体验</p>
@@ -61,8 +65,8 @@
                         <li>敌人伤害 100%</li>
                         <li>经验获取 100%</li>
                     </ul>
-                </div>
-                <div class="difficulty-card" data-difficulty="hard">
+                </button>
+                <button class="difficulty-card" data-difficulty="hard">
                     <div class="difficulty-icon hard"></div>
                     <h3>困难</h3>
                     <p>更强的敌人挑战</p>
@@ -71,8 +75,8 @@
                         <li>敌人伤害 +50%</li>
                         <li>经验获取 +30%</li>
                     </ul>
-                </div>
-                <div class="difficulty-card" data-difficulty="nightmare">
+                </button>
+                <button class="difficulty-card" data-difficulty="nightmare">
                     <div class="difficulty-icon nightmare"></div>
                     <h3>噩梦</h3>
                     <p>极限生存挑战</p>
@@ -81,43 +85,43 @@
                         <li>敌人伤害 +100%</li>
                         <li>经验获取 +50%</li>
                     </ul>
-                </div>
+                </button>
             </div>
         </div>
         <!-- 地图选择 -->
         <div id="mapSelection" class="map-selection hidden">
             <h2>选择地图</h2>
             <div class="map-cards">
-                <div class="map-card selected" data-map="forest">
+                <button class="map-card selected" data-map="forest">
                     <div class="map-preview forest"></div>
                     <h3>🌲 幽暗森林</h3>
                     <p>茂密的树林，隐藏着危险</p>
-                </div>
-                <div class="map-card" data-map="desert">
+                </button>
+                <button class="map-card" data-map="desert">
                     <div class="map-preview desert"></div>
                     <h3>🏜️ 荒芜沙漠</h3>
                     <p>炎热的沙漠，视野开阔</p>
-                </div>
-                <div class="map-card" data-map="dungeon">
+                </button>
+                <button class="map-card" data-map="dungeon">
                     <div class="map-preview dungeon"></div>
                     <h3>🏰 黑暗地牢</h3>
                     <p>阴暗的地下城，怪物横行</p>
-                </div>
-                <div class="map-card" data-map="snow">
+                </button>
+                <button class="map-card" data-map="snow">
                     <div class="map-preview snow"></div>
                     <h3>❄️ 冰封雪原</h3>
                     <p>寒冷的雪地，移动减速</p>
-                </div>
-                <div class="map-card" data-map="lava">
+                </button>
+                <button class="map-card" data-map="lava">
                     <div class="map-preview lava"></div>
                     <h3>🌋 熔岩地狱</h3>
                     <p>危险的火山，持续伤害</p>
-                </div>
-                <div class="map-card" data-map="ocean">
+                </button>
+                <button class="map-card" data-map="ocean">
                     <div class="map-preview ocean"></div>
                     <h3>🌊 深海遗迹</h3>
                     <p>神秘的海底，宝藏丰富</p>
-                </div>
+                </button>
             </div>
             <button id="startGameBtn" class="menu-btn start-btn">开始游戏</button>
         </div>
@@ -125,54 +129,54 @@
         <div id="classSelection" class="class-selection hidden">
             <h2 id="classSelectionTitle">选择你的职业</h2>
             <div class="class-cards">
-                <div class="class-card" data-class="warrior">
+                <button class="class-card" data-class="warrior">
                     <h3>🛡️ 战士</h3>
                     <p class="class-desc">近战之王，高生命高防御</p>
                     <p class="class-stats">❤️150 ⚔️15 💨3</p>
                     <p class="class-passive">被动：减伤10%，攻击击退敌人</p>
-                </div>
-                <div class="class-card" data-class="mage">
+                </button>
+                <button class="class-card" data-class="mage">
                     <h3>🧙 法师</h3>
                     <p class="class-desc">远程魔法输出，高伤害低生命</p>
                     <p class="class-stats">❤️80 ⚔️25 💨3.5</p>
                     <p class="class-passive">被动：魔法穿透，攻击范围+30%</p>
-                </div>
-                <div class="class-card" data-class="assassin">
+                </button>
+                <button class="class-card" data-class="assassin">
                     <h3>🥷 刺客</h3>
                     <p class="class-desc">极速暗杀，高暴击高闪避</p>
                     <p class="class-stats">❤️100 ⚔️20 💨5</p>
                     <p class="class-passive">被动：25%暴击率，首击必暴</p>
-                </div>
-                <div class="class-card" data-class="ranger">
+                </button>
+                <button class="class-card" data-class="ranger">
                     <h3>🏹 游侠</h3>
                     <p class="class-desc">远程射手，多重箭矢</p>
                     <p class="class-stats">❤️110 ⚔️18 💨4</p>
                     <p class="class-passive">被动：发射2支箭，攻速+20%</p>
-                </div>
-                <div class="class-card" data-class="summoner">
+                </button>
+                <button class="class-card" data-class="summoner">
                     <h3>🔮 召唤师</h3>
                     <p class="class-desc">召唤幽灵作战，团队作战</p>
                     <p class="class-stats">❤️90 ⚔️12 💨3.2</p>
                     <p class="class-passive">被动：召唤3幽灵，击杀回血</p>
-                </div>
-                <div class="class-card" data-class="knight">
+                </button>
+                <button class="class-card" data-class="knight">
                     <h3>⚔️ 骑士</h3>
                     <p class="class-desc">重甲坦克，反伤护盾</p>
                     <p class="class-stats">❤️180 ⚔️18 💨2.8</p>
                     <p class="class-passive">被动：减伤15%，反弹20%伤害</p>
-                </div>
-                <div class="class-card" data-class="paladin">
+                </button>
+                <button class="class-card" data-class="paladin">
                     <h3>✝️ 圣骑士</h3>
                     <p class="class-desc">圣光战士，治愈与惩戒</p>
                     <p class="class-stats">❤️140 ⚔️16 💨3</p>
                     <p class="class-passive">被动：攻击回血，亡灵伤害+50%</p>
-                </div>
-                <div class="class-card" data-class="necromancer">
+                </button>
+                <button class="class-card" data-class="necromancer">
                     <h3>💀 死灵法师</h3>
                     <p class="class-desc">黑暗召唤，生命汲取</p>
                     <p class="class-stats">❤️75 ⚔️22 💨3.3</p>
                     <p class="class-passive">被动：召唤5骷髅，吸取5%生命</p>
-                </div>
+                </button>
             </div>
         </div>
     </div>
@@ -204,12 +208,12 @@
     <div id="gameScreen" class="screen hidden">
         <!-- 顶部控制栏 -->
         <div class="top-bar">
-            <div class="info-item"><span class="label">🪙</span><span id="goldCount">0</span></div>
-            <div class="info-item"><span class="label">🌊</span><span id="waveCount">1</span></div>
-            <div class="info-item"><span class="label">💀</span><span id="killCount">0</span></div>
-            <div class="info-item"><span class="label">⏱️</span><span id="gameTime">0</span>s</div>
-            <button class="top-btn save" id="saveBtn">💾 保存</button>
-            <button class="top-btn pause" id="pauseBtn">⏸️ 暂停</button>
+            <div class="info-item" aria-label="金币"><span class="label" aria-hidden="true">🪙</span><span id="goldCount">0</span></div>
+            <div class="info-item" aria-label="波次"><span class="label" aria-hidden="true">🌊</span><span id="waveCount">1</span></div>
+            <div class="info-item" aria-label="击杀数"><span class="label" aria-hidden="true">💀</span><span id="killCount">0</span></div>
+            <div class="info-item" aria-label="游戏时间"><span class="label" aria-hidden="true">⏱️</span><span id="gameTime">0</span>s</div>
+            <button class="top-btn save" id="saveBtn" aria-label="保存游戏">💾 保存</button>
+            <button class="top-btn pause" id="pauseBtn" aria-label="暂停游戏">⏸️ 暂停</button>
         </div>
 
         <!-- 游戏主区域（P1面板+画布+P2面板） -->
@@ -241,6 +245,10 @@
                         <div class="weapon-bar" id="weaponBar"></div>
                         <div class="equipment-label">💎 被动</div>
                         <div class="passive-bar" id="passiveBar"></div>
+                        <div class="equipment-label">🏺 遗物</div>
+                        <div class="relic-bar" id="relicBar"></div>
+                        <div class="equipment-label">⚡ 技能</div>
+                        <div class="skill-info" id="skillInfo"></div>
                     </div>
                 </div>
             </div>
@@ -275,6 +283,10 @@
                         <div class="weapon-bar" id="weaponBar2"></div>
                         <div class="equipment-label">💎 被动</div>
                         <div class="passive-bar" id="passiveBar2"></div>
+                        <div class="equipment-label">🏺 遗物</div>
+                        <div class="relic-bar" id="relicBar2"></div>
+                        <div class="equipment-label">⚡ 技能</div>
+                        <div class="skill-info" id="skillInfo2"></div>
                     </div>
                 </div>
             </div>
@@ -297,13 +309,13 @@
     <!-- 倒计时界面 -->
     <div id="countdownScreen" class="screen hidden">
         <div class="countdown-number" id="countdownNumber">3</div>
-        <p class="countdown-text">游戏即将开始...</p>
+        <p class="countdown-text">游戏即将开始\u2026</p>
     </div>
 
     <!-- 武器详情弹窗 -->
     <div id="weaponDetailModal" class="modal hidden">
         <div class="modal-content weapon-detail">
-            <span class="modal-close">&times;</span>
+            <button class="modal-close" aria-label="关闭">&times;</button>
             <div class="weapon-detail-header">
                 <span id="weaponDetailIcon" class="detail-icon">🗡️</span>
                 <div>
@@ -377,9 +389,15 @@
         <button id="returnMenuBtn">返回主菜单</button>
     </div>
 
+    <!-- Meta 永久强化面板 -->
+    <div id="metaPanel" class="screen hidden">
+        <!-- 内容由 meta.js 的 renderMetaPanel() 动态生成 -->
+    </div>
+
     <!-- 按依赖顺序加载模块 -->
     <script src="js/config.js"></script>
     <script src="js/data.js"></script>
+    <script src="js/meta.js"></script>
     <script src="js/assets.js"></script>
     <script src="js/entities.js"></script>
     <script src="js/ui.js"></script>

@@ -52,6 +52,39 @@ body::before {
     display: none !important;
 }
 
+/* ==================== 交互元素基础重置 ==================== */
+
+/* 触控优化：消除移动端 300ms 点击延迟 */
+button, [role="button"] {
+    touch-action: manipulation;
+}
+
+/* 卡片类 button 重置（去除浏览器默认按钮样式） */
+button.difficulty-card,
+button.map-card,
+button.class-card,
+button.buff-card,
+button.shop-item,
+button.relic-option,
+button.save-slot {
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* ==================== 焦点可见状态 ==================== */
+:focus-visible {
+    outline: 3px solid #ffd700;
+    outline-offset: 2px;
+}
+
 /* 像素风格边框 */
 .pixel-border {
     border: 4px solid;
@@ -60,4 +93,16 @@ body::before {
         inset 2px 2px 0 #aaa,
         inset -2px -2px 0 #333,
         4px 4px 0 rgba(0,0,0,0.5);
+}
+
+/* ==================== 减少动画偏好支持 ==================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

@@ -1,5 +1,62 @@
 // ==================== 游戏实体类 ====================
 
+// ==================== 统一击杀处理 ====================
+// 所有击杀逻辑（近战、远程、武器投射物、召唤物）统一走这里
+function handleEnemyKill(enemy, killer) {
+    // 给击杀者加经验
+    killer.gainExp(enemy.expValue);
+    game.killCount++;
+
+    // 生成掉落物
+    const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
+    game.droppedItems.push(...drops);
+
+    // 击杀粒子特效
+    for (let i = 0; i < 6; i++) {
+        game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
+    }
+
+    // 吸血效果
+    if (killer.vampireHeal > 0) {
+        killer.health = Math.min(killer.health + killer.vampireHeal, killer.maxHealth);
+    }
+
+    // 灵魂链接效果（召唤师）
+    if (killer.soulLink) {
+        killer.health = Math.min(killer.health + killer.soulLink, killer.maxHealth);
+    }
+
+    // 死灵法师尸爆效果
+    if (killer.corpseExplosion) {
+        const explosionRadius = 80;
+        const explosionDamage = killer.attack * 0.5;
+        game.enemies.forEach(nearbyEnemy => {
+            if (nearbyEnemy !== enemy && nearbyEnemy.health > 0) {
+                const dist = Math.hypot(nearbyEnemy.x - enemy.x, nearbyEnemy.y - enemy.y);
+                if (dist < explosionRadius) {
+                    nearbyEnemy.health -= explosionDamage;
+                    game.particles.push(new Particle(nearbyEnemy.x, nearbyEnemy.y, '#4a0080'));
+                }
+            }
+        });
+        for (let i = 0; i < 8; i++) {
+            game.particles.push(new Particle(enemy.x, enemy.y, '#9b59b6'));
+        }
+    }
+
+    // 伤害飘字 - 显示击杀
+    if (typeof showDamageNumber === 'function') {
+        showDamageNumber(enemy.x, enemy.y, 'KILL', '#ff4757', true);
+    }
+
+    // 遗物 onKill 钩子
+    if (killer.relics && killer.relics.length > 0) {
+        killer.relics.forEach(relic => {
+            if (relic.onKill) relic.onKill(killer, enemy);
+        });
+    }
+}
+
 // 粒子类（用于视觉效果）
 class Particle {
     constructor(x, y, color) {
@@ -14,11 +71,11 @@ class Particle {
     }
 
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life -= this.decay;
+        const dt = game.dtFactor || 1;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.life -= this.decay * dt;
     }
-
     draw(ctx) {
         ctx.globalAlpha = this.life;
         ctx.fillStyle = this.color;
@@ -96,12 +153,13 @@ class DroppedItem {
 
         // 弹跳物理
         if (!this.settled) {
-            this.vx *= this.friction;
-            this.vy += this.gravity;
-            this.vy *= this.friction;
+            const dt = game.dtFactor || 1;
+            this.vx *= Math.pow(this.friction, dt);
+            this.vy += this.gravity * dt;
+            this.vy *= Math.pow(this.friction, dt);
 
-            this.x += this.vx;
-            this.y += this.vy;
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
 
             // 检查是否落地（速度很小时）
             if (Math.abs(this.vx) < 0.1 && Math.abs(this.vy) < 0.3) {
@@ -132,8 +190,9 @@ class DroppedItem {
                 const dx = player.x - this.x;
                 const dy = player.y - this.y;
                 const speed = DROP_CONFIG.magnetSpeed * (1 - dist / playerMagnetRange);
-                this.x += (dx / dist) * speed;
-                this.y += (dy / dist) * speed;
+                const dt = game.dtFactor || 1;
+                this.x += (dx / dist) * speed * dt;
+                this.y += (dy / dist) * speed * dt;
             }
 
             // 拾取检测
@@ -220,12 +279,10 @@ function spawnDrops(x, y, enemyType) {
     const drops = [];
     const goldCountConfig = GOLD_COUNT[enemyType] || GOLD_COUNT.normal;
 
-    // 调试日志
-    console.log('[掉落系统] 生成掉落物 - 位置:', x, y, '敌人类型:', enemyType);
+    // 生成掉落物
 
     // 计算掉落的金币数量（随机）
     const coinCount = Math.floor(Math.random() * (goldCountConfig.max - goldCountConfig.min + 1)) + goldCountConfig.min;
-    console.log('[掉落系统] 金币掉落数量:', coinCount);
 
     // 生成多个金币，每个金币=1金
     for (let i = 0; i < coinCount; i++) {
@@ -259,7 +316,6 @@ function spawnDrops(x, y, enemyType) {
         drops.push(new DroppedItem(x + offsetX, y + offsetY, 'buff', buff));
     }
 
-    console.log('[掉落系统] 生成完成 - 总掉落物数量:', drops.length);
     return drops;
 }
 
@@ -311,9 +367,9 @@ class Obstacle {
             const rockImg = environmentImages.rocks[this.variant % environmentImages.rocks.length];
             if (rockImg && rockImg.complete) {
                 ctx.imageSmoothingEnabled = false;
-                // 根据原始图片比例和缩放因子计算显示大小
-                const imgWidth = rockImg.width * this.scale * 1.5;
-                const imgHeight = rockImg.height * this.scale * 1.5;
+                // 石头原始图片较小(~24px)，需要较大缩放因子
+                const imgWidth = rockImg.width * this.scale * 3;
+                const imgHeight = rockImg.height * this.scale * 3;
                 ctx.drawImage(rockImg, this.x - imgWidth / 2, this.y - imgHeight / 2, imgWidth, imgHeight);
             } else {
                 this.drawRockFallback(ctx);
@@ -386,6 +442,216 @@ class Obstacle {
     }
 }
 
+// ==================== 地图事件类 ====================
+class MapEvent {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.activated = false;
+        this.activatedTime = 0;
+        this.fadeTimer = 0;
+        this.dead = false;
+
+        switch (type) {
+            case 'chest':
+                this.sprite = '📦';
+                this.size = 20;
+                this.interactRange = 40;
+                this.color = '#f39c12';
+                break;
+            case 'altar':
+                this.sprite = '⛩️';
+                this.size = 25;
+                this.interactRange = 50;
+                this.color = '#9b59b6';
+                // 随机祭坛效果
+                const altarEffects = [
+                    { name: '力量祭坛', buff: 'attack', value: 0.3, duration: 15000, desc: '攻击+30%' },
+                    { name: '迅捷祭坛', buff: 'speed', value: 0.5, duration: 10000, desc: '速度+50%' },
+                    { name: '坚韧祭坛', buff: 'defense', value: 0.3, duration: 12000, desc: '减伤+30%' },
+                    { name: '再生祭坛', buff: 'regen', value: 5, duration: 20000, desc: '每秒回复5HP' }
+                ];
+                this.altarEffect = altarEffects[Math.floor(Math.random() * altarEffects.length)];
+                break;
+            case 'trap':
+                this.sprite = '⚠️';
+                this.size = 15;
+                this.interactRange = 25;
+                this.color = '#e74c3c';
+                this.damage = 15 + Math.floor(Math.random() * 10);
+                this.hidden = true; // 陷阱初始隐藏
+                break;
+        }
+    }
+
+    update() {
+        if (this.dead) return;
+
+        // 消散动画
+        if (this.activated && this.type !== 'trap') {
+            this.fadeTimer += 16.67;
+            if (this.fadeTimer > 500) {
+                this.dead = true;
+                return;
+            }
+        }
+
+        // 检测玩家碰撞
+        [game.player, game.player2].forEach(player => {
+            if (!player || player.health <= 0 || this.activated) return;
+            const dist = Math.hypot(player.x - this.x, player.y - this.y);
+            if (dist > this.interactRange) return;
+
+            this.activate(player);
+        });
+    }
+
+    activate(player) {
+        this.activated = true;
+        this.activatedTime = Date.now();
+
+        switch (this.type) {
+            case 'chest': {
+                // 掉落金币和经验
+                const goldAmount = 10 + Math.floor(Math.random() * 20);
+                const expAmount = 15 + Math.floor(Math.random() * 25);
+                player.gold = (player.gold || 0) + goldAmount;
+                player.exp += expAmount;
+                // 掉落特效
+                for (let i = 0; i < 10; i++) {
+                    const p = new Particle(this.x, this.y, '#f1c40f');
+                    p.vx = (Math.random() - 0.5) * 4;
+                    p.vy = (Math.random() - 0.5) * 4;
+                    game.particles.push(p);
+                }
+                showDamageNumber(this.x, this.y - 20, '+' + goldAmount + '💰', '#f1c40f');
+                showDamageNumber(this.x, this.y - 35, '+' + expAmount + 'XP', '#3498db');
+                break;
+            }
+            case 'altar': {
+                const effect = this.altarEffect;
+                // 应用临时增益
+                switch (effect.buff) {
+                    case 'attack':
+                        player._altarAttackBoost = player.attack * effect.value;
+                        player.attack += player._altarAttackBoost;
+                        setTimeout(() => {
+                            if (player._altarAttackBoost) {
+                                player.attack -= player._altarAttackBoost;
+                                player._altarAttackBoost = 0;
+                                showDamageNumber(player.x, player.y - 20, '力量消散', '#aaa');
+                            }
+                        }, effect.duration);
+                        break;
+                    case 'speed':
+                        player._altarSpeedBoost = player.speed * effect.value;
+                        player.speed += player._altarSpeedBoost;
+                        setTimeout(() => {
+                            if (player._altarSpeedBoost) {
+                                player.speed -= player._altarSpeedBoost;
+                                player._altarSpeedBoost = 0;
+                                showDamageNumber(player.x, player.y - 20, '迅捷消散', '#aaa');
+                            }
+                        }, effect.duration);
+                        break;
+                    case 'defense':
+                        player._altarDefense = effect.value;
+                        player.damageReduction = (player.damageReduction || 0) + effect.value;
+                        setTimeout(() => {
+                            if (player._altarDefense) {
+                                player.damageReduction -= player._altarDefense;
+                                player._altarDefense = 0;
+                                showDamageNumber(player.x, player.y - 20, '坚韧消散', '#aaa');
+                            }
+                        }, effect.duration);
+                        break;
+                    case 'regen':
+                        player._altarRegen = effect.value;
+                        player.healthRegen = (player.healthRegen || 0) + effect.value;
+                        setTimeout(() => {
+                            if (player._altarRegen) {
+                                player.healthRegen -= player._altarRegen;
+                                player._altarRegen = 0;
+                                showDamageNumber(player.x, player.y - 20, '再生消散', '#aaa');
+                            }
+                        }, effect.duration);
+                        break;
+                }
+                // 祭坛激活特效
+                for (let i = 0; i < 15; i++) {
+                    const angle = (Math.PI * 2 / 15) * i;
+                    const p = new Particle(this.x, this.y, '#9b59b6');
+                    p.vx = Math.cos(angle) * 3;
+                    p.vy = Math.sin(angle) * 3;
+                    game.particles.push(p);
+                }
+                showDamageNumber(this.x, this.y - 20, effect.name, '#9b59b6');
+                showDamageNumber(this.x, this.y - 35, effect.desc, '#e8daef');
+                break;
+            }
+            case 'trap': {
+                // 对玩家造成伤害
+                const actualDamage = this.damage * (1 - (player.damageReduction || 0));
+                player.health -= actualDamage;
+                // 陷阱特效
+                for (let i = 0; i < 8; i++) {
+                    game.particles.push(new Particle(player.x, player.y, '#e74c3c'));
+                }
+                showDamageNumber(player.x, player.y - 20, Math.floor(actualDamage), '#e74c3c');
+                showDamageNumber(this.x, this.y - 15, '陷阱!', '#e74c3c');
+                this.dead = true; // 陷阱触发后直接消失
+                break;
+            }
+        }
+    }
+
+    draw(ctx) {
+        if (this.dead) return;
+
+        // 陷阱隐藏时不画（除非被激活）
+        if (this.type === 'trap' && this.hidden && !this.activated) {
+            // 当玩家非常近时显示微弱提示
+            const nearPlayer = [game.player, game.player2].some(p => {
+                if (!p || p.health <= 0) return false;
+                return Math.hypot(p.x - this.x, p.y - this.y) < 60;
+            });
+            if (nearPlayer) {
+                ctx.globalAlpha = 0.2;
+                ctx.font = `${this.size * 1.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.sprite, this.x, this.y);
+                ctx.globalAlpha = 1;
+            }
+            return;
+        }
+
+        // 消散渐隐
+        if (this.activated && this.fadeTimer > 0) {
+            ctx.globalAlpha = 1 - (this.fadeTimer / 500);
+        }
+
+        // 绘制事件图标
+        ctx.font = `${this.size * 2}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.sprite, this.x, this.y);
+
+        // 绘制光芒效果（宝箱和祭坛）
+        if (!this.activated && (this.type === 'chest' || this.type === 'altar')) {
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 500) * 0.2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 10, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1;
+    }
+}
+
 // 投射物类（箭、魔法弹）
 class Projectile {
     constructor(x, y, targetX, targetY, damage, type, color) {
@@ -407,9 +673,10 @@ class Projectile {
     }
 
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.distance += this.speed;
+        const dt = game.dtFactor || 1;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.distance += this.speed * dt;
     }
 
     draw(ctx) {
@@ -478,6 +745,77 @@ class Projectile {
     }
 }
 
+// 敌人投射物类（远程敌人发射的弹幕）
+class EnemyProjectile {
+    constructor(x, y, targetX, targetY, damage, color) {
+        this.x = x;
+        this.y = y;
+        this.damage = damage;
+        this.color = color || '#e056fd';
+        this.size = 5;
+        this.speed = 4;
+        const angle = Math.atan2(targetY - y, targetX - x);
+        this.vx = Math.cos(angle) * this.speed;
+        this.vy = Math.sin(angle) * this.speed;
+        this.distance = 0;
+        this.maxDistance = 300;
+        this.hit = false;
+    }
+
+    update() {
+        const dt = game.dtFactor || 1;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.distance += this.speed * dt;
+
+        // 检测是否击中玩家
+        [game.player, game.player2].forEach(p => {
+            if (!p || p.health <= 0 || this.hit) return;
+            const dist = Math.hypot(this.x - p.x, this.y - p.y);
+            if (dist < p.size + this.size) {
+                if (p.invincible) {
+                    game.particles.push(new Particle(p.x, p.y, '#ffd700'));
+                    this.hit = true;
+                    return;
+                }
+                if (p.shieldActive) {
+                    p.shieldActive = false;
+                    this.hit = true;
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(p.x, p.y - 20, '护盾抵挡', '#3498db', true);
+                    }
+                    return;
+                }
+                let actualDamage = this.damage;
+                if (p.damageReduction) {
+                    actualDamage = Math.floor(this.damage * (1 - p.damageReduction));
+                }
+                p.health -= actualDamage;
+                this.hit = true;
+                if (typeof showDamageNumber === 'function') {
+                    showDamageNumber(p.x, p.y - 20, actualDamage, '#e74c3c', false);
+                }
+                game.particles.push(new Particle(p.x, p.y, this.color));
+            }
+        });
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    isDead() {
+        return this.distance >= this.maxDistance || this.hit;
+    }
+}
+
 // 召唤物类
 class Summon {
     constructor(x, y, owner) {
@@ -522,10 +860,11 @@ class Summon {
             const dx = target.x - this.x;
             const dy = target.y - this.y;
             const dist = Math.hypot(dx, dy);
+            const dt = game.dtFactor || 1;
 
             if (dist > this.attackRange) {
-                this.x += (dx / dist) * this.speed;
-                this.y += (dy / dist) * this.speed;
+                this.x += (dx / dist) * this.speed * dt;
+                this.y += (dy / dist) * this.speed * dt;
             } else {
                 // 攻击
                 const now = Date.now();
@@ -542,18 +881,7 @@ class Summon {
 
                     // 检查击杀
                     if (target.health <= 0) {
-                        this.owner.gainExp(target.expValue);
-                        game.killCount++;
-
-                        // 生成掉落物
-                        const drops = spawnDrops(target.x, target.y, target.type);
-                        console.log('[召唤物] 击杀敌人 - 添加掉落物:', drops.length, '当前总数:', game.droppedItems.length);
-                        game.droppedItems.push(...drops);
-
-                        // 灵魂链接效果
-                        if (this.owner.soulLink) {
-                            this.owner.health = Math.min(this.owner.health + this.owner.soulLink, this.owner.maxHealth);
-                        }
+                        handleEnemyKill(target, this.owner);
                     }
                 }
             }
@@ -562,10 +890,11 @@ class Summon {
             const dx = this.owner.x - this.x;
             const dy = this.owner.y - this.y;
             const dist = Math.hypot(dx, dy);
+            const dt = game.dtFactor || 1;
 
             if (dist > 100) {
-                this.x += (dx / dist) * this.speed;
-                this.y += (dy / dist) * this.speed;
+                this.x += (dx / dist) * this.speed * dt;
+                this.y += (dy / dist) * this.speed * dt;
             }
         }
 
@@ -680,9 +1009,10 @@ class WeaponProjectile {
     }
 
     update() {
+        const dt = game.dtFactor || 1;
         switch(this.type) {
             case 'spin':
-                this.rotation += 0.3;
+                this.rotation += 0.3 * dt;
                 break;
             case 'arrow':
                 if (this.tracking && game.enemies.length > 0) {
@@ -693,20 +1023,20 @@ class WeaponProjectile {
                     if (nearest.enemy && nearest.dist < 300) {
                         const targetAngle = Math.atan2(nearest.enemy.y - this.y, nearest.enemy.x - this.x);
                         const angleDiff = targetAngle - this.rotation;
-                        this.rotation += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.1);
+                        this.rotation += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.1 * dt);
                         this.vx = Math.cos(this.rotation) * this.speed;
                         this.vy = Math.sin(this.rotation) * this.speed;
                     }
                 }
-                this.x += this.vx;
-                this.y += this.vy;
-                this.distance += this.speed;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.distance += this.speed * dt;
                 break;
             case 'magic':
             case 'fireball':
-                this.x += this.vx;
-                this.y += this.vy;
-                this.distance += this.speed;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.distance += this.speed * dt;
                 break;
         }
     }
@@ -957,6 +1287,16 @@ class Player {
             this.magicPenetration = classConfig.magicPenetration;
         }
 
+        // 遗物系统
+        this.relics = [];
+
+        // 主动技能系统
+        this.activeSkill = classConfig.activeSkill || null;
+        this.skillCooldown = 0;
+        this.skillActive = false;
+        this.skillTimer = 0;
+        this.skillData = {}; // 技能运行时数据（暴风雪tick、箭雨命中次数等）
+
         // 职业特殊属性初始化
         if (classType === 'knight') {
             // 骑士：护甲减伤
@@ -978,28 +1318,44 @@ class Player {
                 left: ['ArrowLeft', 'a', 'A'],
                 right: ['ArrowRight', 'd', 'D'],
                 up: ['ArrowUp', 'w', 'W'],
-                down: ['ArrowDown', 's', 'S']
+                down: ['ArrowDown', 's', 'S'],
+                dash: [' '],
+                skill: ['q', 'Q']
             };
         } else {
             // 双人模式
             if (this.playerIndex === 1) {
-                // P1: WASD
+                // P1: WASD + 空格冲刺 + Q技能
                 this.controls = {
                     left: ['a', 'A'],
                     right: ['d', 'D'],
                     up: ['w', 'W'],
-                    down: ['s', 'S']
+                    down: ['s', 'S'],
+                    dash: [' '],
+                    skill: ['q', 'Q']
                 };
             } else {
-                // P2: 方向键
+                // P2: 方向键 + Enter冲刺 + 右Shift技能
                 this.controls = {
                     left: ['ArrowLeft'],
                     right: ['ArrowRight'],
                     up: ['ArrowUp'],
-                    down: ['ArrowDown']
+                    down: ['ArrowDown'],
+                    dash: ['Enter'],
+                    skill: ['Shift']
                 };
             }
         }
+
+        // 冲刺状态
+        this.isDashing = false;
+        this.dashCooldown = 0;
+        this.dashDuration = 0;
+        this.dashDirX = 0;
+        this.dashDirY = 0;
+        this.dashSpeed = 12; // 冲刺速度
+        this.dashMaxDuration = 150; // 冲刺持续150ms
+        this.dashMaxCooldown = 3000; // 3秒冷却
     }
 
     // 检查按键是否按下
@@ -1008,53 +1364,119 @@ class Player {
     }
 
     update(deltaTime) {
-        // 移动
-        let dx = 0, dy = 0;
-        if (this.isKeyPressed(this.controls.left)) dx -= 1;
-        if (this.isKeyPressed(this.controls.right)) dx += 1;
-        if (this.isKeyPressed(this.controls.up)) dy -= 1;
-        if (this.isKeyPressed(this.controls.down)) dy += 1;
+        const now = Date.now();
+        const dt = game.dtFactor || 1;
 
-        // 归一化对角线移动
-        if (dx !== 0 && dy !== 0) {
-            dx *= 0.707;
-            dy *= 0.707;
+        // ---- 冲刺冷却更新 ----
+        if (this.dashCooldown > 0) {
+            this.dashCooldown -= deltaTime;
         }
 
-        // 计算新位置
-        const newX = this.x + dx * this.speed;
-        const newY = this.y + dy * this.speed;
-
-        // 只检查附近的障碍物（性能优化）
-        const nearbyObstacles = game.obstacles.filter(obstacle => {
-            const dist = Math.hypot(obstacle.x - this.x, obstacle.y - this.y);
-            return dist < 200;
-        });
-
-        // 检查与石头的碰撞
-        let canMove = true;
-        for (const obstacle of nearbyObstacles) {
-            if (obstacle.blocking && obstacle.collidesWith(newX, newY, this.size)) {
-                canMove = false;
-                break;
+        // ---- 冲刺触发 ----
+        if (this.isKeyPressed(this.controls.dash) && !this.isDashing && this.dashCooldown <= 0) {
+            let dx = 0, dy = 0;
+            if (this.isKeyPressed(this.controls.left)) dx -= 1;
+            if (this.isKeyPressed(this.controls.right)) dx += 1;
+            if (this.isKeyPressed(this.controls.up)) dy -= 1;
+            if (this.isKeyPressed(this.controls.down)) dy += 1;
+            // 没有方向输入时向前方（朝上一次移动方向）冲刺
+            if (dx === 0 && dy === 0) {
+                dx = this.lastDirX || 0;
+                dy = this.lastDirY || -1;
+            }
+            const len = Math.hypot(dx, dy);
+            if (len > 0) {
+                this.dashDirX = dx / len;
+                this.dashDirY = dy / len;
+                this.isDashing = true;
+                this.dashDuration = this.dashMaxDuration;
+                this.dashCooldown = this.dashMaxCooldown;
+                this.invincible = true; // 冲刺期间无敌
+                // 冲刺粒子
+                for (let i = 0; i < 5; i++) {
+                    game.particles.push(new Particle(this.x, this.y, '#7bed9f'));
+                }
             }
         }
 
-        if (canMove) {
-            this.x = newX;
-            this.y = newY;
+        // ---- 冲刺中的移动 ----
+        if (this.isDashing) {
+            this.dashDuration -= deltaTime;
+            const dashX = this.x + this.dashDirX * this.dashSpeed * dt;
+            const dashY = this.y + this.dashDirY * this.dashSpeed * dt;
+            // 边界限制
+            this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, dashX));
+            this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, dashY));
+            // 冲刺拖影
+            if (Math.random() < 0.5) {
+                game.particles.push(new Particle(this.x, this.y, '#70a1ff'));
+            }
+            if (this.dashDuration <= 0) {
+                this.isDashing = false;
+                // 如果不是因为 divineShield 触发的无敌，解除无敌
+                if (!this.divineShield || this.health > this.maxHealth * 0.3) {
+                    this.invincible = false;
+                }
+            }
+            // 冲刺期间跳过普通移动
+        } else {
+            // ---- 普通移动 ----
+            let dx = 0, dy = 0;
+            if (this.isKeyPressed(this.controls.left)) dx -= 1;
+            if (this.isKeyPressed(this.controls.right)) dx += 1;
+            if (this.isKeyPressed(this.controls.up)) dy -= 1;
+            if (this.isKeyPressed(this.controls.down)) dy += 1;
+
+            // 归一化对角线移动
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
+            }
+
+            // 记录移动方向（供冲刺使用）
+            if (dx !== 0 || dy !== 0) {
+                this.lastDirX = dx;
+                this.lastDirY = dy;
+            }
+
+            // 计算新位置
+            const newX = this.x + dx * this.speed * dt;
+            const newY = this.y + dy * this.speed * dt;
+
+            // 只检查附近的障碍物（性能优化）
+            const nearbyObstacles = game.obstacles.filter(obstacle => {
+                const dist = Math.hypot(obstacle.x - this.x, obstacle.y - this.y);
+                return dist < 200;
+            });
+
+            // 检查与石头的碰撞
+            let canMove = true;
+            for (const obstacle of nearbyObstacles) {
+                if (obstacle.blocking && obstacle.collidesWith(newX, newY, this.size)) {
+                    canMove = false;
+                    break;
+                }
+            }
+
+            if (canMove) {
+                this.x = newX;
+                this.y = newY;
+            }
+
+            // 边界限制（世界边界）
+            this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, this.x));
+            this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
         }
 
-        // 边界限制（世界边界）
-        this.x = Math.max(this.size, Math.min(CONFIG.world.width - this.size, this.x));
-        this.y = Math.max(this.size, Math.min(CONFIG.world.height - this.size, this.y));
-
-        // 检查是否在草丛中（只检查附近的障碍物）
+        // 检查是否在草丛中（独立计算附近障碍物）
         this.inBush = false;
-        for (const obstacle of nearbyObstacles) {
-            if (obstacle.type === 'bush' && obstacle.collidesWith(this.x, this.y, this.size)) {
-                this.inBush = true;
-                break;
+        for (const obstacle of game.obstacles) {
+            if (obstacle.type === 'bush') {
+                const dist = Math.hypot(obstacle.x - this.x, obstacle.y - this.y);
+                if (dist < 100 && obstacle.collidesWith(this.x, this.y, this.size)) {
+                    this.inBush = true;
+                    break;
+                }
             }
         }
 
@@ -1066,10 +1488,53 @@ class Player {
         }
 
         // 生命恢复
-        const now = Date.now();
         if (this.healthRegen > 0 && now - this.lastRegenTime >= 1000) {
             this.health = Math.min(this.health + this.healthRegen, this.maxHealth);
             this.lastRegenTime = now;
+        }
+
+        // 圣骑士圣光治愈 - 每5秒恢复百分比生命
+        if (this.holyHeal && now - (this.lastHolyHealTime || 0) >= 5000) {
+            const healAmount = Math.floor(this.maxHealth * this.holyHeal);
+            this.health = Math.min(this.health + healAmount, this.maxHealth);
+            this.lastHolyHealTime = now;
+            // 治愈特效
+            for (let i = 0; i < 3; i++) {
+                game.particles.push(new Particle(this.x, this.y - 10, '#ffd700'));
+            }
+        }
+
+        // 法师法力护盾 - 每10秒获得护盾
+        if (this.manaShield && now - (this.lastShieldTime || 0) >= 10000) {
+            this.shieldActive = true;
+            this.lastShieldTime = now;
+        }
+
+        // 圣骑士神圣护盾 - 低血触发无敌
+        if (this.divineShield && !this.divineShieldCooldown) {
+            if (this.health > 0 && this.health <= this.maxHealth * 0.3) {
+                this.invincible = true;
+                this.divineShieldCooldown = true;
+                // 3秒后解除无敌
+                setTimeout(() => {
+                    this.invincible = false;
+                }, 3000);
+                // 60秒冷却
+                setTimeout(() => {
+                    this.divineShieldCooldown = false;
+                }, 60000);
+                // 无敌特效
+                for (let i = 0; i < 8; i++) {
+                    game.particles.push(new Particle(this.x, this.y, '#ffd700'));
+                }
+            }
+        }
+
+        // 狂战士模式 - 低血增攻（动态计算，不永久修改基础值）
+        if (this.berserkerMode) {
+            const healthPercent = this.health / this.maxHealth;
+            // 血量越低攻击越高，最低血时+50%
+            this.berserkerBonus = (1 - healthPercent) * 0.5;
         }
 
         // 更新摄像机位置（只有P1或单人模式才更新摄像机）
@@ -1077,8 +1542,388 @@ class Player {
             updateCamera();
         }
 
+        // ---- 主动技能系统 ----
+        // 技能冷却更新
+        if (this.skillCooldown > 0) {
+            this.skillCooldown -= deltaTime;
+        }
+
+        // 技能按键触发
+        if (this.activeSkill && this.isKeyPressed(this.controls.skill) && this.skillCooldown <= 0 && !this.skillActive) {
+            this.useActiveSkill();
+        }
+
+        // 持续技能效果更新
+        if (this.skillActive) {
+            this.updateActiveSkill(deltaTime);
+        }
+
         // 自动攻击最近的敌人
         this.autoAttack();
+    }
+
+    // 使用主动技能
+    useActiveSkill() {
+        const skill = this.activeSkill;
+        if (!skill) return;
+
+        this.skillCooldown = skill.cooldown;
+        const now = Date.now();
+
+        switch (skill.type) {
+            case 'warcry': {
+                // 战士：战吼 - 范围眩晕 + 自身攻击Buff
+                this.skillActive = true;
+                this.skillTimer = skill.buffDuration;
+                this.skillData = { attackBoost: skill.attackBoost, originalAttack: this.attack };
+                this.attack *= (1 + skill.attackBoost);
+                // 范围内敌人眩晕
+                game.enemies.forEach(enemy => {
+                    const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist <= skill.radius) {
+                        enemy.stunned = true;
+                        enemy.stunEndTime = now + skill.stunDuration;
+                    }
+                });
+                // 战吼特效：冲击波
+                for (let i = 0; i < 20; i++) {
+                    const angle = (Math.PI * 2 / 20) * i;
+                    const p = new Particle(this.x, this.y, '#ff6b6b');
+                    p.vx = Math.cos(angle) * 3;
+                    p.vy = Math.sin(angle) * 3;
+                    game.particles.push(p);
+                }
+                showDamageNumber(this.x, this.y - 30, '战吼!', '#ff6b6b');
+                break;
+            }
+            case 'blizzard': {
+                // 法师：暴风雪 - 持续范围伤害
+                this.skillActive = true;
+                this.skillTimer = skill.duration;
+                this.skillData = { lastTick: now, tickInterval: skill.tickInterval, radius: skill.radius, damagePercent: skill.damagePercent };
+                showDamageNumber(this.x, this.y - 30, '暴风雪!', '#4ecdc4');
+                break;
+            }
+            case 'shadowstep': {
+                // 刺客：影步 - 瞬移到最近敌人并暴击
+                let closestEnemy = null;
+                let closestDist = skill.blinkRange;
+                game.enemies.forEach(enemy => {
+                    const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist < closestDist) {
+                        closestDist = dist;
+                        closestEnemy = enemy;
+                    }
+                });
+                if (closestEnemy) {
+                    // 瞬移到敌人背后
+                    const angle = Math.atan2(closestEnemy.y - this.y, closestEnemy.x - this.x);
+                    this.x = closestEnemy.x + Math.cos(angle) * 30;
+                    this.y = closestEnemy.y + Math.sin(angle) * 30;
+                    // 暴击伤害
+                    const damage = Math.floor(this.attack * skill.damageMultiplier);
+                    closestEnemy.health -= damage;
+                    showDamageNumber(closestEnemy.x, closestEnemy.y - 20, damage, '#ff0', true);
+                    // 遗物 onHit 钩子
+                    if (this.relics && this.relics.length > 0) {
+                        this.relics.forEach(relic => {
+                            if (relic.onHit) relic.onHit(this, closestEnemy);
+                        });
+                    }
+                    // 瞬移特效
+                    for (let i = 0; i < 15; i++) {
+                        game.particles.push(new Particle(closestEnemy.x, closestEnemy.y, '#95e1d3'));
+                    }
+                    showDamageNumber(this.x, this.y - 30, '影步!', '#95e1d3');
+                } else {
+                    // 没有敌人在范围内，退还一半冷却
+                    this.skillCooldown = skill.cooldown * 0.5;
+                    showDamageNumber(this.x, this.y - 30, '无目标', '#aaa');
+                }
+                break;
+            }
+            case 'arrowrain': {
+                // 游侠：箭雨 - 在最近敌人位置降下箭雨
+                let target = null;
+                let minDist = skill.range;
+                game.enemies.forEach(enemy => {
+                    const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        target = enemy;
+                    }
+                });
+                if (target) {
+                    this.skillActive = true;
+                    this.skillTimer = skill.duration;
+                    this.skillData = {
+                        targetX: target.x, targetY: target.y,
+                        hitCount: 0, maxHits: skill.hitCount,
+                        hitInterval: skill.duration / skill.hitCount,
+                        lastHit: now, radius: skill.radius,
+                        damagePercent: skill.damagePercent
+                    };
+                    showDamageNumber(target.x, target.y - 30, '箭雨!', '#f38181');
+                } else {
+                    this.skillCooldown = skill.cooldown * 0.5;
+                    showDamageNumber(this.x, this.y - 30, '无目标', '#aaa');
+                }
+                break;
+            }
+            case 'soulburst': {
+                // 召唤师：灵魂爆破 - 引爆所有召唤物
+                const mySummons = game.summons.filter(s => s.owner === this);
+                if (mySummons.length > 0) {
+                    mySummons.forEach(summon => {
+                        // 范围伤害
+                        game.enemies.forEach(enemy => {
+                            const dist = Math.hypot(enemy.x - summon.x, enemy.y - summon.y);
+                            if (dist <= skill.radius) {
+                                const damage = Math.floor(this.attack * skill.damageMultiplier);
+                                enemy.health -= damage;
+                                showDamageNumber(enemy.x, enemy.y - 20, damage, '#9b59b6');
+                            }
+                        });
+                        // 爆炸特效
+                        for (let i = 0; i < 12; i++) {
+                            const angle = (Math.PI * 2 / 12) * i;
+                            const p = new Particle(summon.x, summon.y, '#9b59b6');
+                            p.vx = Math.cos(angle) * 4;
+                            p.vy = Math.sin(angle) * 4;
+                            game.particles.push(p);
+                        }
+                        summon.health = 0; // 引爆
+                    });
+                    showDamageNumber(this.x, this.y - 30, '灵魂爆破!', '#9b59b6');
+                } else {
+                    this.skillCooldown = skill.cooldown * 0.5;
+                    showDamageNumber(this.x, this.y - 30, '无召唤物', '#aaa');
+                }
+                break;
+            }
+            case 'fortress': {
+                // 骑士：堡垒 - 无敌+嘲讽
+                this.skillActive = true;
+                this.skillTimer = skill.duration;
+                this.invincible = true;
+                this.skillData = { tauntRadius: skill.tauntRadius };
+                showDamageNumber(this.x, this.y - 30, '堡垒!', '#c0c0c0');
+                // 护盾特效
+                for (let i = 0; i < 16; i++) {
+                    const angle = (Math.PI * 2 / 16) * i;
+                    const p = new Particle(
+                        this.x + Math.cos(angle) * 40,
+                        this.y + Math.sin(angle) * 40,
+                        '#c0c0c0'
+                    );
+                    game.particles.push(p);
+                }
+                break;
+            }
+            case 'holywave': {
+                // 圣骑士：圣光审判 - 范围伤害+回复
+                game.enemies.forEach(enemy => {
+                    const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist <= skill.radius) {
+                        const damage = Math.floor(this.attack * skill.damageMultiplier);
+                        enemy.health -= damage;
+                        showDamageNumber(enemy.x, enemy.y - 20, damage, '#ffd700');
+                        // 遗物 onHit
+                        if (this.relics && this.relics.length > 0) {
+                            this.relics.forEach(relic => {
+                                if (relic.onHit) relic.onHit(this, enemy);
+                            });
+                        }
+                    }
+                });
+                // 回复生命
+                const healAmount = Math.floor(this.maxHealth * skill.healPercent);
+                this.health = Math.min(this.health + healAmount, this.maxHealth);
+                showDamageNumber(this.x, this.y - 20, '+' + healAmount, '#2ecc71');
+                // 圣光波特效
+                for (let i = 0; i < 24; i++) {
+                    const angle = (Math.PI * 2 / 24) * i;
+                    const p = new Particle(
+                        this.x + Math.cos(angle) * skill.radius * 0.7,
+                        this.y + Math.sin(angle) * skill.radius * 0.7,
+                        '#ffd700'
+                    );
+                    p.vx = Math.cos(angle) * 2;
+                    p.vy = Math.sin(angle) * 2;
+                    game.particles.push(p);
+                }
+                showDamageNumber(this.x, this.y - 40, '圣光审判!', '#ffd700');
+                break;
+            }
+            case 'undeadarmy': {
+                // 死灵法师：亡灵大军 - 大量临时召唤
+                this.skillActive = true;
+                this.skillTimer = skill.duration;
+                this.skillData = { tempSummons: [] };
+                for (let i = 0; i < skill.summonCount; i++) {
+                    const angle = (Math.PI * 2 / skill.summonCount) * i;
+                    const dist = 60 + Math.random() * 40;
+                    const sx = this.x + Math.cos(angle) * dist;
+                    const sy = this.y + Math.sin(angle) * dist;
+                    const summon = new Summon(sx, sy, this);
+                    summon.sprite = '💀';
+                    summon.color = '#6a0dad';
+                    summon.attack = this.attack * 0.5;
+                    summon.isTemp = true; // 标记为临时召唤物
+                    game.summons.push(summon);
+                    this.skillData.tempSummons.push(summon);
+                    // 召唤特效
+                    for (let j = 0; j < 3; j++) {
+                        game.particles.push(new Particle(sx, sy, '#4a0080'));
+                    }
+                }
+                showDamageNumber(this.x, this.y - 30, '亡灵大军!', '#4a0080');
+                break;
+            }
+        }
+    }
+
+    // 更新持续技能效果
+    updateActiveSkill(deltaTime) {
+        const now = Date.now();
+        this.skillTimer -= deltaTime;
+
+        if (this.skillTimer <= 0) {
+            // 技能结束
+            this.endActiveSkill();
+            return;
+        }
+
+        const skill = this.activeSkill;
+        switch (skill.type) {
+            case 'warcry': {
+                // 战吼Buff期间特效
+                if (Math.random() < 0.1) {
+                    game.particles.push(new Particle(
+                        this.x + (Math.random() - 0.5) * 30,
+                        this.y + (Math.random() - 0.5) * 30,
+                        '#ff6b6b'
+                    ));
+                }
+                break;
+            }
+            case 'blizzard': {
+                const data = this.skillData;
+                // 每tick对范围内敌人造成伤害
+                if (now - data.lastTick >= data.tickInterval) {
+                    data.lastTick = now;
+                    game.enemies.forEach(enemy => {
+                        const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                        if (dist <= data.radius) {
+                            const damage = Math.floor(this.attack * data.damagePercent);
+                            enemy.health -= damage;
+                            showDamageNumber(enemy.x, enemy.y - 10, damage, '#87ceeb');
+                            // 减速效果
+                            enemy.slowed = true;
+                            enemy.slowEndTime = now + 500;
+                        }
+                    });
+                }
+                // 暴风雪粒子
+                for (let i = 0; i < 3; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * data.radius;
+                    const p = new Particle(
+                        this.x + Math.cos(angle) * dist,
+                        this.y + Math.sin(angle) * dist,
+                        '#87ceeb'
+                    );
+                    p.vy = 2;
+                    game.particles.push(p);
+                }
+                break;
+            }
+            case 'arrowrain': {
+                const data = this.skillData;
+                if (data.hitCount < data.maxHits && now - data.lastHit >= data.hitInterval) {
+                    data.hitCount++;
+                    data.lastHit = now;
+                    // 对目标区域内敌人造成伤害
+                    game.enemies.forEach(enemy => {
+                        const dist = Math.hypot(enemy.x - data.targetX, enemy.y - data.targetY);
+                        if (dist <= data.radius) {
+                            const damage = Math.floor(this.attack * data.damagePercent);
+                            enemy.health -= damage;
+                            showDamageNumber(enemy.x, enemy.y - 10, damage, '#f38181');
+                        }
+                    });
+                    // 箭矢落地特效
+                    for (let i = 0; i < 5; i++) {
+                        const ox = data.targetX + (Math.random() - 0.5) * data.radius * 2;
+                        const oy = data.targetY + (Math.random() - 0.5) * data.radius * 2;
+                        game.particles.push(new Particle(ox, oy, '#f38181'));
+                    }
+                }
+                break;
+            }
+            case 'fortress': {
+                // 骑士堡垒：持续嘲讽附近敌人
+                const data = this.skillData;
+                game.enemies.forEach(enemy => {
+                    const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist <= data.tauntRadius) {
+                        enemy.tauntTarget = this;
+                        enemy.tauntEndTime = now + 500;
+                    }
+                });
+                // 护盾光环特效
+                if (Math.random() < 0.2) {
+                    const angle = Math.random() * Math.PI * 2;
+                    game.particles.push(new Particle(
+                        this.x + Math.cos(angle) * 35,
+                        this.y + Math.sin(angle) * 35,
+                        '#c0c0c0'
+                    ));
+                }
+                break;
+            }
+            case 'undeadarmy': {
+                // 亡灵大军：持续期间啥也不用做，到期清理
+                break;
+            }
+        }
+    }
+
+    // 结束主动技能
+    endActiveSkill() {
+        const skill = this.activeSkill;
+        this.skillActive = false;
+        this.skillTimer = 0;
+
+        switch (skill.type) {
+            case 'warcry': {
+                // 恢复原始攻击力
+                this.attack = this.skillData.originalAttack;
+                break;
+            }
+            case 'fortress': {
+                // 解除无敌（如果不是被其他效果触发的无敌）
+                if (!this.divineShield || this.health > this.maxHealth * 0.3) {
+                    this.invincible = false;
+                }
+                break;
+            }
+            case 'undeadarmy': {
+                // 清理临时召唤物
+                if (this.skillData.tempSummons) {
+                    this.skillData.tempSummons.forEach(s => {
+                        s.health = 0;
+                        // 消散特效
+                        for (let i = 0; i < 5; i++) {
+                            game.particles.push(new Particle(s.x, s.y, '#4a0080'));
+                        }
+                    });
+                }
+                break;
+            }
+        }
+
+        this.skillData = {};
     }
 
     autoAttack() {
@@ -1159,15 +2004,41 @@ class Player {
                 let damage = this.attack;
                 let isCrit = false;
 
+                // 狂战士模式加成
+                if (this.berserkerBonus) {
+                    damage *= (1 + this.berserkerBonus);
+                }
+
                 // 计算武器加成伤害
                 this.weapons.forEach(weapon => {
                     damage += weapon.damage * weapon.level;
                 });
 
+                // 魔法伤害加成（法师专属）
+                if (this.magicDamageBonus && (this.attackType === 'magic' || this.attackType === 'summon')) {
+                    damage *= this.magicDamageBonus;
+                }
+
+                // 背刺效果（满血敌人双倍伤害）
+                if (this.backstab && enemy.health >= enemy.maxHealth) {
+                    damage *= 2;
+                    isCrit = true; // 视为暴击显示
+                }
+
                 // 暴击判定（使用critDamage属性）
-                if (Math.random() < this.critChance) {
+                if (!isCrit && Math.random() < this.critChance) {
                     damage *= this.critDamage;
                     isCrit = true;
+                }
+
+                // 猎人印记效果（被标记的敌人受到额外伤害）
+                if (enemy.hunterMarked) {
+                    damage *= 1.2;
+                }
+
+                // 应用猎人印记到敌人
+                if (this.hunterMark && !enemy.hunterMarked) {
+                    enemy.hunterMarked = true;
                 }
 
                 // 根据攻击类型处理
@@ -1178,6 +2049,13 @@ class Player {
                         damage *= enemy.curseMultiplier;
                     }
                     enemy.health -= damage;
+
+                    // 遗物 onHit 钩子
+                    if (this.relics && this.relics.length > 0) {
+                        this.relics.forEach(relic => {
+                            if (relic.onHit) relic.onHit(this, enemy);
+                        });
+                    }
 
                     for (let i = 0; i < 3; i++) {
                         game.particles.push(new Particle(enemy.x, enemy.y, isCrit ? '#ffff00' : this.color));
@@ -1192,6 +2070,29 @@ class Player {
                             enemy.x += (dx / dist) * 30 * this.knockbackPower;
                             enemy.y += (dy / dist) * 30 * this.knockbackPower;
                         }
+                    }
+
+                    // 盾击概率击退（通用击退概率）
+                    if (this.knockbackChance && !this.knockbackPower && Math.random() < this.knockbackChance && !enemy.isBoss) {
+                        const dx = enemy.x - this.x;
+                        const dy = enemy.y - this.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > 0) {
+                            enemy.x += (dx / dist) * 40;
+                            enemy.y += (dy / dist) * 40;
+                        }
+                    }
+
+                    // 毒素效果（刺客专属）
+                    if (this.poisonDamage && !enemy.poisoned) {
+                        enemy.poisoned = true;
+                        enemy.poisonDamagePerTick = this.poisonDamage;
+                        enemy.poisonEndTime = Date.now() + 3000;
+                    }
+
+                    // 伤害飘字
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(enemy.x, enemy.y, Math.floor(damage), isCrit ? '#ffff00' : '#ffffff', isCrit);
                     }
                 } else if (this.attackType === 'ranged') {
                     // 远程：发射箭
@@ -1284,22 +2185,7 @@ class Player {
 
                 // 近战直接检查击杀
                 if (this.attackType === 'melee' && enemy.health <= 0) {
-                    this.gainExp(enemy.expValue);
-                    game.killCount++;
-
-                    // 生成掉落物
-                    const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
-                    console.log('[近战] 击杀敌人 - 添加掉落物:', drops.length, '当前总数:', game.droppedItems.length);
-                    game.droppedItems.push(...drops);
-
-                    for (let i = 0; i < 6; i++) {
-                        game.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
-                    }
-
-                    // 吸血效果
-                    if (this.vampireHeal > 0) {
-                        this.health = Math.min(this.health + this.vampireHeal, this.maxHealth);
-                    }
+                    handleEnemyKill(enemy, this);
                 }
             });
 
@@ -1439,6 +2325,83 @@ class Player {
         ctx.fillStyle = '#00ff00';
         ctx.fillRect(this.x - barWidth/2, this.y - this.size - 15, barWidth * healthPercent, barHeight);
 
+        // 护盾指示器（法师魔法护盾）
+        if (this.shieldActive) {
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 200) * 0.3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 8, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+
+        // 无敌指示器（圣骑士神圣护盾）
+        if (this.invincible) {
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 150) * 0.3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 12, 0, Math.PI * 2);
+            ctx.stroke();
+            // 十字光芒
+            const sz = this.size + 16;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - sz);
+            ctx.lineTo(this.x, this.y + sz);
+            ctx.moveTo(this.x - sz, this.y);
+            ctx.lineTo(this.x + sz, this.y);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+
+        // 冲刺冷却指示器
+        if (this.dashCooldown > 0) {
+            const cdPercent = this.dashCooldown / this.dashMaxCooldown;
+            ctx.fillStyle = 'rgba(100,100,100,0.5)';
+            ctx.fillRect(this.x - barWidth/2, this.y - this.size - 22, barWidth, 3);
+            ctx.fillStyle = '#70a1ff';
+            ctx.fillRect(this.x - barWidth/2, this.y - this.size - 22, barWidth * (1 - cdPercent), 3);
+        } else {
+            // 冲刺就绪 - 小蓝点
+            ctx.fillStyle = '#70a1ff';
+            ctx.beginPath();
+            ctx.arc(this.x + barWidth/2 + 5, this.y - this.size - 12, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 主动技能冷却指示器
+        if (this.activeSkill) {
+            const skillY = this.y - this.size - 28;
+            if (this.skillCooldown > 0) {
+                const cdPercent = this.skillCooldown / this.activeSkill.cooldown;
+                ctx.fillStyle = 'rgba(100,100,100,0.5)';
+                ctx.fillRect(this.x - barWidth/2, skillY, barWidth, 3);
+                ctx.fillStyle = '#ff6348';
+                ctx.fillRect(this.x - barWidth/2, skillY, barWidth * (1 - cdPercent), 3);
+            } else {
+                // 技能就绪 - 小红点+图标
+                ctx.fillStyle = '#ff6348';
+                ctx.beginPath();
+                ctx.arc(this.x - barWidth/2 - 5, this.y - this.size - 18, 3, 0, Math.PI * 2);
+                ctx.fill();
+                // 绘制技能图标提示
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.activeSkill.icon, this.x - barWidth/2 - 5, this.y - this.size - 30);
+            }
+            // 技能激活中光环
+            if (this.skillActive) {
+                ctx.strokeStyle = this.color || '#ff6348';
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size + 20, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+
         // 恢复透明度
         ctx.globalAlpha = 1;
     }
@@ -1509,10 +2472,83 @@ class Enemy {
             this.size = CONFIG.enemy.size * 2.5;
             // 根据波数获取Boss类型
             this.bossType = getBossTypeByWave(game.wave.current);
+            // Boss技能系统
+            this.lastSkillTime = Date.now();
+            this.skillCooldown = 5000; // 5秒技能冷却
+            this.isCharging = false;
+            this.chargeTarget = null;
+        } else if (type === 'ranged') {
+            // 远程射手敌人
+            this.health = Math.floor(25 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(1.2 + (game.wave.current - 1) * 0.015, 2.5);
+            this.damage = Math.floor(12 * waveMultiplier);
+            this.expValue = Math.floor(25 * waveMultiplier);
+            this.color = '#e056fd';
+            this.sprite = '🏹';
+            this.shootRange = 200; // 射击范围
+            this.lastShootTime = 0;
+            this.shootCooldown = 2000; // 2秒射击间隔
+        } else if (type === 'splitter') {
+            // 分裂怪
+            this.health = Math.floor(40 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(1.3 + (game.wave.current - 1) * 0.015, 2.5);
+            this.damage = Math.floor(8 * waveMultiplier);
+            this.expValue = Math.floor(20 * waveMultiplier);
+            this.color = '#7bed9f';
+            this.sprite = '🫧';
+            this.splitCount = 2; // 分裂成2个小怪
+        } else if (type === 'splitter_child') {
+            // 分裂子体（不再分裂）
+            this.health = Math.floor(15 * waveMultiplier);
+            this.maxHealth = this.health;
+            this.speed = Math.min(2 + (game.wave.current - 1) * 0.02, 3.5);
+            this.damage = Math.floor(5 * waveMultiplier);
+            this.expValue = Math.floor(10 * waveMultiplier);
+            this.color = '#7bed9f';
+            this.sprite = '🫧';
+            this.size = CONFIG.enemy.size * 0.7;
         }
     }
 
     update() {
+        // 毒素伤害tick
+        if (this.poisoned && this.poisonEndTime) {
+            const now = Date.now();
+            if (now < this.poisonEndTime) {
+                // 每500ms一次毒伤
+                if (!this.lastPoisonTick || now - this.lastPoisonTick >= 500) {
+                    this.health -= this.poisonDamagePerTick || 0;
+                    this.lastPoisonTick = now;
+                    // 毒伤粒子（绿色）
+                    game.particles.push(new Particle(this.x, this.y - 5, '#2ecc71'));
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(this.x, this.y - 15, Math.floor(this.poisonDamagePerTick || 0), '#2ecc71', false);
+                    }
+                }
+            } else {
+                // 毒素过期
+                this.poisoned = false;
+                this.poisonDamagePerTick = 0;
+                this.poisonEndTime = 0;
+                this.lastPoisonTick = 0;
+            }
+            // 毒伤致死
+            if (this.health <= 0 && !this._poisonKilled) {
+                this._poisonKilled = true;
+                // 找到最近的玩家作为击杀者
+                let killer = game.player;
+                if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+                    const d1 = Math.hypot(this.x - game.player.x, this.y - game.player.y);
+                    const d2 = Math.hypot(this.x - game.player2.x, this.y - game.player2.y);
+                    if (game.player.health <= 0 || d2 < d1) killer = game.player2;
+                }
+                handleEnemyKill(this, killer);
+                return;
+            }
+        }
+
         // 找到最近的存活玩家追踪
         let targetPlayer = game.player;
         let minDist = Math.hypot(game.player.x - this.x, game.player.y - this.y);
@@ -1539,30 +2575,197 @@ class Enemy {
         const dy = targetPlayer.y - this.y;
         const distance = Math.hypot(dx, dy);
 
+        // ---- 眩晕状态检查 ----
+        const now_cc = Date.now();
+        if (this.stunned) {
+            if (now_cc >= this.stunEndTime) {
+                this.stunned = false;
+            } else {
+                // 被眩晕，跳过移动和攻击
+                // 眩晕特效
+                if (Math.random() < 0.05) {
+                    game.particles.push(new Particle(this.x, this.y - this.size - 5, '#ffff00'));
+                }
+                return;
+            }
+        }
+
+        // ---- 嘲讽目标覆盖 ----
+        if (this.tauntTarget && now_cc < this.tauntEndTime) {
+            const tauntDx = this.tauntTarget.x - this.x;
+            const tauntDy = this.tauntTarget.y - this.y;
+            const tauntDist = Math.hypot(tauntDx, tauntDy);
+            if (tauntDist > 0) {
+                const dt = game.dtFactor || 1;
+                const spd = this.slowed && now_cc < this.slowEndTime ? this.speed * 0.5 : this.speed;
+                this.x += (tauntDx / tauntDist) * spd * dt;
+                this.y += (tauntDy / tauntDist) * spd * dt;
+            }
+            return; // 被嘲讽时只朝嘲讽目标移动
+        }
+
+        // ---- 减速状态 ----
+        let effectiveSpeed = this.speed;
+        if (this.slowed && now_cc < this.slowEndTime) {
+            effectiveSpeed = this.speed * 0.5;
+        } else {
+            this.slowed = false;
+        }
+
         // 精英怪和Boss可以看到草丛中的玩家，普通怪看不到
         const canSeePlayer = this.isElite || this.isBoss || !targetPlayer.hidden;
 
         if (distance > 0 && canSeePlayer) {
-            this.x += (dx / distance) * this.speed;
-            this.y += (dy / distance) * this.speed;
+            const dt = game.dtFactor || 1;
+
+            // 远程敌人：保持距离
+            if (this.type === 'ranged' && distance < this.shootRange * 0.7) {
+                // 离得太近了，往后退
+                this.x -= (dx / distance) * effectiveSpeed * dt * 0.5;
+                this.y -= (dy / distance) * effectiveSpeed * dt * 0.5;
+            } else if (this.type === 'ranged' && distance <= this.shootRange) {
+                // 在射程内，横向移动躲避
+                const perpX = -dy / distance;
+                const perpY = dx / distance;
+                const sideDir = Math.sin(Date.now() * 0.003 + this.id) > 0 ? 1 : -1;
+                this.x += perpX * effectiveSpeed * dt * 0.5 * sideDir;
+                this.y += perpY * effectiveSpeed * dt * 0.5 * sideDir;
+            } else if (this.isCharging) {
+                // Boss冲锋：高速直线冲向目标
+                this.x += (this.chargeTarget.dx) * this.speed * 3 * dt;
+                this.y += (this.chargeTarget.dy) * this.speed * 3 * dt;
+                this.chargeTarget.duration -= 16.67 * dt;
+                if (this.chargeTarget.duration <= 0) {
+                    this.isCharging = false;
+                    this.speed = this.chargeTarget.originalSpeed;
+                }
+            } else {
+                // 正常追踪
+                this.x += (dx / distance) * effectiveSpeed * dt;
+                this.y += (dy / distance) * effectiveSpeed * dt;
+            }
+        }
+
+        // === 远程敌人射击 ===
+        if (this.type === 'ranged' && distance <= this.shootRange && canSeePlayer) {
+            const now = Date.now();
+            if (now - this.lastShootTime >= this.shootCooldown) {
+                this.lastShootTime = now;
+                // 发射敌人投射物
+                game.projectiles.push(new EnemyProjectile(
+                    this.x, this.y,
+                    targetPlayer.x, targetPlayer.y,
+                    this.damage,
+                    this.color
+                ));
+                // 射击特效
+                game.particles.push(new Particle(this.x, this.y, this.color));
+            }
+        }
+
+        // === Boss技能系统 ===
+        if (this.isBoss && !this.isCharging) {
+            const now = Date.now();
+            if (now - this.lastSkillTime >= this.skillCooldown) {
+                this.lastSkillTime = now;
+                const skill = Math.random();
+
+                if (skill < 0.35) {
+                    // 技能1：冲锋 - 高速冲向玩家
+                    this.isCharging = true;
+                    this.chargeTarget = {
+                        dx: dx / distance,
+                        dy: dy / distance,
+                        duration: 500, // 冲锋0.5秒
+                        originalSpeed: this.speed
+                    };
+                    // 冲锋预警特效
+                    for (let i = 0; i < 5; i++) {
+                        game.particles.push(new Particle(this.x, this.y, '#ff0000'));
+                    }
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(this.x, this.y - 30, '冲锋!', '#ff4500', true);
+                    }
+                } else if (skill < 0.65) {
+                    // 技能2：召唤小怪 - 在周围召唤2-3个小兵
+                    const summonCount = 2 + Math.floor(Math.random() * 2);
+                    for (let i = 0; i < summonCount; i++) {
+                        const angle = (Math.PI * 2 / summonCount) * i;
+                        const spawnX = this.x + Math.cos(angle) * 60;
+                        const spawnY = this.y + Math.sin(angle) * 60;
+                        game.enemies.push(new Enemy(spawnX, spawnY, 'fast'));
+                        game.wave.totalEnemies++;
+                        game.wave.enemiesSpawned++;
+                        for (let j = 0; j < 3; j++) {
+                            game.particles.push(new Particle(spawnX, spawnY, '#9b59b6'));
+                        }
+                    }
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(this.x, this.y - 30, '召唤!', '#9b59b6', true);
+                    }
+                } else {
+                    // 技能3：范围冲击波 - 对周围所有玩家造成伤害
+                    const shockwaveRadius = 120;
+                    [game.player, game.player2].forEach(p => {
+                        if (p && p.health > 0 && !p.invincible) {
+                            const dist = Math.hypot(p.x - this.x, p.y - this.y);
+                            if (dist < shockwaveRadius) {
+                                let shockDmg = Math.floor(this.damage * 0.6);
+                                if (p.damageReduction) shockDmg = Math.floor(shockDmg * (1 - p.damageReduction));
+                                p.health -= shockDmg;
+                                if (typeof showDamageNumber === 'function') {
+                                    showDamageNumber(p.x, p.y - 20, shockDmg, '#9b59b6', false);
+                                }
+                            }
+                        }
+                    });
+                    // 冲击波特效（放射状粒子）
+                    for (let i = 0; i < 12; i++) {
+                        const angle = (Math.PI * 2 / 12) * i;
+                        const p = new Particle(this.x, this.y, '#9b59b6');
+                        p.vx = Math.cos(angle) * 4;
+                        p.vy = Math.sin(angle) * 4;
+                        game.particles.push(p);
+                    }
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(this.x, this.y - 30, '冲击波!', '#e056fd', true);
+                    }
+                }
+            }
         }
 
         // 碰撞检测（检查P1）
         if (game.player.health > 0) {
             const distP1 = Math.hypot(this.x - game.player.x, this.y - game.player.y);
             if (distP1 < this.size + game.player.size) {
-                // 计算实际伤害（应用减伤）
-                let actualDamage = this.damage;
-                if (game.player.damageReduction) {
-                    actualDamage = Math.floor(this.damage * (1 - game.player.damageReduction));
+                // 无敌状态跳过伤害
+                if (game.player.invincible) {
+                    // 无敌特效
+                    game.particles.push(new Particle(game.player.x, game.player.y, '#ffd700'));
+                } else if (game.player.shieldActive) {
+                    // 法师护盾吸收一次伤害
+                    game.player.shieldActive = false;
+                    game.particles.push(new Particle(game.player.x, game.player.y, '#3498db'));
+                    game.particles.push(new Particle(game.player.x, game.player.y, '#2980b9'));
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(game.player.x, game.player.y - 20, '护盾抵挡', '#3498db', true);
+                    }
+                } else {
+                    // 计算实际伤害（应用减伤）
+                    let actualDamage = this.damage;
+                    if (game.player.damageReduction) {
+                        actualDamage = Math.floor(this.damage * (1 - game.player.damageReduction));
+                    }
+                    game.player.health -= actualDamage;
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(game.player.x, game.player.y - 20, actualDamage, '#e74c3c', false);
+                    }
                 }
-                game.player.health -= actualDamage;
 
                 // 骑士反伤效果
                 if (game.player.counterAttack) {
                     const reflectDamage = Math.floor(this.damage * game.player.counterAttack);
                     this.health -= reflectDamage;
-                    // 反伤特效
                     for (let i = 0; i < 3; i++) {
                         game.particles.push(new Particle(this.x, this.y, '#c0c0c0'));
                     }
@@ -1570,6 +2773,7 @@ class Enemy {
 
                 if (!this.isBoss) {
                     this.health = 0;
+                    handleEnemyKill(this, game.player);
                 }
             }
         }
@@ -1578,18 +2782,31 @@ class Enemy {
         if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
             const distP2 = Math.hypot(this.x - game.player2.x, this.y - game.player2.y);
             if (distP2 < this.size + game.player2.size) {
-                // 计算实际伤害（应用减伤）
-                let actualDamage = this.damage;
-                if (game.player2.damageReduction) {
-                    actualDamage = Math.floor(this.damage * (1 - game.player2.damageReduction));
+                // 无敌状态跳过伤害
+                if (game.player2.invincible) {
+                    game.particles.push(new Particle(game.player2.x, game.player2.y, '#ffd700'));
+                } else if (game.player2.shieldActive) {
+                    game.player2.shieldActive = false;
+                    game.particles.push(new Particle(game.player2.x, game.player2.y, '#3498db'));
+                    game.particles.push(new Particle(game.player2.x, game.player2.y, '#2980b9'));
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(game.player2.x, game.player2.y - 20, '护盾抵挡', '#3498db', true);
+                    }
+                } else {
+                    let actualDamage = this.damage;
+                    if (game.player2.damageReduction) {
+                        actualDamage = Math.floor(this.damage * (1 - game.player2.damageReduction));
+                    }
+                    game.player2.health -= actualDamage;
+                    if (typeof showDamageNumber === 'function') {
+                        showDamageNumber(game.player2.x, game.player2.y - 20, actualDamage, '#e74c3c', false);
+                    }
                 }
-                game.player2.health -= actualDamage;
 
                 // 骑士反伤效果
                 if (game.player2.counterAttack) {
                     const reflectDamage = Math.floor(this.damage * game.player2.counterAttack);
                     this.health -= reflectDamage;
-                    // 反伤特效
                     for (let i = 0; i < 3; i++) {
                         game.particles.push(new Particle(this.x, this.y, '#c0c0c0'));
                     }
@@ -1597,6 +2814,7 @@ class Enemy {
 
                 if (!this.isBoss) {
                     this.health = 0;
+                    handleEnemyKill(this, game.player2);
                 }
             }
         }
