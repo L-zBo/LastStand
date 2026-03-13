@@ -275,9 +275,17 @@ function drawPlayerSprite(ctx, classType, x, y, width, height) {
     return false;
 }
 
+// 敌人类型素材映射（没有专属素材的类型复用已有类型）
+const ENEMY_TYPE_FALLBACK = {
+    ranged: 'normal',
+    splitter: 'tank',
+    splitter_child: 'fast'
+};
+
 // 绘制敌人精灵
 function drawEnemySprite(ctx, enemyType, enemyId, x, y, width, height) {
-    const enemies = ENEMY_ASSETS[enemyType];
+    const resolvedType = ENEMY_TYPE_FALLBACK[enemyType] || enemyType;
+    const enemies = ENEMY_ASSETS[resolvedType];
     if (!enemies || enemies.length === 0) return false;
 
     // 根据ID选择一个固定的敌人图片
@@ -304,9 +312,10 @@ function drawBossSprite(ctx, bossType, x, y, width, height) {
     return false;
 }
 
-// 根据波数获取Boss类型
+// 根据波数获取Boss类型（每10波出一个Boss，按顺序轮换）
 function getBossTypeByWave(waveNumber) {
-    const index = (waveNumber - 1) % BOSS_ORDER.length;
+    const bossIndex = Math.floor(waveNumber / 10) - 1;
+    const index = ((bossIndex % BOSS_ORDER.length) + BOSS_ORDER.length) % BOSS_ORDER.length;
     return BOSS_ORDER[index];
 }
 

@@ -329,7 +329,11 @@ function applyLoadedSaveData(saveData) {
     };
 
     startNewWave();
-    requestAnimationFrame(gameLoop);
+    // 防止重复启动游戏循环
+    if (!game.loopRunning) {
+        game.loopRunning = true;
+        requestAnimationFrame(gameLoop);
+    }
 }
 
 function clearSaveData(slotIndex) {

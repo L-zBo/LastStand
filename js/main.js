@@ -45,8 +45,30 @@ let game = {
         bossSpawned: false,
         waveStartTime: 0,
         inBreak: false
-    }
+    },
+    // 游戏内计时器（暂停时自动停止）
+    timers: [],
+    // gameLoop是否已启动
+    loopRunning: false
 };
+
+// 添加游戏内计时器（替代setTimeout，暂停时自动暂停）
+function addGameTimer(callback, delayMs) {
+    const timer = { remaining: delayMs, callback: callback };
+    game.timers.push(timer);
+    return timer;
+}
+
+// 更新所有游戏内计时器
+function updateGameTimers(deltaTime) {
+    for (let i = game.timers.length - 1; i >= 0; i--) {
+        game.timers[i].remaining -= deltaTime;
+        if (game.timers[i].remaining <= 0) {
+            game.timers[i].callback();
+            game.timers.splice(i, 1);
+        }
+    }
+}
 
 // ==================== 伤害飘字系统 ====================
 class DamageNumber {
@@ -434,6 +456,9 @@ function gameLoop(timestamp) {
 
     if (game.state === 'playing') {
         game.gameTime += deltaTime / 1000;
+
+        // 更新游戏内计时器
+        updateGameTimers(deltaTime);
 
         // 更新P1
         game.player.update(deltaTime);
@@ -841,6 +866,7 @@ function startGame() {
     game.summons = [];
     game.droppedItems = [];
     game.enemyProjectiles = [];
+    game.timers = [];
     game.killCount = 0;
     game.gameTime = 0;
     game.lastTime = 0;
@@ -863,8 +889,11 @@ function startGame() {
     // 开始第一波
     startNewWave();
 
-    // 启动游戏循环
-    requestAnimationFrame(gameLoop);
+    // 启动游戏循环（防止重复启动）
+    if (!game.loopRunning) {
+        game.loopRunning = true;
+        requestAnimationFrame(gameLoop);
+    }
 }
 
 // 初始化游戏
@@ -1018,9 +1047,6 @@ function initGame() {
         game.mapConfig = CONFIG.maps[game.selectedMap];
         startGame();
     });
-
-    // 暂停按钮
-    document.getElementById('pauseBtn').addEventListener('click', pauseGame);
 
     // 继续游戏按钮
     document.getElementById('resumeBtn').addEventListener('click', resumeGame);

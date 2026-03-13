@@ -723,7 +723,7 @@ const DROPPABLE_ITEMS = [
         description: '临时加速',
         icon: '💨',
         sprite: 'speedPotion',
-        effect: (player) => { player.speed += 0.5; setTimeout(() => player.speed -= 0.5, 10000); }
+        effect: (player) => { player.speed += 0.5; addGameTimer(() => player.speed -= 0.5, 10000); }
     }
 ];
 
@@ -1120,7 +1120,7 @@ const RELICS = {
                 enemy.frozen = true;
                 enemy.originalSpeed = enemy.speed;
                 enemy.speed = 0;
-                setTimeout(() => {
+                addGameTimer(() => {
                     if (enemy.health > 0) {
                         enemy.frozen = false;
                         enemy.speed = enemy.originalSpeed || 1;

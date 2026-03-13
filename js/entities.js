@@ -536,7 +536,7 @@ class MapEvent {
                     case 'attack':
                         player._altarAttackBoost = player.attack * effect.value;
                         player.attack += player._altarAttackBoost;
-                        setTimeout(() => {
+                        addGameTimer(() => {
                             if (player._altarAttackBoost) {
                                 player.attack -= player._altarAttackBoost;
                                 player._altarAttackBoost = 0;
@@ -547,7 +547,7 @@ class MapEvent {
                     case 'speed':
                         player._altarSpeedBoost = player.speed * effect.value;
                         player.speed += player._altarSpeedBoost;
-                        setTimeout(() => {
+                        addGameTimer(() => {
                             if (player._altarSpeedBoost) {
                                 player.speed -= player._altarSpeedBoost;
                                 player._altarSpeedBoost = 0;
@@ -558,7 +558,7 @@ class MapEvent {
                     case 'defense':
                         player._altarDefense = effect.value;
                         player.damageReduction = (player.damageReduction || 0) + effect.value;
-                        setTimeout(() => {
+                        addGameTimer(() => {
                             if (player._altarDefense) {
                                 player.damageReduction -= player._altarDefense;
                                 player._altarDefense = 0;
@@ -569,7 +569,7 @@ class MapEvent {
                     case 'regen':
                         player._altarRegen = effect.value;
                         player.healthRegen = (player.healthRegen || 0) + effect.value;
-                        setTimeout(() => {
+                        addGameTimer(() => {
                             if (player._altarRegen) {
                                 player.healthRegen -= player._altarRegen;
                                 player._altarRegen = 0;
@@ -1516,11 +1516,11 @@ class Player {
                 this.invincible = true;
                 this.divineShieldCooldown = true;
                 // 3秒后解除无敌
-                setTimeout(() => {
+                addGameTimer(() => {
                     this.invincible = false;
                 }, 3000);
                 // 60秒冷却
-                setTimeout(() => {
+                addGameTimer(() => {
                     this.divineShieldCooldown = false;
                 }, 60000);
                 // 无敌特效
@@ -2126,7 +2126,7 @@ class Player {
 
                     // 法术回响
                     if (this.spellEcho && Math.random() < this.spellEcho) {
-                        setTimeout(() => {
+                        addGameTimer(() => {
                             if (enemy.health > 0) {
                                 game.projectiles.push(new Projectile(
                                     this.x, this.y,
@@ -2191,7 +2191,7 @@ class Player {
 
             this.lastAttackTime = now;
             this.justAttacked = true;
-            setTimeout(() => this.justAttacked = false, 1000);
+            addGameTimer(() => this.justAttacked = false, 1000);
         }
     }
 
