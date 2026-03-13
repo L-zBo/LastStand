@@ -261,6 +261,7 @@ function serializePlayer(player) {
 // 保存游戏到指定存档位
 function saveGameToSlot(slotIndex) {
     const saveData = {
+        version: SAVE_VERSION,
         selectedClass: game.selectedClass,
         selectedDifficulty: game.selectedDifficulty,
         selectedMap: game.selectedMap,
