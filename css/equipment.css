@@ -10,6 +10,8 @@
 .weapon-slot {
     width: 44px;
     height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     background: #2a2a4a;
     border: 3px solid;
     border-color: #4a4a6a #1a1a2a #1a1a2a #4a4a6a;
@@ -21,6 +23,7 @@
     cursor: pointer;
     transition: transform 0.1s ease, background 0.1s ease, border-color 0.1s ease;
     image-rendering: pixelated;
+    padding: 0;
 }
 
 .weapon-slot:hover {
@@ -84,9 +87,17 @@
     flex-wrap: wrap;
 }
 
+.empty-state-text {
+    color: #aaaac8;
+    font-size: 0.75em;
+    font-family: 'Press Start 2P', monospace;
+}
+
 .passive-slot {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     background: #2a2a4a;
     border: 2px solid;
     border-color: #5a3080 #2a1040 #2a1040 #5a3080;
@@ -138,6 +149,11 @@
     visibility: visible;
 }
 
+.passive-slot:focus-visible .passive-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
 .passive-tooltip h4 {
     color: #ffd700;
     margin: 0 0 4px 0;
@@ -170,8 +186,10 @@
 }
 
 .relic-slot {
-    width: 30px;
-    height: 30px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border: 2px solid #6a6a9a;
     background: rgba(0, 0, 0, 0.3);
     display: flex;

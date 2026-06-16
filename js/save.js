@@ -41,7 +41,7 @@ const PLAYER_SAVE_PROPS = [
 // 检查是否有任何存档
 function hasAnySaveData() {
     for (let i = 1; i <= 6; i++) {
-        if (localStorage.getItem(`roguelikeSave_${i}`) !== null) {
+        if (getSaveData(i) !== null) {
             return true;
         }
     }
@@ -61,7 +61,19 @@ function checkSaveData() {
 // 获取存档数据
 function getSaveData(slotIndex) {
     const data = localStorage.getItem(`roguelikeSave_${slotIndex}`);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+
+    try {
+        const parsed = JSON.parse(data);
+        if (!parsed || typeof parsed !== 'object' || !parsed.player) {
+            console.warn(`存档 ${slotIndex} 数据结构无效，已忽略`);
+            return null;
+        }
+        return parsed;
+    } catch (error) {
+        console.warn(`存档 ${slotIndex} 解析失败，已忽略`, error);
+        return null;
+    }
 }
 
 // 获取职业中文名
@@ -82,6 +94,9 @@ function getClassName(classId) {
 // 格式化时间
 function formatSaveTime(timestamp) {
     const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+        return '未知时间';
+    }
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 }
 
@@ -110,7 +125,11 @@ function renderSaveSlots() {
 
     for (let i = 1; i <= 6; i++) {
         const saveData = getSaveData(i);
+        const slotWrap = document.createElement('div');
+        slotWrap.className = 'save-slot-wrap';
+
         const slot = document.createElement('button');
+        slot.type = 'button';
         slot.className = 'save-slot' + (saveData ? '' : ' empty');
         slot.dataset.slot = i;
 
@@ -121,19 +140,31 @@ function renderSaveSlots() {
             const mapText = mapNames[saveData.selectedMap] || '森林';
             const p2Text = saveData.playerCount === 2 ? ` | 👥 双人` : '';
             slot.innerHTML = `
-                <span class="save-slot-delete" role="button" tabindex="0" data-slot="${i}" title="删除存档" aria-label="删除存档 ${i}">×</span>
                 <div class="save-slot-header">
                     <span class="slot-icon">📁</span>
                     <span>存档 ${i}</span>
                 </div>
                 <div class="save-slot-info">
                     <p class="class-name">${getClassName(saveData.selectedClass)}</p>
-                    <p>⭐ 等级 ${saveData.player.level} | 🌊 波次 ${saveData.wave}</p>
-                    <p>💀 击杀 ${saveData.killCount} | 🪙 ${saveData.player.gold || 0}</p>
+                    <p>⭐ 等级 ${saveData.player.level || 1} | 🌊 波次 ${saveData.wave || 1}</p>
+                    <p>💀 击杀 ${saveData.killCount || 0} | 🪙 ${saveData.player.gold || 0}</p>
                     <p>🗺️ ${mapText} | ⚔️ ${diffText}${p2Text}</p>
                     <p class="save-time">保存于: ${formatSaveTime(saveData.saveTime)}</p>
                 </div>
             `;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'save-slot-delete';
+            deleteBtn.dataset.slot = i;
+            deleteBtn.title = `删除存档 ${i}`;
+            deleteBtn.setAttribute('aria-label', `删除存档 ${i}`);
+            deleteBtn.textContent = '×';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteSaveSlot(i);
+            });
+            slotWrap.appendChild(deleteBtn);
         } else {
             slot.innerHTML = `
                 <div class="save-slot-header">
@@ -144,29 +175,13 @@ function renderSaveSlots() {
             `;
         }
 
-        slot.addEventListener('click', (e) => {
-            if (e.target.classList.contains('save-slot-delete')) return;
+        slot.addEventListener('click', () => {
             handleSlotClick(i);
         });
 
-        container.appendChild(slot);
+        slotWrap.appendChild(slot);
+        container.appendChild(slotWrap);
     }
-
-    // 绑定删除按钮事件
-    document.querySelectorAll('.save-slot-delete').forEach(btn => {
-        const handler = (e) => {
-            e.stopPropagation();
-            const slotIndex = parseInt(btn.dataset.slot);
-            deleteSaveSlot(slotIndex);
-        };
-        btn.addEventListener('click', handler);
-        btn.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handler(e);
-            }
-        });
-    });
 }
 
 // 处理存档位点击
@@ -183,11 +198,12 @@ function handleSlotClick(slotIndex) {
             game.pendingSaveSlot = slotIndex;
             showOverwriteModal();
         } else {
-            saveGameToSlot(slotIndex);
-            showSaveNotification();
-            hideSaveSlotScreen();
-            document.getElementById('gameScreen').classList.remove('hidden');
-            resumeGame();
+            if (saveGameToSlot(slotIndex)) {
+                showSaveNotification();
+                hideSaveSlotScreen();
+                document.getElementById('gameScreen').classList.remove('hidden');
+                resumeGame();
+            }
         }
     } else if (mode === 'newgame') {
         if (saveData) {
@@ -239,6 +255,9 @@ function showClassSelection() {
     game.selectedClass2 = null;
     game.playerCount = 1;
     document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
+    if (typeof syncPressedState === 'function') {
+        syncPressedState('.class-card');
+    }
 }
 
 // 序列化单个玩家数据
@@ -279,17 +298,24 @@ function saveGameToSlot(slotIndex) {
         saveData.player2 = serializePlayer(game.player2);
     }
 
-    localStorage.setItem(`roguelikeSave_${slotIndex}`, JSON.stringify(saveData));
-    game.currentSaveSlot = slotIndex;
+    try {
+        localStorage.setItem(`roguelikeSave_${slotIndex}`, JSON.stringify(saveData));
+        game.currentSaveSlot = slotIndex;
+        return true;
+    } catch (error) {
+        console.error('保存失败', error);
+        alert('保存失败：浏览器存储空间不足或存储被禁用。');
+        return false;
+    }
 }
 
 // 保存游戏（使用当前存档位）
 function saveGame() {
     if (game.currentSaveSlot) {
-        saveGameToSlot(game.currentSaveSlot);
-    } else {
-        showSaveSlotScreen('save');
+        return saveGameToSlot(game.currentSaveSlot);
     }
+    showSaveSlotScreen('save');
+    return false;
 }
 
 // 从指定存档位读取游戏
@@ -325,6 +351,7 @@ function migrateSaveData(saveData) {
 
 // 恢复单个玩家的属性（使用属性映射表驱动）
 function restorePlayer(player, data, classType) {
+    data = data || {};
     // 使用映射表统一恢复所有属性
     for (const [prop, defaultVal] of PLAYER_SAVE_PROPS) {
         player[prop] = (data[prop] !== undefined) ? data[prop] : defaultVal;

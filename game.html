@@ -184,9 +184,9 @@
     </div>
 
     <!-- 存档覆盖确认弹窗 -->
-    <div id="overwriteModal" class="modal hidden">
+    <div id="overwriteModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="overwriteModalTitle">
         <div class="modal-content">
-            <h3>⚠️ 存档确认</h3>
+            <h3 id="overwriteModalTitle">⚠️ 存档确认</h3>
             <p>该存档位已有数据，是否覆盖？</p>
             <div class="modal-buttons">
                 <button id="overwriteYes" class="modal-btn confirm">确认覆盖</button>
@@ -256,7 +256,7 @@
             </div>
 
             <!-- 游戏画布 -->
-            <canvas id="gameCanvas"></canvas>
+            <canvas id="gameCanvas" role="img" aria-label="LastStand 游戏画布，玩家在地图中移动、躲避敌人并自动攻击。">你的浏览器不支持 Canvas。</canvas>
 
             <!-- P2属性面板（右侧，双人模式显示） -->
             <div class="player-side-panel right-panel hidden" id="p2Panel">
@@ -296,9 +296,9 @@
     </div>
 
     <!-- 暂停界面 -->
-    <div id="pauseScreen" class="screen hidden">
+    <div id="pauseScreen" class="screen hidden" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
         <div class="pause-content">
-            <h2>⏸️ 游戏暂停</h2>
+            <h2 id="pauseTitle">⏸️ 游戏暂停</h2>
             <div class="pause-buttons">
                 <button id="resumeBtn" class="pause-btn">▶️ 继续游戏</button>
                 <button id="pauseSaveBtn" class="pause-btn">💾 保存并退出</button>
@@ -311,11 +311,11 @@
     <!-- 倒计时界面 -->
     <div id="countdownScreen" class="screen hidden">
         <div class="countdown-number" id="countdownNumber">3</div>
-        <p class="countdown-text">游戏即将开始\u2026</p>
+        <p class="countdown-text">游戏即将开始…</p>
     </div>
 
     <!-- 武器详情弹窗 -->
-    <div id="weaponDetailModal" class="modal hidden">
+    <div id="weaponDetailModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="weaponDetailName">
         <div class="modal-content weapon-detail">
             <button class="modal-close" aria-label="关闭">&times;</button>
             <div class="weapon-detail-header">

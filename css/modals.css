@@ -95,12 +95,17 @@
     right: 15px;
     font-size: 1.5em;
     cursor: pointer;
-    color: #888;
+    color: #aaaac8;
     transition: color 0.1s;
     font-family: monospace;
     background: none;
     border: none;
     padding: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     line-height: 1;
 }
 
@@ -393,7 +398,7 @@
     font-size: 0.7em;
     font-family: 'Press Start 2P', monospace;
     background: #4a4a7a;
-    color: #888;
+    color: #aaaac8;
     border: 3px solid;
     border-color: #6a6a9a #2a2a4a #2a2a4a #6a6a9a;
     cursor: pointer;

@@ -66,7 +66,8 @@ button.class-card,
 button.buff-card,
 button.shop-item,
 button.relic-option,
-button.save-slot {
+button.save-slot,
+button.weapon-slot {
     font: inherit;
     color: inherit;
     text-align: left;

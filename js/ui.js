@@ -1,16 +1,17 @@
 // ==================== UI相关函数 ====================
 
 // 上次武器栏状态的缓存
-let lastWeaponBarState = '';
-let lastWeaponBar2State = '';
+let lastWeaponBarState = null;
+let lastWeaponBar2State = null;
 
 // 上次被动栏状态的缓存
-let lastPassiveBarState = '';
-let lastPassiveBar2State = '';
+let lastPassiveBarState = null;
+let lastPassiveBar2State = null;
 
 // 上次遗物栏状态的缓存
-let lastRelicBarState = '';
-let lastRelicBar2State = '';
+let lastRelicBarState = null;
+let lastRelicBar2State = null;
+let weaponDetailPreviousState = null;
 
 // 更新UI
 function updateUI() {
@@ -89,11 +90,13 @@ function updateWeaponBar() {
     weaponBar.innerHTML = '';
 
     for (let i = 0; i < game.player.maxWeapons; i++) {
-        const slot = document.createElement('div');
+        const weapon = game.player.weapons[i];
+        const slot = document.createElement(weapon ? 'button' : 'div');
         slot.className = 'weapon-slot';
 
-        if (game.player.weapons[i]) {
-            const weapon = game.player.weapons[i];
+        if (weapon) {
+            slot.type = 'button';
+            slot.setAttribute('aria-label', `查看武器 ${weapon.name}，等级 ${weapon.level || 1}`);
             if (weapon.type === 'evolved') {
                 slot.classList.add('evolved');
             }
@@ -103,6 +106,7 @@ function updateWeaponBar() {
             `;
             slot.addEventListener('click', () => showWeaponDetail(weapon));
         } else {
+            slot.setAttribute('aria-hidden', 'true');
             slot.innerHTML = '<span class="weapon-empty">+</span>';
         }
 
@@ -132,13 +136,15 @@ function updatePassiveBar() {
     const passives = game.player.passives || [];
 
     if (passives.length === 0) {
-        passiveBar.innerHTML = '<span style="color: #666; font-size: 0.8em;">暂无被动</span>';
+        passiveBar.innerHTML = '<span class="empty-state-text">暂无被动</span>';
         return;
     }
 
     passives.forEach(passive => {
         const slot = document.createElement('div');
         slot.className = 'passive-slot' + (passive.classOnly ? ' class-passive' : '');
+        slot.tabIndex = 0;
+        slot.setAttribute('aria-label', `${passive.name}：${passive.description}`);
         slot.innerHTML = `
             <span>${passive.icon}</span>
             <div class="passive-tooltip">
@@ -153,12 +159,12 @@ function updatePassiveBar() {
 
 // 重置UI缓存
 function resetUICache() {
-    lastWeaponBarState = '';
-    lastPassiveBarState = '';
-    lastWeaponBar2State = '';
-    lastPassiveBar2State = '';
-    lastRelicBarState = '';
-    lastRelicBar2State = '';
+    lastWeaponBarState = null;
+    lastPassiveBarState = null;
+    lastWeaponBar2State = null;
+    lastPassiveBar2State = null;
+    lastRelicBarState = null;
+    lastRelicBar2State = null;
 }
 
 // 遗物栏更新（仅在变化时）
@@ -184,6 +190,8 @@ function updateRelicBarIfNeeded(barId, player) {
         const rarityColor = RARITY_COLORS[relic.rarity] || '#8b8b8b';
         const slot = document.createElement('div');
         slot.className = 'relic-slot';
+        slot.tabIndex = 0;
+        slot.setAttribute('aria-label', `${relic.name}：${relic.desc}`);
         slot.style.borderColor = rarityColor;
         slot.innerHTML = `<span class="relic-slot-icon">${relic.icon}</span>`;
         slot.title = `${relic.name}: ${relic.desc}`;
@@ -211,11 +219,13 @@ function updateWeaponBar2() {
     weaponBar.innerHTML = '';
 
     for (let i = 0; i < game.player2.maxWeapons; i++) {
-        const slot = document.createElement('div');
+        const weapon = game.player2.weapons[i];
+        const slot = document.createElement(weapon ? 'button' : 'div');
         slot.className = 'weapon-slot';
 
-        if (game.player2.weapons[i]) {
-            const weapon = game.player2.weapons[i];
+        if (weapon) {
+            slot.type = 'button';
+            slot.setAttribute('aria-label', `查看 P2 武器 ${weapon.name}，等级 ${weapon.level || 1}`);
             if (weapon.type === 'evolved') {
                 slot.classList.add('evolved');
             }
@@ -225,6 +235,7 @@ function updateWeaponBar2() {
             `;
             slot.addEventListener('click', () => showWeaponDetail(weapon));
         } else {
+            slot.setAttribute('aria-hidden', 'true');
             slot.innerHTML = '<span class="weapon-empty">+</span>';
         }
 
@@ -255,13 +266,15 @@ function updatePassiveBar2() {
     const passives = game.player2.passives || [];
 
     if (passives.length === 0) {
-        passiveBar.innerHTML = '<span style="color: #666; font-size: 0.8em;">暂无被动</span>';
+        passiveBar.innerHTML = '<span class="empty-state-text">暂无被动</span>';
         return;
     }
 
     passives.forEach(passive => {
         const slot = document.createElement('div');
         slot.className = 'passive-slot' + (passive.classOnly ? ' class-passive' : '');
+        slot.tabIndex = 0;
+        slot.setAttribute('aria-label', `${passive.name}：${passive.description}`);
         slot.innerHTML = `
             <span>${passive.icon}</span>
             <div class="passive-tooltip">
@@ -276,8 +289,8 @@ function updatePassiveBar2() {
 
 // 显示武器详情弹窗（暂停游戏）
 function showWeaponDetail(weapon) {
-    // 暂停游戏
-    if (game.state === 'playing') {
+    weaponDetailPreviousState = game.state;
+    if (weaponDetailPreviousState === 'playing') {
         game.state = 'paused';
     }
 
@@ -297,13 +310,17 @@ function showWeaponDetail(weapon) {
     if (weapon.evolvesWith && weapon.evolvesTo) {
         const partner = WEAPONS[weapon.evolvesWith];
         const evolved = WEAPONS[weapon.evolvesTo];
-        document.getElementById('evolvePartner').textContent = `${partner.icon} ${partner.name}`;
-        document.getElementById('evolveResult').textContent = `${evolved.icon} ${evolved.name}`;
+        evolveInfo.innerHTML = `
+            <h4>🔄 进化信息</h4>
+            <p>满级后与 <span>${partner.icon} ${partner.name}</span> 合成进化为:</p>
+            <p class="evolved-weapon"><span>${evolved.icon} ${evolved.name}</span></p>
+        `;
         evolveInfo.style.display = 'block';
     } else if (weapon.type === 'evolved') {
         evolveInfo.innerHTML = `<h4>✨ 已进化武器</h4><p>这是一把进化后的强力武器！</p>`;
         evolveInfo.style.display = 'block';
     } else {
+        evolveInfo.innerHTML = '';
         evolveInfo.style.display = 'none';
     }
 
@@ -313,10 +330,13 @@ function showWeaponDetail(weapon) {
 // 关闭武器详情弹窗（恢复游戏）
 function closeWeaponDetail() {
     document.getElementById('weaponDetailModal').classList.add('hidden');
-    if (game.state === 'paused') {
+    if (weaponDetailPreviousState === 'playing') {
         game.state = 'playing';
         game.lastTime = 0;
+    } else if (weaponDetailPreviousState) {
+        game.state = weaponDetailPreviousState;
     }
+    weaponDetailPreviousState = null;
 }
 
 // 显示武器进化提示
@@ -1196,10 +1216,13 @@ function createShopScreen() {
     const shopScreen = document.createElement('div');
     shopScreen.id = 'shopScreen';
     shopScreen.className = 'screen shop-screen';
+    shopScreen.setAttribute('role', 'dialog');
+    shopScreen.setAttribute('aria-modal', 'true');
+    shopScreen.setAttribute('aria-labelledby', 'shopTitle');
     shopScreen.innerHTML = `
         <div class="shop-content">
             <div class="shop-header">
-                <h2>🏪 商店</h2>
+                <h2 id="shopTitle">🏪 商店</h2>
                 <div class="shop-gold">
                     <span class="gold-icon">🪙</span>
                     <span id="shopGoldDisplay">0</span>
@@ -1207,7 +1230,7 @@ function createShopScreen() {
             </div>
             <div class="shop-items" id="shopItems"></div>
             <div class="shop-buttons">
-                <button id="shopContinueBtn" class="shop-btn">继续下一波</button>
+                <button type="button" id="shopContinueBtn" class="shop-btn">继续下一波</button>
             </div>
         </div>
     `;
@@ -1231,6 +1254,9 @@ function updateShopUI() {
     shopState.items.forEach((item, index) => {
         const canAfford = game.player.gold >= item.price;
         const itemCard = document.createElement('button');
+        itemCard.type = 'button';
+        itemCard.disabled = !canAfford;
+        itemCard.setAttribute('aria-label', `${item.name}，价格 ${item.price} 金币`);
         itemCard.className = 'shop-item' + (canAfford ? '' : ' disabled');
         itemCard.innerHTML = `
             <div class="shop-item-icon">${item.icon}</div>
@@ -1245,7 +1271,7 @@ function updateShopUI() {
         `;
 
         if (canAfford) {
-            itemCard.onclick = () => purchaseItem(index);
+            itemCard.addEventListener('click', () => purchaseItem(index));
         }
 
         itemsContainer.appendChild(itemCard);
@@ -1333,6 +1359,9 @@ function showRelicSelection(player, callback) {
         relicScreen = document.createElement('div');
         relicScreen.id = 'relicSelectionScreen';
         relicScreen.className = 'screen';
+        relicScreen.setAttribute('role', 'dialog');
+        relicScreen.setAttribute('aria-modal', 'true');
+        relicScreen.setAttribute('aria-labelledby', 'relicSelectionTitle');
         document.body.appendChild(relicScreen);
     }
 
@@ -1340,7 +1369,7 @@ function showRelicSelection(player, callback) {
 
     let html = `
         <div class="relic-selection-content">
-            <h2>🏆 Boss 掉落遗物！</h2>
+            <h2 id="relicSelectionTitle">🏆 Boss 掉落遗物！</h2>
             <p class="relic-subtitle">${playerTag} 选择一个遗物</p>
             <div class="relic-options">
     `;
@@ -1349,7 +1378,7 @@ function showRelicSelection(player, callback) {
         const rarityColor = RARITY_COLORS[relic.rarity] || '#8b8b8b';
         const rarityName = RARITY_NAMES[relic.rarity] || '普通';
         html += `
-            <button class="relic-option" data-relic-id="${relic.id}" style="border-color: ${rarityColor}">
+            <button type="button" class="relic-option" data-relic-id="${relic.id}" style="border-color: ${rarityColor}">
                 <div class="relic-option-icon">${relic.icon}</div>
                 <div class="relic-option-rarity" style="color: ${rarityColor}">${rarityName}</div>
                 <div class="relic-option-name">${relic.name}</div>
@@ -1360,7 +1389,7 @@ function showRelicSelection(player, callback) {
 
     html += `
             </div>
-            <button class="relic-skip-btn">跳过</button>
+            <button type="button" class="relic-skip-btn">跳过</button>
         </div>
     `;
 

@@ -251,6 +251,26 @@ function getNearbyEnemies(x, y) {
     return result;
 }
 
+function isClearOfPlayerSpawn(x, y, type) {
+    const spawnPoints = [
+        { x: CONFIG.world.width / 2 - 50, y: CONFIG.world.height / 2 },
+        { x: CONFIG.world.width / 2 + 50, y: CONFIG.world.height / 2 }
+    ];
+    const safeRadiusByType = {
+        tree: 620,
+        rock: 260,
+        bush: 180
+    };
+    const safeRadius = safeRadiusByType[type] || 240;
+    return spawnPoints.every(point => Math.hypot(x - point.x, y - point.y) > safeRadius);
+}
+
+function syncPressedState(selector) {
+    document.querySelectorAll(selector).forEach(element => {
+        element.setAttribute('aria-pressed', element.classList.contains('selected') ? 'true' : 'false');
+    });
+}
+
 // 生成障碍物
 function generateObstacles() {
     game.obstacles = [];
@@ -271,9 +291,7 @@ function generateObstacles() {
         const x = Math.random() * (CONFIG.world.width - treeBorder * 2) + treeBorder;
         const y = Math.random() * (CONFIG.world.height - treeBorder * 2) + treeBorder;
 
-        // 避免在玩家出生点附近生成
-        const distFromCenter = Math.hypot(x - CONFIG.world.width / 2, y - CONFIG.world.height / 2);
-        if (distFromCenter > 300) {
+        if (isClearOfPlayerSpawn(x, y, 'tree')) {
             game.obstacles.push(new Obstacle(x, y, 'tree'));
         }
     }
@@ -283,8 +301,7 @@ function generateObstacles() {
         const x = Math.random() * (CONFIG.world.width - rockBorder * 2) + rockBorder;
         const y = Math.random() * (CONFIG.world.height - rockBorder * 2) + rockBorder;
 
-        const distFromCenter = Math.hypot(x - CONFIG.world.width / 2, y - CONFIG.world.height / 2);
-        if (distFromCenter > 200) {
+        if (isClearOfPlayerSpawn(x, y, 'rock')) {
             game.obstacles.push(new Obstacle(x, y, 'rock'));
         }
     }
@@ -294,7 +311,9 @@ function generateObstacles() {
         const x = Math.random() * (CONFIG.world.width - bushBorder * 2) + bushBorder;
         const y = Math.random() * (CONFIG.world.height - bushBorder * 2) + bushBorder;
 
-        game.obstacles.push(new Obstacle(x, y, 'bush'));
+        if (isClearOfPlayerSpawn(x, y, 'bush')) {
+            game.obstacles.push(new Obstacle(x, y, 'bush'));
+        }
     }
 
     // 构建空间网格索引
@@ -1078,12 +1097,21 @@ function initGame() {
 
     // 检查是否有存档
     checkSaveData();
+    syncPressedState('.class-card');
+    syncPressedState('.difficulty-card');
+    syncPressedState('.map-card');
 
     // 键盘事件
     window.addEventListener('keydown', (e) => {
         game.keys[e.key] = true;
         // ESC键：暂停/继续游戏
         if (e.key === 'Escape') {
+            const weaponDetailModal = document.getElementById('weaponDetailModal');
+            if (weaponDetailModal && !weaponDetailModal.classList.contains('hidden')) {
+                closeWeaponDetail();
+                return;
+            }
+
             if (game.state === 'playing') {
                 pauseGame();
             } else if (game.state === 'paused') {
@@ -1123,11 +1151,12 @@ function initGame() {
             hideSaveSlotScreen();
             showClassSelection();
         } else if (mode === 'save') {
-            saveGameToSlot(slotIndex);
-            showSaveNotification();
-            hideSaveSlotScreen();
-            document.getElementById('gameScreen').classList.remove('hidden');
-            resumeGame();
+            if (saveGameToSlot(slotIndex)) {
+                showSaveNotification();
+                hideSaveSlotScreen();
+                document.getElementById('gameScreen').classList.remove('hidden');
+                resumeGame();
+            }
         }
     });
 
@@ -1174,6 +1203,7 @@ function initGame() {
                     // 添加已选中效果
                     document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
                     card.classList.add('selected');
+                    syncPressedState('.class-card');
                 } else {
                     // P2选择职业
                     game.selectedClass2 = card.dataset.class;
@@ -1191,6 +1221,7 @@ function initGame() {
             // 移除其他选中状态
             document.querySelectorAll('.difficulty-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
+            syncPressedState('.difficulty-card');
             game.selectedDifficulty = card.dataset.difficulty;
 
             // 延迟后显示地图选择
@@ -1207,6 +1238,7 @@ function initGame() {
             // 移除其他选中状态
             document.querySelectorAll('.map-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
+            syncPressedState('.map-card');
             game.selectedMap = card.dataset.map;
         });
     });
@@ -1225,8 +1257,9 @@ function initGame() {
     // 保存按钮
     document.getElementById('saveBtn').addEventListener('click', () => {
         if (game.currentSaveSlot) {
-            saveGame();
-            showSaveNotification();
+            if (saveGame()) {
+                showSaveNotification();
+            }
         } else {
             pauseGame();
             document.getElementById('pauseScreen').classList.add('hidden');
@@ -1237,8 +1270,9 @@ function initGame() {
     // 暂停界面-保存并退出
     document.getElementById('pauseSaveBtn').addEventListener('click', () => {
         if (game.currentSaveSlot) {
-            saveGame();
-            returnToMenu();
+            if (saveGame()) {
+                returnToMenu();
+            }
         } else {
             document.getElementById('pauseScreen').classList.add('hidden');
             showSaveSlotScreen('save');

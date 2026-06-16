@@ -1,2 +1,3 @@
 tools/models/*.pt
 *.pt
+*.sync-conflict-*
