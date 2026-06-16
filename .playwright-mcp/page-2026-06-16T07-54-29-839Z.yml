@@ -1,0 +1,50 @@
+- generic [ref=e2]:
+  - heading "LastStand" [level=1] [ref=e3]
+  - generic [ref=e4]:
+    - button "🎮 新游戏" [ref=e5] [cursor=pointer]
+    - button "📂 读取存档" [disabled] [ref=e6]
+    - button "💎 永久强化" [ref=e7] [cursor=pointer]
+    - button "🏆 成就系统" [ref=e8] [cursor=pointer]
+  - generic [ref=e251]:
+    - heading "选择你的职业" [level=2] [ref=e252]
+    - generic [ref=e253]:
+      - button "🛡️ 战士 近战之王，高生命高防御 ❤️150 ⚔️15 💨3 被动：减伤10%，攻击击退敌人" [ref=e254] [cursor=pointer]:
+        - heading "🛡️ 战士" [level=3] [ref=e255]
+        - paragraph [ref=e256]: 近战之王，高生命高防御
+        - paragraph [ref=e257]: ❤️150 ⚔️15 💨3
+        - paragraph [ref=e258]: 被动：减伤10%，攻击击退敌人
+      - button "🧙 法师 远程魔法输出，高伤害低生命 ❤️80 ⚔️25 💨3.5 被动：魔法穿透，攻击范围+30%" [ref=e259] [cursor=pointer]:
+        - heading "🧙 法师" [level=3] [ref=e260]
+        - paragraph [ref=e261]: 远程魔法输出，高伤害低生命
+        - paragraph [ref=e262]: ❤️80 ⚔️25 💨3.5
+        - paragraph [ref=e263]: 被动：魔法穿透，攻击范围+30%
+      - button "🥷 刺客 极速暗杀，高暴击高闪避 ❤️100 ⚔️20 💨5 被动：25%暴击率，首击必暴" [ref=e264] [cursor=pointer]:
+        - heading "🥷 刺客" [level=3] [ref=e265]
+        - paragraph [ref=e266]: 极速暗杀，高暴击高闪避
+        - paragraph [ref=e267]: ❤️100 ⚔️20 💨5
+        - paragraph [ref=e268]: 被动：25%暴击率，首击必暴
+      - button "🏹 游侠 远程射手，多重箭矢 ❤️110 ⚔️18 💨4 被动：发射2支箭，攻速+20%" [ref=e269] [cursor=pointer]:
+        - heading "🏹 游侠" [level=3] [ref=e270]
+        - paragraph [ref=e271]: 远程射手，多重箭矢
+        - paragraph [ref=e272]: ❤️110 ⚔️18 💨4
+        - paragraph [ref=e273]: 被动：发射2支箭，攻速+20%
+      - button "🔮 召唤师 召唤幽灵作战，团队作战 ❤️90 ⚔️12 💨3.2 被动：召唤3幽灵，击杀回血" [ref=e274] [cursor=pointer]:
+        - heading "🔮 召唤师" [level=3] [ref=e275]
+        - paragraph [ref=e276]: 召唤幽灵作战，团队作战
+        - paragraph [ref=e277]: ❤️90 ⚔️12 💨3.2
+        - paragraph [ref=e278]: 被动：召唤3幽灵，击杀回血
+      - button "⚔️ 骑士 重甲坦克，反伤护盾 ❤️180 ⚔️18 💨2.8 被动：减伤15%，反弹20%伤害" [ref=e279] [cursor=pointer]:
+        - heading "⚔️ 骑士" [level=3] [ref=e280]
+        - paragraph [ref=e281]: 重甲坦克，反伤护盾
+        - paragraph [ref=e282]: ❤️180 ⚔️18 💨2.8
+        - paragraph [ref=e283]: 被动：减伤15%，反弹20%伤害
+      - button "✝️ 圣骑士 圣光战士，治愈与惩戒 ❤️140 ⚔️16 💨3 被动：攻击回血，亡灵伤害+50%" [ref=e284] [cursor=pointer]:
+        - heading "✝️ 圣骑士" [level=3] [ref=e285]
+        - paragraph [ref=e286]: 圣光战士，治愈与惩戒
+        - paragraph [ref=e287]: ❤️140 ⚔️16 💨3
+        - paragraph [ref=e288]: 被动：攻击回血，亡灵伤害+50%
+      - button "💀 死灵法师 黑暗召唤，生命汲取 ❤️75 ⚔️22 💨3.3 被动：召唤5骷髅，吸取5%生命" [ref=e289] [cursor=pointer]:
+        - heading "💀 死灵法师" [level=3] [ref=e290]
+        - paragraph [ref=e291]: 黑暗召唤，生命汲取
+        - paragraph [ref=e292]: ❤️75 ⚔️22 💨3.3
+        - paragraph [ref=e293]: 被动：召唤5骷髅，吸取5%生命

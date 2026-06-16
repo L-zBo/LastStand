@@ -1,0 +1,38 @@
+- generic [ref=e2]:
+  - heading "LastStand" [level=1] [ref=e3]
+  - generic [ref=e4]:
+    - button "🎮 新游戏" [ref=e5] [cursor=pointer]
+    - button "📂 读取存档" [disabled] [ref=e6]
+    - button "💎 永久强化" [ref=e7] [cursor=pointer]
+    - button "🏆 成就系统" [ref=e8] [cursor=pointer]
+  - generic [ref=e294]:
+    - heading "选择难度" [level=2] [ref=e295]
+    - generic [ref=e296]:
+      - button "简单 敌人较弱，适合新手 敌人生命 -30% 敌人伤害 -30% 经验获取 +20%" [ref=e297] [cursor=pointer]:
+        - heading "简单" [level=3] [ref=e299]
+        - paragraph [ref=e300]: 敌人较弱，适合新手
+        - list [ref=e301]:
+          - listitem [ref=e302]: 敌人生命 -30%
+          - listitem [ref=e303]: 敌人伤害 -30%
+          - listitem [ref=e304]: 经验获取 +20%
+      - button "普通 标准难度体验 敌人生命 100% 敌人伤害 100% 经验获取 100%" [pressed] [ref=e305] [cursor=pointer]:
+        - heading "普通" [level=3] [ref=e307]
+        - paragraph [ref=e308]: 标准难度体验
+        - list [ref=e309]:
+          - listitem [ref=e310]: 敌人生命 100%
+          - listitem [ref=e311]: 敌人伤害 100%
+          - listitem [ref=e312]: 经验获取 100%
+      - button "困难 更强的敌人挑战 敌人生命 +50% 敌人伤害 +50% 经验获取 +30%" [ref=e313] [cursor=pointer]:
+        - heading "困难" [level=3] [ref=e315]
+        - paragraph [ref=e316]: 更强的敌人挑战
+        - list [ref=e317]:
+          - listitem [ref=e318]: 敌人生命 +50%
+          - listitem [ref=e319]: 敌人伤害 +50%
+          - listitem [ref=e320]: 经验获取 +30%
+      - button "噩梦 极限生存挑战 敌人生命 +100% 敌人伤害 +100% 经验获取 +50%" [ref=e321] [cursor=pointer]:
+        - heading "噩梦" [level=3] [ref=e323]
+        - paragraph [ref=e324]: 极限生存挑战
+        - list [ref=e325]:
+          - listitem [ref=e326]: 敌人生命 +100%
+          - listitem [ref=e327]: 敌人伤害 +100%
+          - listitem [ref=e328]: 经验获取 +50%

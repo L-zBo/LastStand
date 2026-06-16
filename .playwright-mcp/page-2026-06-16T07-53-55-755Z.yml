@@ -1,0 +1,34 @@
+- generic [ref=e200]:
+  - heading "🎮 选择存档位" [level=2] [ref=e201]
+  - generic [ref=e202]:
+    - button "📄 存档 1 - 空存档位 -" [ref=e204] [cursor=pointer]:
+      - generic [ref=e205]:
+        - generic [ref=e206]: 📄
+        - generic [ref=e207]: 存档 1
+      - paragraph [ref=e208]: "- 空存档位 -"
+    - button "📄 存档 2 - 空存档位 -" [ref=e210] [cursor=pointer]:
+      - generic [ref=e211]:
+        - generic [ref=e212]: 📄
+        - generic [ref=e213]: 存档 2
+      - paragraph [ref=e214]: "- 空存档位 -"
+    - button "📄 存档 3 - 空存档位 -" [ref=e216] [cursor=pointer]:
+      - generic [ref=e217]:
+        - generic [ref=e218]: 📄
+        - generic [ref=e219]: 存档 3
+      - paragraph [ref=e220]: "- 空存档位 -"
+    - button "📄 存档 4 - 空存档位 -" [ref=e222] [cursor=pointer]:
+      - generic [ref=e223]:
+        - generic [ref=e224]: 📄
+        - generic [ref=e225]: 存档 4
+      - paragraph [ref=e226]: "- 空存档位 -"
+    - button "📄 存档 5 - 空存档位 -" [ref=e228] [cursor=pointer]:
+      - generic [ref=e229]:
+        - generic [ref=e230]: 📄
+        - generic [ref=e231]: 存档 5
+      - paragraph [ref=e232]: "- 空存档位 -"
+    - button "📄 存档 6 - 空存档位 -" [ref=e234] [cursor=pointer]:
+      - generic [ref=e235]:
+        - generic [ref=e236]: 📄
+        - generic [ref=e237]: 存档 6
+      - paragraph [ref=e238]: "- 空存档位 -"
+  - button "返回" [ref=e239] [cursor=pointer]
