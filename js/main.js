@@ -561,6 +561,35 @@ function gameOver() {
     }
     rewardEl.textContent = `💎 获得灵魂石: +${soulReward}`;
 
+    // 更新成就系统
+    const gameData = {
+        killCount: game.killCount,
+        bossKills: game.bossKills || 0,
+        dragonKills: game.dragonKills || 0,
+        survivalTime: Math.floor(game.gameTime),
+        wave: game.wave.current,
+        level: finalLevel,
+        gold: finalGold,
+        victory: game.wave.current >= 30, // 30波视为通关
+        className: game.selectedClass,
+        difficulty: game.selectedDifficulty,
+        perfectWaves: game.perfectWaves || 0,
+        maxWeaponsBuild: game.player.weapons && game.player.weapons.length === 6 && game.player.weapons.every(w => w.level === w.maxLevel)
+    };
+
+    const newAchievements = updateAchievementStats(gameData);
+
+    // 显示新解锁的成就
+    if (newAchievements && newAchievements.length > 0) {
+        let delay = 0;
+        newAchievements.forEach(achievement => {
+            setTimeout(() => {
+                showAchievementUnlocked(achievement);
+            }, delay);
+            delay += 3500; // 每个成就间隔3.5秒
+        });
+    }
+
     document.getElementById('gameOverScreen').classList.remove('hidden');
     clearSaveData();
 }
@@ -1132,6 +1161,11 @@ function initGame() {
     // Meta 永久强化按钮
     document.getElementById('metaBtn').addEventListener('click', () => {
         openMetaPanel();
+    });
+
+    // 成就系统按钮
+    document.getElementById('achievementBtn').addEventListener('click', () => {
+        openAchievementPanel();
     });
 
     // 读取存档按钮

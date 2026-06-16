@@ -373,7 +373,9 @@ class Obstacle {
             const rockImg = environmentImages.rocks[this.variant % environmentImages.rocks.length];
             if (rockImg && rockImg.complete) {
                 ctx.imageSmoothingEnabled = false;
-                const imgWidth = this.size * this.scale * 1.8;
+                // 修复：让显示尺寸和碰撞判定匹配，hitRadius * 2 = 直径
+                const diameter = this.hitRadius * 2;
+                const imgWidth = diameter * 1.1; // 稍微放大一点点视觉效果
                 const imgHeight = imgWidth * (rockImg.height / rockImg.width);
                 ctx.drawImage(rockImg, this.x - imgWidth / 2, this.y - imgHeight / 2, imgWidth, imgHeight);
             } else {
@@ -383,7 +385,9 @@ class Obstacle {
             const bushImg = environmentImages.bushes[this.variant % environmentImages.bushes.length];
             if (bushImg && bushImg.complete) {
                 ctx.imageSmoothingEnabled = false;
-                const imgWidth = this.size * this.scale * 1.6;
+                // 修复：灌木丛显示尺寸与判定匹配
+                const diameter = this.hitRadius * 2;
+                const imgWidth = diameter * 1.2; // 稍微放大一点视觉效果
                 const imgHeight = imgWidth * (bushImg.height / bushImg.width);
                 ctx.drawImage(bushImg, this.x - imgWidth / 2, this.y - imgHeight / 2, imgWidth, imgHeight);
             } else {
@@ -393,7 +397,8 @@ class Obstacle {
             const treeImg = environmentImages.trees[this.variant % environmentImages.trees.length];
             if (treeImg && treeImg.complete) {
                 ctx.imageSmoothingEnabled = false;
-                const imgHeight = this.size * this.scale * 2.1;
+                // 树木不阻挡，纯装饰，保持合理的视觉尺寸即可
+                const imgHeight = this.size * this.scale * 1.5; // 降低到1.5倍（原2.1倍太大）
                 const imgWidth = imgHeight * (treeImg.width / treeImg.height);
                 // 树木从底部中心对齐（让树根在碰撞点）
                 ctx.drawImage(treeImg, this.x - imgWidth / 2, this.y - imgHeight + this.size / 2, imgWidth, imgHeight);
