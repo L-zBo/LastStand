@@ -1,9 +1,11 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 import numpy as np
 import os
 
 # 读取boss_0（包含多个Boss的大区域）
-img = Image.open(r"F:\VsCodeproject\roge game\extracted_sprites\bosses_v2\boss_0.png").convert("RGBA")
+img = Image.open(os.path.join(PROJECT_ROOT, r"extracted_sprites\bosses_v2\boss_0.png")).convert("RGBA")
 img_array = np.array(img)
 height, width = img_array.shape[:2]
 
@@ -46,7 +48,7 @@ if gaps:
 print(f"合并后的间隙范围: {gap_ranges}")
 
 # 根据间隙分割Boss
-output_dir = r"F:\VsCodeproject\roge game\extracted_sprites\bosses_manual"
+output_dir = os.path.join(PROJECT_ROOT, r"extracted_sprites\bosses_manual")
 os.makedirs(output_dir, exist_ok=True)
 
 # 如果没有明显的间隙，尝试按宽度均分

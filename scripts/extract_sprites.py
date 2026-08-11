@@ -1,3 +1,5 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 import os
 import numpy as np
@@ -196,8 +198,8 @@ def classify_and_save_sprites(sprites, base_output_dir):
 
 if __name__ == "__main__":
     # 处理角色，怪物.png
-    image_path = r"F:\VsCodeproject\roge game\PNG\角色，怪物.png"
-    output_dir = r"F:\VsCodeproject\roge game\extracted_sprites"
+    image_path = os.path.join(PROJECT_ROOT, r"PNG\角色，怪物.png")
+    output_dir = os.path.join(PROJECT_ROOT, r"extracted_sprites")
 
     print("=" * 60)
     print("智能精灵提取工具")

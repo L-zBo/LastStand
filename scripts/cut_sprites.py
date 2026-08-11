@@ -1,3 +1,5 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 """
 精灵图切割脚本
 根据不同角色类型的实际尺寸进行切割
@@ -8,8 +10,8 @@ import os
 
 def cut_sprites():
     # 加载角色怪物图
-    source_path = r"F:\VsCodeproject\roge game\PNG\角色，怪物.png"
-    output_dir = r"F:\VsCodeproject\roge game\assets"
+    source_path = os.path.join(PROJECT_ROOT, r"PNG\角色，怪物.png")
+    output_dir = os.path.join(PROJECT_ROOT, r"assets")
 
     img = Image.open(source_path)
     img_width, img_height = img.size

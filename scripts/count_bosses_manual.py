@@ -1,8 +1,10 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 import numpy as np
 
 # 读取原图
-img = Image.open(r"F:\VsCodeproject\roge game\PNG\BOSS.png").convert("RGBA")
+img = Image.open(os.path.join(PROJECT_ROOT, r"PNG\BOSS.png")).convert("RGBA")
 img_array = np.array(img)
 
 print("原图尺寸:", img.size)

@@ -1,3 +1,5 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 import os
 import numpy as np
@@ -131,8 +133,8 @@ def extract_bosses_by_grid(image_path, output_dir):
 
 if __name__ == "__main__":
     # 处理BOSS.png
-    image_path = r"F:\VsCodeproject\roge game\PNG\BOSS.png"
-    output_dir = r"F:\VsCodeproject\roge game\extracted_sprites\bosses_v2"
+    image_path = os.path.join(PROJECT_ROOT, r"PNG\BOSS.png")
+    output_dir = os.path.join(PROJECT_ROOT, r"extracted_sprites\bosses_v2")
 
     print("=" * 60)
     print("Boss精灵提取工具 V2（更严格的背景检测）")

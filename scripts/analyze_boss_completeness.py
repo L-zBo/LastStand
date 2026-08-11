@@ -1,8 +1,10 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image
 import numpy as np
 
 # 读取原图
-original = Image.open(r"F:\VsCodeproject\roge game\PNG\BOSS.png").convert("RGBA")
+original = Image.open(os.path.join(PROJECT_ROOT, r"PNG\BOSS.png")).convert("RGBA")
 orig_array = np.array(original)
 
 print("原图尺寸:", original.size)
@@ -10,7 +12,7 @@ print()
 
 # 读取所有提取的Boss
 import os
-boss_dir = r"F:\VsCodeproject\roge game\extracted_sprites\bosses_v2"
+boss_dir = os.path.join(PROJECT_ROOT, r"extracted_sprites\bosses_v2")
 
 for i in range(10):
     boss_path = os.path.join(boss_dir, f"boss_{i}.png")

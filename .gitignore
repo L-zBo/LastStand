@@ -1,3 +1,25 @@
+# 依赖
+node_modules/
+tools/node_modules/
+
+# 模型权重（SAM2 等，体积大）
 tools/models/*.pt
 *.pt
+
+# Syncthing 同步冲突副本（已集中隔离到 _sync_conflicts/，确认无用后可整目录删除）
 *.sync-conflict-*
+_sync_conflicts/
+
+# 工具与 Agent 产物
+.playwright-mcp/
+.spec-workflow/
+.claude/
+.vscode/
+
+# 素材提取中间产物（成品在 assets/ 下）
+extracted/
+
+# 调试截图与日志
+*.log
+__pycache__/
+*.pyc

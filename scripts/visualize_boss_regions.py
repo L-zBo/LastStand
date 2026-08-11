@@ -1,3 +1,5 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw
 import numpy as np
 from scipy import ndimage
@@ -18,7 +20,7 @@ def is_background_pixel(pixel, bg_color, threshold=15):
     return diff < threshold
 
 # 读取BOSS图片
-img = Image.open(r"F:\VsCodeproject\roge game\PNG\BOSS.png").convert("RGBA")
+img = Image.open(os.path.join(PROJECT_ROOT, r"PNG\BOSS.png")).convert("RGBA")
 img_array = np.array(img)
 height, width = img_array.shape[:2]
 
@@ -77,5 +79,5 @@ for label_idx in range(1, min(num_features + 1, 20)):  # 最多显示20个区域
     print(f"区域 {label_idx}: 位置({min_col}, {min_row})-({max_col}, {max_row}), 尺寸{width_r}x{height_r}, 面积{area}")
 
 # 保存可视化结果
-vis_img.save(r"F:\VsCodeproject\roge game\boss_regions_visualization.png")
+vis_img.save(os.path.join(PROJECT_ROOT, r"boss_regions_visualization.png"))
 print("\n可视化结果已保存到: boss_regions_visualization.png")

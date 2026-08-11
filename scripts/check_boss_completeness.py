@@ -1,9 +1,11 @@
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from PIL import Image, ImageDraw
 import numpy as np
 import os
 
 # 读取原图
-original = Image.open(r"F:\VsCodeproject\roge game\PNG\BOSS.png").convert("RGBA")
+original = Image.open(os.path.join(PROJECT_ROOT, r"PNG\BOSS.png")).convert("RGBA")
 orig_array = np.array(original)
 
 print("原图尺寸:", original.size)
@@ -13,7 +15,7 @@ print()
 vis_img = original.copy()
 draw = ImageDraw.Draw(vis_img)
 
-boss_dir = r"F:\VsCodeproject\roge game\extracted_sprites\bosses"
+boss_dir = os.path.join(PROJECT_ROOT, r"extracted_sprites\bosses")
 boss_files = sorted([f for f in os.listdir(boss_dir) if f.startswith("boss_") and f.endswith(".png")])
 
 # 手动定义的区域（用于对比）
@@ -104,5 +106,5 @@ for idx, (name, (min_col, min_row, max_col, max_row)) in enumerate(boss_regions)
     print()
 
 # 保存可视化结果
-vis_img.save(r"F:\VsCodeproject\roge game\boss_regions_check.png")
+vis_img.save(os.path.join(PROJECT_ROOT, r"boss_regions_check.png"))
 print("可视化结果已保存到: boss_regions_check.png")
