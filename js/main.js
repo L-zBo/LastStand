@@ -200,15 +200,18 @@ function buildObstacleGrid() {
     });
 }
 
-// 查询坐标附近的障碍物（只查9个格子）
+// 查询坐标附近的障碍物（只查9个格子，障碍物最大尺寸 80 < GRID_CELL_SIZE，够用）
 function getNearbyObstacles(x, y) {
+    // 防御：网格尚未构建时返回空数组，而不是让整个 gameLoop 抛异常中断
+    const grid = game.obstacleGrid;
+    if (!grid) return [];
     const cellX = Math.floor(x / GRID_CELL_SIZE);
     const cellY = Math.floor(y / GRID_CELL_SIZE);
     const result = [];
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
             const key = (cellX + dx) + ',' + (cellY + dy);
-            const cell = game.obstacleGrid[key];
+            const cell = grid[key];
             if (cell) {
                 for (let i = 0; i < cell.length; i++) {
                     result.push(cell[i]);
@@ -232,15 +235,21 @@ function buildEnemyGrid() {
     }
 }
 
-// 查询坐标附近的敌人（只查9个格子）
-function getNearbyEnemies(x, y) {
+// 查询坐标附近的敌人
+// radius 是调用方真正关心的搜索半径：3x3 格只能保证覆盖 GRID_CELL_SIZE(200)，
+// 而远程武器射程 300、进化武器 350，固定 3x3 会漏掉射程内的敌人（表现为「怪在射程里却不打」）。
+function getNearbyEnemies(x, y, radius = GRID_CELL_SIZE) {
+    // 防御：网格尚未构建时返回空数组，而不是让整个 gameLoop 抛异常中断
+    const grid = game.enemyGrid;
+    if (!grid) return [];
     const cellX = Math.floor(x / GRID_CELL_SIZE);
     const cellY = Math.floor(y / GRID_CELL_SIZE);
+    const span = Math.max(1, Math.ceil(radius / GRID_CELL_SIZE));
     const result = [];
-    for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -span; dx <= span; dx++) {
+        for (let dy = -span; dy <= span; dy++) {
             const key = (cellX + dx) + ',' + (cellY + dy);
-            const cell = game.enemyGrid[key];
+            const cell = grid[key];
             if (cell) {
                 for (let i = 0; i < cell.length; i++) {
                     result.push(cell[i]);
@@ -400,12 +409,13 @@ function updateWeaponAttacksForPlayer(player) {
 
         if (now - weapon.lastAttackTime < cooldown) return;
 
-        const nearestEnemy = getNearbyEnemies(player.x, player.y).reduce((closest, enemy) => {
+        const attackRange = weapon.type === 'melee' ? 100 : (weapon.type === 'evolved' ? 350 : 300);
+
+        // 按武器射程扩大网格查询范围，否则 300/350 射程的武器会漏掉 200 格外的敌人
+        const nearestEnemy = getNearbyEnemies(player.x, player.y, attackRange).reduce((closest, enemy) => {
             const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
             return dist < closest.dist ? { enemy, dist } : closest;
         }, { enemy: null, dist: Infinity });
-
-        let attackRange = weapon.type === 'melee' ? 100 : (weapon.type === 'evolved' ? 350 : 300);
 
         if (nearestEnemy.enemy && nearestEnemy.dist < attackRange) {
             game.weaponProjectiles.push(new WeaponProjectile(
@@ -645,6 +655,13 @@ function gameLoop(timestamp) {
         // 更新游戏内计时器
         updateGameTimers(deltaTime);
 
+        // 构建敌人空间网格（每帧重建）
+        // 必须放在所有实体 update 之前：Player.update（主动技能）和 Summon.update（索敌）
+        // 都会调 getNearbyEnemies()。原来这行在 update 之后，导致进入战斗的第一帧
+        // game.enemyGrid 还是 undefined —— 召唤师（开局 3 幽灵）和死灵法师（开局 5 骷髅）
+        // 一进游戏就抛 "Cannot read properties of undefined"，gameLoop 当帧中断、游戏卡死。
+        buildEnemyGrid();
+
         // 更新P1
         game.player.update(deltaTime);
 
@@ -659,9 +676,6 @@ function gameLoop(timestamp) {
         game.summons.forEach(summon => summon.update());
         game.droppedItems.forEach(item => item.update());
         game.enemyProjectiles.forEach(ep => ep.update());
-
-        // 构建敌人空间网格（每帧重建，用于碰撞检测加速）
-        buildEnemyGrid();
 
         // 更新地图事件
         if (game.mapEvents) {
@@ -729,6 +743,7 @@ function gameLoop(timestamp) {
                     game.enemies.push(new Enemy(enemy.x + offsetX, enemy.y + offsetY, 'splitter_child'));
                     game.wave.totalEnemies++;
                     game.wave.enemiesSpawned++;
+                    game.wave.enemiesRemaining++;
                 }
                 for (let i = 0; i < 6; i++) {
                     game.particles.push(new Particle(enemy.x, enemy.y, '#7bed9f'));
@@ -744,16 +759,24 @@ function gameLoop(timestamp) {
         game.summons = game.summons.filter(summon => !summon.isDead());
         game.droppedItems = game.droppedItems.filter(item => !item.isDead());
 
-        // 清理距离玩家太远的敌人（考虑双人模式）
-        game.enemies = game.enemies.filter(enemy => {
-            const distP1 = Math.hypot(enemy.x - game.player.x, enemy.y - game.player.y);
-            let minDist = distP1;
+        // 跑得太远的敌人重新投放到玩家附近（考虑双人模式）
+        // 旧实现是直接 filter 删除：敌人既不计击杀也不补生成，而 enemiesSpawned 已经加过，
+        // 于是 checkWaveComplete 的「enemies.length === 0」提前成立，波次白送。
+        // 现在改为重投，敌人总数守恒。
+        const cullRadius = getEnemyCullRadius();
+        for (let i = 0; i < game.enemies.length; i++) {
+            const enemy = game.enemies[i];
+            let minDist = Math.hypot(enemy.x - game.player.x, enemy.y - game.player.y);
             if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
-                const distP2 = Math.hypot(enemy.x - game.player2.x, enemy.y - game.player2.y);
-                minDist = Math.min(distP1, distP2);
+                minDist = Math.min(minDist,
+                    Math.hypot(enemy.x - game.player2.x, enemy.y - game.player2.y));
             }
-            return minDist < Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * 2;
-        });
+            if (minDist > cullRadius) {
+                const pos = getSpawnPosition();
+                enemy.x = pos.x;
+                enemy.y = pos.y;
+            }
+        }
 
         // 检查游戏结束
         if (checkGameOver()) {

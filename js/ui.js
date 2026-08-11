@@ -23,6 +23,12 @@ function updateUI() {
     document.getElementById('playerMaxExp').textContent = game.player.maxExp;
     document.getElementById('playerAttack').textContent = game.player.attack;
     document.getElementById('waveCount').textContent = game.wave.current;
+    // 本波剩余敌人（含未刷出的），让玩家知道还要打多久
+    const waveRemainingEl = document.getElementById('waveRemaining');
+    if (waveRemainingEl) {
+        const left = Math.max(0, game.wave.enemiesRemaining);
+        waveRemainingEl.textContent = game.wave.inBreak ? '' : ` (剩${left})`;
+    }
     document.getElementById('killCount').textContent = game.killCount;
     document.getElementById('gameTime').textContent = Math.floor(game.gameTime);
     document.getElementById('goldCount').textContent = game.player.gold;

@@ -1,41 +1,42 @@
 // ==================== 波次系统 ====================
 
 // 获取敌人生成位置
+// 敌人在玩家周围的环形区域内生成：内圈保证在屏幕外（不会凭空出现在脸上），
+// 外圈必须小于 getEnemyCullRadius()，否则敌人一生成就被判超距、当帧就被重投，
+// 造成「生成计数已加、玩家却没见到怪」的白嫖波次。
 function getSpawnPosition() {
-    const minDistFromPlayer = 400;
+    // 双人模式以两名玩家的中点为基准，避免只围着 P1 刷怪
+    let cx = game.player.x;
+    let cy = game.player.y;
+    if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+        cx = (game.player.x + game.player2.x) / 2;
+        cy = (game.player.y + game.player2.y) / 2;
+    }
+
+    const screenDiag = Math.hypot(CONFIG.canvas.width, CONFIG.canvas.height);
+    const minDist = Math.max(400, screenDiag / 2 + 80);       // 刚好在可视范围外
+    const maxDist = Math.max(minDist + 200, getEnemyCullRadius() * 0.7);
+
+    const margin = 100;
     const maxAttempts = 20;
 
     for (let i = 0; i < maxAttempts; i++) {
-        const x = 100 + Math.random() * (CONFIG.world.width - 200);
-        const y = 100 + Math.random() * (CONFIG.world.height - 200);
+        const angle = Math.random() * Math.PI * 2;
+        const dist = minDist + Math.random() * (maxDist - minDist);
+        const x = cx + Math.cos(angle) * dist;
+        const y = cy + Math.sin(angle) * dist;
 
-        const distToPlayer = Math.hypot(x - game.player.x, y - game.player.y);
-        if (distToPlayer >= minDistFromPlayer) {
+        if (x >= margin && x <= CONFIG.world.width - margin &&
+            y >= margin && y <= CONFIG.world.height - margin) {
             return { x, y };
         }
     }
 
-    // 如果多次尝试都失败，在地图边缘随机生成
-    const side = Math.floor(Math.random() * 4);
-    let x, y;
-    switch(side) {
-        case 0:
-            x = 100 + Math.random() * (CONFIG.world.width - 200);
-            y = 100;
-            break;
-        case 1:
-            x = CONFIG.world.width - 100;
-            y = 100 + Math.random() * (CONFIG.world.height - 200);
-            break;
-        case 2:
-            x = 100 + Math.random() * (CONFIG.world.width - 200);
-            y = CONFIG.world.height - 100;
-            break;
-        case 3:
-            x = 100;
-            y = 100 + Math.random() * (CONFIG.world.height - 200);
-            break;
-    }
+    // 兜底：玩家贴着世界边角时，环形采样可能一直落在界外，
+    // 此时取一个方向后把坐标钳制回世界范围，至少保证距离下限
+    const angle = Math.random() * Math.PI * 2;
+    const x = Math.min(Math.max(cx + Math.cos(angle) * minDist, margin), CONFIG.world.width - margin);
+    const y = Math.min(Math.max(cy + Math.sin(angle) * minDist, margin), CONFIG.world.height - margin);
     return { x, y };
 }
 

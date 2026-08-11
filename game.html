@@ -9,6 +9,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- 像素字体非阻塞加载：拉不到（如国内直连不通）也不影响游戏启动，
+         字形缺失时由 css/base.css 里的 fallback 字体族接管 -->
+    <link rel="stylesheet" media="print" onload="this.media='all'"
+          href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/game-layout.css">
@@ -213,7 +217,7 @@
         <!-- 顶部控制栏 -->
         <div class="top-bar">
             <div class="info-item" aria-label="金币"><span class="label" aria-hidden="true">🪙</span><span id="goldCount">0</span></div>
-            <div class="info-item" aria-label="波次"><span class="label" aria-hidden="true">🌊</span><span id="waveCount">1</span></div>
+            <div class="info-item" aria-label="波次"><span class="label" aria-hidden="true">🌊</span><span id="waveCount">1</span><span id="waveRemaining" class="sub-count"></span></div>
             <div class="info-item" aria-label="击杀数"><span class="label" aria-hidden="true">💀</span><span id="killCount">0</span></div>
             <div class="info-item" aria-label="游戏时间"><span class="label" aria-hidden="true">⏱️</span><span id="gameTime">0</span>s</div>
             <button class="top-btn save" id="saveBtn" aria-label="保存游戏">💾 保存</button>

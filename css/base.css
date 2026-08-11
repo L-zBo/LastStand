@@ -1,7 +1,9 @@
 /* ==================== 基础样式 - 像素艺术风格 ==================== */
 
-/* 像素字体导入 */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+/* 像素字体 Press Start 2P 由 game.html 以非阻塞方式加载。
+   不要在这里用 @import：CSS 的 @import 会阻塞样式表解析，
+   国内访问 fonts.googleapis.com 不通时整页要白屏等到超时。
+   字体拉不到时下面的 fallback 链照常工作（该字体本身也不含中文字形）。 */
 
 * {
     margin: 0;

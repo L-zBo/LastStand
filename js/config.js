@@ -12,7 +12,11 @@ const CONFIG = {
         size: 18  // 缩小角色大小
     },
     enemy: {
-        size: 14  // 缩小敌人大小
+        size: 14,  // 缩小敌人大小
+        // 敌人远离玩家超过「画布长边 × 该系数」后会被重新投放到玩家附近
+        // 注意：js/wave.js 的 getSpawnPosition() 依赖同一个半径来决定刷怪距离，
+        // 生成距离必须小于清理距离，否则敌人一生成就会被判超距
+        cullRadiusFactor: 2
     },
     obstacles: {
         rockCount: 80,
@@ -136,6 +140,11 @@ const CONFIG = {
         }
     }
 };
+
+// 敌人清理/重投半径：超出该距离的敌人会被重新投放到玩家附近
+function getEnemyCullRadius() {
+    return Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * CONFIG.enemy.cullRadiusFactor;
+}
 
 // 预加载地图瓦片图片
 const mapTileImages = {};

@@ -3,10 +3,18 @@
 // ==================== 统一击杀处理 ====================
 // 所有击杀逻辑（近战、远程、武器投射物、召唤物）统一走这里
 function handleEnemyKill(enemy, killer) {
+    // 防重入：同一帧内玩家攻击、武器投射物、召唤物、溅射、毒伤可能同时把
+    // 这只敌人的血量打到 0 以下，各自都会调一次本函数。没有这道闸的话，
+    // 击杀数、经验、掉落、吸血全部按调用次数重复结算（实测 14 次结算里有 1 次重复）。
+    if (enemy._killHandled) return;
+    enemy._killHandled = true;
+
     SFX.play('kill');
     // 给击杀者加经验
     killer.gainExp(enemy.expValue);
     game.killCount++;
+    // 本波剩余敌人数（UI 用）。旧代码只在 startNewWave 赋值、从不递减，是个死字段。
+    if (game.wave.enemiesRemaining > 0) game.wave.enemiesRemaining--;
 
     // 生成掉落物
     const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
@@ -829,6 +837,10 @@ class EnemyProjectile {
 
 // 召唤物类
 class Summon {
+    // 召唤物索敌半径（网格查询用）。设成 600 让随从会主动扑向稍远的敌人，
+    // 又不至于横跨半张地图。
+    static SEEK_RANGE = 600;
+
     constructor(x, y, owner) {
         this.x = x;
         this.y = y;
@@ -856,9 +868,10 @@ class Summon {
         }
 
         // 找最近的敌人（使用空间网格加速）
+        // 索敌半径要显式给够：默认 3x3 格只覆盖 200，召唤物会对稍远的敌人视而不见
         let target = null;
         let minDist = Infinity;
-        const nearbyEnemies = getNearbyEnemies(this.x, this.y);
+        const nearbyEnemies = getNearbyEnemies(this.x, this.y, Summon.SEEK_RANGE);
         for (let i = 0; i < nearbyEnemies.length; i++) {
             const enemy = nearbyEnemies[i];
             const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
@@ -1029,12 +1042,13 @@ class WeaponProjectile {
                 break;
             case 'arrow':
                 if (this.tracking && game.enemies.length > 0) {
-                    const nearbyEnemies = getNearbyEnemies(this.x, this.y);
+                    const TRACK_RANGE = 300;
+                    const nearbyEnemies = getNearbyEnemies(this.x, this.y, TRACK_RANGE);
                     const nearest = nearbyEnemies.reduce((closest, enemy) => {
                         const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                         return dist < closest.dist ? { enemy, dist } : closest;
                     }, { enemy: null, dist: Infinity });
-                    if (nearest.enemy && nearest.dist < 300) {
+                    if (nearest.enemy && nearest.dist < TRACK_RANGE) {
                         const targetAngle = Math.atan2(nearest.enemy.y - this.y, nearest.enemy.x - this.x);
                         const angleDiff = targetAngle - this.rotation;
                         this.rotation += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.1 * dt);
@@ -1186,7 +1200,9 @@ class WeaponProjectile {
                     if (this.bounce > 0) {
                         this.bounce--;
                         this.hitEnemies.push(enemy);
-                        const nextTarget = getNearbyEnemies(this.x, this.y).find(e => !this.hitEnemies.includes(e));
+                        // 弹射搜索半径显式给 300，默认 3x3 格只覆盖 200，会让弹射频繁扑空
+                        const nextTarget = getNearbyEnemies(this.x, this.y, 300)
+                            .find(e => !this.hitEnemies.includes(e));
                         if (nextTarget) {
                             const newAngle = Math.atan2(nextTarget.y - this.y, nextTarget.x - this.x);
                             this.vx = Math.cos(newAngle) * this.speed;
@@ -1589,7 +1605,7 @@ class Player {
                 this.skillData = { attackBoost: skill.attackBoost, originalAttack: this.attack };
                 this.attack *= (1 + skill.attackBoost);
                 // 范围内敌人眩晕
-                getNearbyEnemies(this.x, this.y).forEach(enemy => {
+                getNearbyEnemies(this.x, this.y, skill.radius).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist <= skill.radius) {
                         enemy.stunned = true;
@@ -1619,7 +1635,7 @@ class Player {
                 // 刺客：影步 - 瞬移到最近敌人并暴击
                 let closestEnemy = null;
                 let closestDist = skill.blinkRange;
-                getNearbyEnemies(this.x, this.y).forEach(enemy => {
+                getNearbyEnemies(this.x, this.y, skill.blinkRange).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist < closestDist) {
                         closestDist = dist;
@@ -1657,7 +1673,7 @@ class Player {
                 // 游侠：箭雨 - 在最近敌人位置降下箭雨
                 let target = null;
                 let minDist = skill.range;
-                getNearbyEnemies(this.x, this.y).forEach(enemy => {
+                getNearbyEnemies(this.x, this.y, skill.range).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist < minDist) {
                         minDist = dist;
@@ -1687,7 +1703,7 @@ class Player {
                 if (mySummons.length > 0) {
                     mySummons.forEach(summon => {
                         // 范围伤害
-                        getNearbyEnemies(summon.x, summon.y).forEach(enemy => {
+                        getNearbyEnemies(summon.x, summon.y, skill.radius).forEach(enemy => {
                             const dist = Math.hypot(enemy.x - summon.x, enemy.y - summon.y);
                             if (dist <= skill.radius) {
                                 const damage = Math.floor(this.attack * skill.damageMultiplier);
@@ -1733,7 +1749,7 @@ class Player {
             }
             case 'holywave': {
                 // 圣骑士：圣光审判 - 范围伤害+回复
-                getNearbyEnemies(this.x, this.y).forEach(enemy => {
+                getNearbyEnemies(this.x, this.y, skill.radius).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist <= skill.radius) {
                         const damage = Math.floor(this.attack * skill.damageMultiplier);
@@ -1823,7 +1839,7 @@ class Player {
                 // 每tick对范围内敌人造成伤害
                 if (now - data.lastTick >= data.tickInterval) {
                     data.lastTick = now;
-                    getNearbyEnemies(this.x, this.y).forEach(enemy => {
+                    getNearbyEnemies(this.x, this.y, data.radius).forEach(enemy => {
                         const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                         if (dist <= data.radius) {
                             const damage = Math.floor(this.attack * data.damagePercent);
@@ -1855,7 +1871,7 @@ class Player {
                     data.hitCount++;
                     data.lastHit = now;
                     // 对目标区域内敌人造成伤害
-                    getNearbyEnemies(data.targetX, data.targetY).forEach(enemy => {
+                    getNearbyEnemies(data.targetX, data.targetY, data.radius).forEach(enemy => {
                         const dist = Math.hypot(enemy.x - data.targetX, enemy.y - data.targetY);
                         if (dist <= data.radius) {
                             const damage = Math.floor(this.attack * data.damagePercent);
@@ -1875,7 +1891,7 @@ class Player {
             case 'fortress': {
                 // 骑士堡垒：持续嘲讽附近敌人
                 const data = this.skillData;
-                getNearbyEnemies(this.x, this.y).forEach(enemy => {
+                getNearbyEnemies(this.x, this.y, data.tauntRadius).forEach(enemy => {
                     const dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                     if (dist <= data.tauntRadius) {
                         enemy.tauntTarget = this;

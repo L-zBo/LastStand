@@ -47,6 +47,12 @@
     color: #aaa;
 }
 
+/* 波次后面的「(剩N)」小字 */
+.top-bar .info-item .sub-count {
+    color: #9aa4c0;
+    margin-left: 2px;
+}
+
 .top-bar .top-btn {
     padding: 6px 12px;
     min-width: 44px;
