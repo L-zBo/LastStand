@@ -78,9 +78,9 @@ const CONFIG = {
             groundColor: '#0d1f0d',
             borderColor: '#2d5a2d',
             tileImage: 'assets/tiles/forest_tile.png',
-            bushCount: 120,
-            rockCount: 60,
-            treeCount: 60,
+            bushCount: 320,
+            rockCount: 120,
+            treeCount: 260,
             specialEffect: null
         },
         desert: {
@@ -89,9 +89,9 @@ const CONFIG = {
             groundColor: '#2a1f0d',
             borderColor: '#8b7355',
             tileImage: 'assets/tiles/desert_tile.png',
-            bushCount: 30,
-            rockCount: 100,
-            treeCount: 10,
+            bushCount: 80,
+            rockCount: 300,
+            treeCount: 40,
             specialEffect: null
         },
         dungeon: {
@@ -100,9 +100,9 @@ const CONFIG = {
             groundColor: '#0a0a14',
             borderColor: '#4a4a6a',
             tileImage: 'assets/tiles/dungeon_tile.png',
-            bushCount: 20,
-            rockCount: 150,
-            treeCount: 5,
+            bushCount: 50,
+            rockCount: 460,
+            treeCount: 10,
             specialEffect: 'darkness'
         },
         snow: {
@@ -111,9 +111,9 @@ const CONFIG = {
             groundColor: '#1e2832',
             borderColor: '#6a8a9a',
             tileImage: 'assets/tiles/snow_tile.png',
-            bushCount: 50,
-            rockCount: 80,
-            treeCount: 35,
+            bushCount: 140,
+            rockCount: 240,
+            treeCount: 150,
             specialEffect: 'slow'
         },
         lava: {
@@ -122,8 +122,8 @@ const CONFIG = {
             groundColor: '#1a0808',
             borderColor: '#8b2500',
             tileImage: 'assets/tiles/lava_tile.png',
-            bushCount: 10,
-            rockCount: 120,
+            bushCount: 40,
+            rockCount: 420,
             treeCount: 0,
             specialEffect: 'damage'
         },
@@ -133,17 +133,78 @@ const CONFIG = {
             groundColor: '#051428',
             borderColor: '#1e6496',
             tileImage: 'assets/tiles/ocean_tile.png',
-            bushCount: 60,
-            rockCount: 90,
-            treeCount: 20,
+            bushCount: 200,
+            rockCount: 260,
+            treeCount: 80,
             specialEffect: null
         }
     }
 };
 
+// ==================== UI 定时器统一纳管 ====================
+// 通知、倒计时这类纯 UI 定时器原本散在 ui.js / achievements.js 里裸用
+// setTimeout / setInterval，一共 15 处只有 1 处做了清理。后果是：通知还在飘、
+// 倒计时还没走完就退回主菜单或重开一局时，残留回调仍会触发——轻则往新的一局里
+// 插入上一局的提示 DOM，重则 showCountdown 的回调直接改 game.state。
+// 统一走下面三个函数，退出局内时 clearAllUiTimers() 一次性收干净。
+const uiTimerIds = new Set();
+
+function registerUiTimeout(fn, delay) {
+    const id = setTimeout(() => {
+        uiTimerIds.delete(id);
+        fn();
+    }, delay);
+    uiTimerIds.add(id);
+    return id;
+}
+
+function registerUiInterval(fn, delay) {
+    const id = setInterval(fn, delay);
+    uiTimerIds.add(id);
+    return id;
+}
+
+function clearUiTimer(id) {
+    if (id === undefined || id === null) return;
+    clearTimeout(id);
+    clearInterval(id);
+    uiTimerIds.delete(id);
+}
+
+function clearAllUiTimers() {
+    uiTimerIds.forEach(id => {
+        clearTimeout(id);
+        clearInterval(id);
+    });
+    uiTimerIds.clear();
+}
+
 // 敌人清理/重投半径：超出该距离的敌人会被重新投放到玩家附近
 function getEnemyCullRadius() {
     return Math.max(CONFIG.canvas.width, CONFIG.canvas.height) * CONFIG.enemy.cullRadiusFactor;
+}
+
+// ==================== 减伤结算 ====================
+// 玩家承伤散在 5 个地方（敌人碰撞 / 敌人投射物 / 陷阱 / Boss 闪电 / 毒），
+// 每处都是各写各的 damage * (1 - damageReduction)，有两个问题：
+//   1. 没有上限。骑士基础 15% + 重甲精通 20% + 护甲换算 + 龙鳞遗物…… 叠过 100% 后
+//      (1 - dr) 变负数，玩家会「受击回血」，越挨打越无敌。
+//   2. player.armor 这个字段只在 Player 构造时赋值，全项目没有任何读取方，
+//      骑士面板上的「护甲」纯属摆设。这里把它按每点 0.5% 折进减伤。
+// 统一走这个函数，上限 90%——留 10% 破防，避免出现完全无敌的构筑。
+const MAX_DAMAGE_REDUCTION = 0.9;
+
+function getDamageReduction(player) {
+    if (!player) return 0;
+    const fromArmor = (player.armor || 0) * 0.005;
+    const total = (player.damageReduction || 0) + fromArmor;
+    return Math.max(0, Math.min(MAX_DAMAGE_REDUCTION, total));
+}
+
+// 对玩家结算一次伤害，返回实际扣血量
+function applyDamageToPlayer(player, rawDamage) {
+    const dmg = Math.max(0, rawDamage || 0);
+    return dmg * (1 - getDamageReduction(player));
 }
 
 // 预加载地图瓦片图片

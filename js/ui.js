@@ -41,7 +41,8 @@ function updateUI() {
     // 右侧面板详细属性
     document.getElementById('playerVampire').textContent = game.player.vampireHeal || 0;
     document.getElementById('playerCritDmg').textContent = Math.floor((game.player.critDamage || 2) * 100) + '%';
-    document.getElementById('playerRange').textContent = Math.floor(game.player.attackRange || 50);
+    document.getElementById('playerDefense').textContent = Math.round(getDamageReduction(game.player) * 100);
+    document.getElementById('playerRange').textContent = formatRangeText(game.player);
     document.getElementById('playerAtkSpeed').textContent = game.player.attackCooldown + 'ms';
     document.getElementById('playerMultishot').textContent = game.player.multiShot || 1;
     document.getElementById('playerExpBonus').textContent = Math.floor((game.player.expMultiplier || 1) * 100) + '%';
@@ -59,7 +60,8 @@ function updateUI() {
         document.getElementById('player2Crit').textContent = Math.floor((game.player2.critChance || 0) * 100);
         document.getElementById('player2Vampire').textContent = game.player2.vampireHeal || 0;
         document.getElementById('player2CritDmg').textContent = Math.floor((game.player2.critDamage || 2) * 100) + '%';
-        document.getElementById('player2Range').textContent = Math.floor(game.player2.attackRange || 50);
+        document.getElementById('player2Defense').textContent = Math.round(getDamageReduction(game.player2) * 100);
+        document.getElementById('player2Range').textContent = formatRangeText(game.player2);
         document.getElementById('player2AtkSpeed').textContent = game.player2.attackCooldown + 'ms';
         document.getElementById('player2Multishot').textContent = game.player2.multiShot || 1;
         document.getElementById('player2ExpBonus').textContent = Math.floor((game.player2.expMultiplier || 1) * 100) + '%';
@@ -76,6 +78,22 @@ function updateUI() {
     updatePassiveBarIfNeeded();
     updateRelicBarIfNeeded('relicBar', game.player);
     updateSkillInfo('skillInfo', game.player);
+}
+
+// 面板上的射程展示
+// 玩家其实有两套射程：职业自带的基础攻击射程（attackRange），以及每把武器
+// 各自的射程（data.js 的 WEAPONS.range × rangeMultiplier）。原来面板只显示前者，
+// 装了远程武器的玩家会觉得「显示 50 却能打到很远」。这里两个都给出来。
+function formatRangeText(player) {
+    const base = Math.floor(player.attackRange || 0);
+    const mult = player.rangeMultiplier || 1;
+    let best = 0;
+    (player.weapons || []).forEach(w => {
+        if (w.type === 'accessory') return;
+        const r = (w.range || 0) * mult;
+        if (r > best) best = r;
+    });
+    return best > 0 ? `${base}/${Math.floor(best)}` : String(base);
 }
 
 // 更新武器栏（仅在变化时）
@@ -306,7 +324,11 @@ function showWeaponDetail(weapon) {
     document.getElementById('weaponDetailLevel').textContent = `Lv.${weapon.level || 1}/${weapon.maxLevel || 5}`;
     document.getElementById('weaponDetailDesc').textContent = weapon.description;
 
-    const actualDamage = weapon.damage * (weapon.level || 1);
+    // 配件没有 damage 字段，直接乘会显示成 NaN；改为显示效果说明
+    const isAccessory = weapon.type === 'accessory';
+    const actualDamage = isAccessory
+        ? (weapon.effect || '被动加成')
+        : (weapon.damage || 0) * (weapon.level || 1);
     document.getElementById('weaponDetailDamage').textContent = actualDamage;
 
     const typeNames = { melee: '近战', ranged: '远程', magic: '魔法', accessory: '配件', evolved: '进化' };
@@ -359,9 +381,9 @@ function showEvolutionNotification(weapon1Name, weapon2Name, evolvedName, evolve
     `;
     document.body.appendChild(notification);
 
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
+        registerUiTimeout(() => notification.remove(), 500);
     }, 2500);
 }
 
@@ -429,26 +451,71 @@ function showDualPlayerLevelUp() {
     p2Container.innerHTML = '';
     p1Selected.classList.add('hidden');
     p2Selected.classList.add('hidden');
+    // 遮罩文案会被 markPlayerDown 改成「已阵亡」，这里先复原，
+    // 否则队友被凤凰之羽救回来之后还顶着死亡文案
+    resetSelectedOverlay(p1Selected, '等待 P2 选择...');
+    resetSelectedOverlay(p2Selected, '等待 P1 选择...');
 
-    // 为P1生成选项
-    const rand1 = Math.random();
-    if (rand1 < 0.4) {
-        showWeaponOptionsForPlayer(p1Container, game.player, 1);
-    } else if (rand1 < 0.7) {
-        showBuffOptionsForPlayer(p1Container, game.player, 1);
+    // 阵亡的一方不再出选项：面板要求两侧都点完才恢复战斗，
+    // 队友躺了还得替它选一个才能继续，白等一步。直接替它标记为已选（空选择）。
+    const p1Alive = !!game.player && game.player.health > 0;
+    const p2Alive = !!game.player2 && game.player2.health > 0;
+
+    if (p1Alive) {
+        const rand1 = Math.random();
+        if (rand1 < 0.4) {
+            showWeaponOptionsForPlayer(p1Container, game.player, 1);
+        } else if (rand1 < 0.7) {
+            showBuffOptionsForPlayer(p1Container, game.player, 1);
+        } else {
+            showClassBuffOptionsForPlayer(p1Container, game.player, 1);
+        }
     } else {
-        showClassBuffOptionsForPlayer(p1Container, game.player, 1);
+        markPlayerDown(1, p1Selected, dualLevelUpState);
     }
 
-    // 为P2生成选项
-    const rand2 = Math.random();
-    if (rand2 < 0.4) {
-        showWeaponOptionsForPlayer(p2Container, game.player2, 2);
-    } else if (rand2 < 0.7) {
-        showBuffOptionsForPlayer(p2Container, game.player2, 2);
+    if (p2Alive) {
+        const rand2 = Math.random();
+        if (rand2 < 0.4) {
+            showWeaponOptionsForPlayer(p2Container, game.player2, 2);
+        } else if (rand2 < 0.7) {
+            showBuffOptionsForPlayer(p2Container, game.player2, 2);
+        } else {
+            showClassBuffOptionsForPlayer(p2Container, game.player2, 2);
+        }
     } else {
-        showClassBuffOptionsForPlayer(p2Container, game.player2, 2);
+        markPlayerDown(2, p2Selected, dualLevelUpState);
     }
+
+    // 两侧都不需要玩家操作时（都阵亡，理论上会先走 gameOver）不能把界面挂死
+    checkDualLevelUpComplete();
+}
+
+// 把阵亡一方标记成「无需选择」，并改掉遮罩里的等待文案。
+// state 传 dualLevelUpState（升级）或 dualWaveState（波次奖励），两套状态别混用。
+function markPlayerDown(playerNum, overlay, state) {
+    if (playerNum === 1) {
+        state.p1Selected = true;
+        state.p1Choice = null;
+    } else {
+        state.p2Selected = true;
+        state.p2Choice = null;
+    }
+    if (!overlay) return;
+    const icon = overlay.querySelector('.check-icon');
+    const text = overlay.querySelector('p');
+    if (icon) icon.textContent = '💀';
+    if (text) text.textContent = '已阵亡，无法选择';
+    overlay.classList.remove('hidden');
+}
+
+// 复原「已选择」遮罩的默认外观
+function resetSelectedOverlay(overlay, waitText) {
+    if (!overlay) return;
+    const icon = overlay.querySelector('.check-icon');
+    const text = overlay.querySelector('p');
+    if (icon) icon.textContent = '✓';
+    if (text) text.textContent = waitText;
 }
 
 // 检查双人是否都选完了
@@ -652,7 +719,10 @@ function showBuffOptionsForPlayer(container, player, playerNum) {
 
 // 显示职业专属强化选项 - 支持指定玩家
 function showClassBuffOptionsForPlayer(container, player, playerNum) {
-    const playerClass = player.className || game.selectedClass;
+    // Player 上存的是 classType，从来没有 className 这个属性。
+    // 写成 player.className 会永远回落到 game.selectedClass（P1 的职业），
+    // 双人模式下 P2 就会拿到 P1 职业的专属强化。
+    const playerClass = player.classType || game.selectedClass;
     const classBuffs = CLASS_BUFFS[playerClass] || [];
 
     if (classBuffs.length === 0) {
@@ -780,9 +850,9 @@ function showWaveNotification(waveNum) {
     `;
     document.body.appendChild(notification);
 
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
+        registerUiTimeout(() => notification.remove(), 500);
     }, 2000);
 }
 
@@ -854,12 +924,24 @@ function showDualWaveComplete() {
     p2Container.innerHTML = '';
     p1Selected.classList.add('hidden');
     p2Selected.classList.add('hidden');
+    resetSelectedOverlay(p1Selected, '等待 P2 选择...');
+    resetSelectedOverlay(p2Selected, '等待 P1 选择...');
 
-    // 为P1生成选项
-    showWaveOptionsForPlayer(p1Container, game.player, 1, true);
+    // 和升级面板同理：阵亡的一方不出选项，直接标记为已选，
+    // 否则活着的那位选完还得替尸体再点一下才能开下一波
+    if (game.player && game.player.health > 0) {
+        showWaveOptionsForPlayer(p1Container, game.player, 1, true);
+    } else {
+        markPlayerDown(1, p1Selected, dualWaveState);
+    }
 
-    // 为P2生成选项
-    showWaveOptionsForPlayer(p2Container, game.player2, 2, true);
+    if (game.player2 && game.player2.health > 0) {
+        showWaveOptionsForPlayer(p2Container, game.player2, 2, true);
+    } else {
+        markPlayerDown(2, p2Selected, dualWaveState);
+    }
+
+    checkDualWaveComplete();
 }
 
 // 为玩家生成波次奖励选项
@@ -923,13 +1005,19 @@ function showWaveOptionsForPlayer(container, player, playerNum, isWaveReward = f
                 : 'Lv.1';
 
             let statsHtml = '<div class="weapon-stats-detail">';
-            const currentDamage = w.damage * (option.type === 'weaponUpgrade' ? w.level : 1);
-            const nextDamage = w.damage * (option.type === 'weaponUpgrade' ? w.level + 1 : 1);
-
-            if (option.type === 'weaponUpgrade') {
-                statsHtml += `<span class="stat-item">⚔️ 伤害: ${currentDamage} → <span class="stat-up">${nextDamage}</span></span>`;
+            // 配件没有 damage，走效果说明分支，否则显示 NaN
+            if (w.type === 'accessory') {
+                if (w.effect) statsHtml += `<span class="stat-item">✨ ${w.effect}</span>`;
             } else {
-                statsHtml += `<span class="stat-item">⚔️ 伤害: ${w.damage}</span>`;
+                const currentDamage = (w.damage || 0) * (option.type === 'weaponUpgrade' ? w.level : 1);
+                const nextDamage = (w.damage || 0) * (option.type === 'weaponUpgrade' ? w.level + 1 : 1);
+
+                if (option.type === 'weaponUpgrade') {
+                    statsHtml += `<span class="stat-item">⚔️ 伤害: ${currentDamage} → <span class="stat-up">${nextDamage}</span></span>`;
+                } else {
+                    statsHtml += `<span class="stat-item">⚔️ 伤害: ${w.damage}</span>`;
+                }
+                if (w.range) statsHtml += `<span class="stat-item">📏 射程: ${w.range}</span>`;
             }
             if (w.attackSpeed) statsHtml += `<span class="stat-item">⚡ 攻速: ${w.attackSpeed}s</span>`;
             statsHtml += `<span class="stat-item">📊 最高Lv: ${w.maxLevel || 5}</span>`;
@@ -1107,7 +1195,7 @@ function showCountdown(callback) {
     let count = 3;
     countdownNumber.textContent = count;
 
-    const countdownInterval = setInterval(() => {
+    const countdownInterval = registerUiInterval(() => {
         count--;
         if (count > 0) {
             countdownNumber.textContent = count;
@@ -1115,7 +1203,7 @@ function showCountdown(callback) {
             countdownNumber.offsetHeight;
             countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
         } else {
-            clearInterval(countdownInterval);
+            clearUiTimer(countdownInterval);
             countdownScreen.classList.add('hidden');
             if (callback) callback();
         }
@@ -1129,9 +1217,9 @@ function showSaveNotification() {
     notification.textContent = '💾 游戏已保存';
     document.body.appendChild(notification);
 
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 300);
+        registerUiTimeout(() => notification.remove(), 300);
     }, 2000);
 }
 
@@ -1152,9 +1240,9 @@ function showGoldNotification(worldX, worldY, amount) {
     notification.style.top = (canvasRect.top + screenY - 20) + 'px';
     document.body.appendChild(notification);
 
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
+        registerUiTimeout(() => notification.remove(), 500);
     }, 800);
 }
 
@@ -1175,9 +1263,9 @@ function showDropPickupNotification(worldX, worldY, icon, name) {
     notification.style.top = (canvasRect.top + screenY - 30) + 'px';
     document.body.appendChild(notification);
 
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 500);
+        registerUiTimeout(() => notification.remove(), 500);
     }, 1200);
 }
 
@@ -1293,7 +1381,14 @@ function purchaseItem(index) {
     game.player.gold -= item.price;
 
     // 应用效果
-    item.effect(game.player);
+    // 金币是共享池（gainGold 给双方同步加，这里也同步扣），一次购买花的是团队的钱。
+    // 效果只给 P1 的话 P2 整局都吃不到商店 —— 尤其治疗类，双人模式下 P2 只能干看着。
+    // 阵亡的一方要跳过：治疗药水会把 0 血拉到 30，等于白送一次复活。
+    const buyers = [game.player];
+    if (game.playerCount === 2 && game.player2 && game.player2.health > 0) {
+        buyers.push(game.player2);
+    }
+    buyers.forEach(p => item.effect(p));
 
     // 双人模式下也给P2扣钱
     if (game.playerCount === 2 && game.player2) {
@@ -1320,9 +1415,9 @@ function showPurchaseNotification(item) {
     `;
     document.body.appendChild(notification);
 
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 300);
+        registerUiTimeout(() => notification.remove(), 300);
     }, 1500);
 }
 

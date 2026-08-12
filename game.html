@@ -243,7 +243,8 @@
                         <div class="stat-tag">💥 <span id="playerCrit">0</span>%</div>
                         <div class="stat-tag">🩸 <span id="playerVampire">0</span></div>
                         <div class="stat-tag">💢 <span id="playerCritDmg">200%</span></div>
-                        <div class="stat-tag">📍 <span id="playerRange">50</span></div>
+                        <div class="stat-tag" title="综合减伤（含护甲换算，上限90%）">🛡️ <span id="playerDefense">0</span>%</div>
+                        <div class="stat-tag" title="基础攻击射程 / 最远武器射程">📍 <span id="playerRange">50</span></div>
                         <div class="stat-tag">⚡ <span id="playerAtkSpeed">500ms</span></div>
                         <div class="stat-tag">🎯 <span id="playerMultishot">1</span></div>
                         <div class="stat-tag">✨ <span id="playerExpBonus">100%</span></div>
@@ -281,7 +282,8 @@
                         <div class="stat-tag">💥 <span id="player2Crit">0</span>%</div>
                         <div class="stat-tag">🩸 <span id="player2Vampire">0</span></div>
                         <div class="stat-tag">💢 <span id="player2CritDmg">200%</span></div>
-                        <div class="stat-tag">📍 <span id="player2Range">50</span></div>
+                        <div class="stat-tag" title="综合减伤（含护甲换算，上限90%）">🛡️ <span id="player2Defense">0</span>%</div>
+                        <div class="stat-tag" title="基础攻击射程 / 最远武器射程">📍 <span id="player2Range">50</span></div>
                         <div class="stat-tag">⚡ <span id="player2AtkSpeed">500ms</span></div>
                         <div class="stat-tag">🎯 <span id="player2Multishot">1</span></div>
                         <div class="stat-tag">✨ <span id="player2ExpBonus">100%</span></div>
@@ -307,6 +309,7 @@
             <h2 id="pauseTitle">⏸️ 游戏暂停</h2>
             <div class="pause-buttons">
                 <button id="resumeBtn" class="pause-btn">▶️ 继续游戏</button>
+                <button id="pauseSfxBtn" class="pause-btn" aria-pressed="true">🔊 音效: 开</button>
                 <button id="pauseSaveBtn" class="pause-btn">💾 保存并退出</button>
                 <button id="pauseRestartWaveBtn" class="pause-btn">🔄 重新开始本波</button>
                 <button id="pauseReturnMenuBtn" class="pause-btn danger">🏠 返回主菜单</button>

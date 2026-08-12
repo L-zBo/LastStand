@@ -16,6 +16,18 @@ function handleEnemyKill(enemy, killer) {
     // 本波剩余敌人数（UI 用）。旧代码只在 startNewWave 赋值、从不递减，是个死字段。
     if (game.wave.enemiesRemaining > 0) game.wave.enemiesRemaining--;
 
+    // 成就统计：实时上报，解锁即弹提示（旧实现只在 gameOver 结算一次）
+    const achPatch = { totalKills: 1 };
+    if (enemy.isBoss || enemy.type === 'boss') {
+        game.bossKills++;
+        achPatch.bossKills = 1;
+        if (enemy.bossType === 'dragon') {
+            game.dragonKills++;
+            achPatch.dragonKills = 1;
+        }
+    }
+    if (typeof trackAchievement === 'function') trackAchievement(achPatch);
+
     // 生成掉落物
     const drops = spawnDrops(enemy.x, enemy.y, enemy.type);
     game.droppedItems.push(...drops);
@@ -609,7 +621,7 @@ class MapEvent {
             }
             case 'trap': {
                 // 对玩家造成伤害
-                const actualDamage = this.damage * (1 - (player.damageReduction || 0));
+                const actualDamage = applyDamageToPlayer(player, this.damage);
                 player.health -= actualDamage;
                 // 陷阱特效
                 for (let i = 0; i < 8; i++) {
@@ -804,9 +816,7 @@ class EnemyProjectile {
                     return;
                 }
                 let actualDamage = this.damage;
-                if (p.damageReduction) {
-                    actualDamage = Math.floor(this.damage * (1 - p.damageReduction));
-                }
+                actualDamage = Math.floor(applyDamageToPlayer(p, this.damage));
                 p.health -= actualDamage;
                 this.hit = true;
                 ScreenFX.shake(3, 100);
@@ -959,7 +969,9 @@ class WeaponProjectile {
         this.y = y;
         this.weapon = weapon;
         this.player = player;
-        this.damage = weapon.damage * (weapon.level || 1) + player.attack * 0.2;
+        // 兜底 0：只要 damage 算出 NaN，敌人血量就会变成 NaN，
+        // 而 NaN > 0 为假会让敌人被当作已死亡静默移除（不计击杀、不掉落）。
+        this.damage = (weapon.damage || 0) * (weapon.level || 1) + player.attack * 0.2;
         this.hit = false;
         this.hitEnemies = [];
 
@@ -1245,6 +1257,9 @@ class Player {
         this.classType = classType;
         this.attackType = classConfig.attackType;
         this.attackRange = classConfig.attackRange;
+        // 武器射程系数。武器自身的 range 定义在 data.js，实际射程 = range * rangeMultiplier，
+        // 这样「攻击范围扩大」这类强化对基础攻击和武器同时生效。
+        this.rangeMultiplier = 1;
         this.level = 1;
         this.exp = 0;
         this.maxExp = 100;
@@ -1338,6 +1353,13 @@ class Player {
 
         // 设置控制键
         this.setupControls();
+
+        // 初始武器：原本 8 个职业全是空手开局，武器只能靠升级和波次奖励拿，
+        // 前几波纯靠职业基础攻击，手感很虚。现在按职业定位各发一把 1 级武器。
+        // 读档路径由 restorePlayer 覆写 weapons，不会叠加。
+        if (classConfig.startingWeapon) {
+            this.addWeapon(classConfig.startingWeapon);
+        }
     }
 
     // 设置控制键
@@ -2037,8 +2059,10 @@ class Player {
                 }
 
                 // 计算武器加成伤害
+                // 配件没有 damage 字段，不加 || 0 的话一拿到配件，整个基础攻击的
+                // 伤害就变成 NaN，敌人被打成 NaN 血后静默消失，玩家却什么都拿不到
                 this.weapons.forEach(weapon => {
-                    damage += weapon.damage * weapon.level;
+                    damage += (weapon.damage || 0) * (weapon.level || 1);
                 });
 
                 // 魔法伤害加成（法师专属）
@@ -2251,6 +2275,10 @@ class Player {
         this.exp -= this.maxExp;
         this.maxExp = Math.floor(this.maxExp * 1.2);
 
+        if (typeof trackAchievement === 'function') {
+            trackAchievement({ 'max:highestLevel': this.level });
+        }
+
         // 显示升级选择界面
         game.state = 'levelup';
         showLevelUpScreen();
@@ -2267,6 +2295,10 @@ class Player {
             if (otherPlayer && otherPlayer.health > 0 && otherPlayer !== this) {
                 otherPlayer.gold += goldGained;
             }
+        }
+
+        if (typeof trackAchievement === 'function') {
+            trackAchievement({ 'max:mostGoldInRun': this.gold });
         }
 
         return goldGained;
@@ -2700,10 +2732,24 @@ class Enemy {
 
                 if (skill < 0.35) {
                     // 技能1：冲锋 - 高速冲向玩家
+                    // distance 为 0（Boss 和玩家坐标完全重合）时 dx/distance 是 NaN，
+                    // 冲锋会把 Boss 坐标写成 NaN —— 它画不出来也打不到，却一直占着
+                    // game.enemies，而 checkWaveComplete 要求 enemies.length === 0，
+                    // 结果整局卡在这一波。重合时随便挑个方向就行。
+                    const dirLen = distance > 0 ? distance : 0;
+                    let cdx, cdy;
+                    if (dirLen > 0) {
+                        cdx = dx / dirLen;
+                        cdy = dy / dirLen;
+                    } else {
+                        const a = Math.random() * Math.PI * 2;
+                        cdx = Math.cos(a);
+                        cdy = Math.sin(a);
+                    }
                     this.isCharging = true;
                     this.chargeTarget = {
-                        dx: dx / distance,
-                        dy: dy / distance,
+                        dx: cdx,
+                        dy: cdy,
                         duration: 500, // 冲锋0.5秒
                         originalSpeed: this.speed
                     };
@@ -2739,7 +2785,7 @@ class Enemy {
                             const dist = Math.hypot(p.x - this.x, p.y - this.y);
                             if (dist < shockwaveRadius) {
                                 let shockDmg = Math.floor(this.damage * 0.6);
-                                if (p.damageReduction) shockDmg = Math.floor(shockDmg * (1 - p.damageReduction));
+                                shockDmg = Math.floor(applyDamageToPlayer(p, shockDmg));
                                 p.health -= shockDmg;
                                 if (typeof showDamageNumber === 'function') {
                                     showDamageNumber(p.x, p.y - 20, shockDmg, '#9b59b6', false);
@@ -2781,9 +2827,7 @@ class Enemy {
                 } else {
                     // 计算实际伤害（应用减伤）
                     let actualDamage = this.damage;
-                    if (game.player.damageReduction) {
-                        actualDamage = Math.floor(this.damage * (1 - game.player.damageReduction));
-                    }
+                    actualDamage = Math.floor(applyDamageToPlayer(game.player, this.damage));
                     game.player.health -= actualDamage;
                     SFX.play('playerHit');
                     ScreenFX.shake(4, 150);
@@ -2825,9 +2869,7 @@ class Enemy {
                     }
                 } else {
                     let actualDamage = this.damage;
-                    if (game.player2.damageReduction) {
-                        actualDamage = Math.floor(this.damage * (1 - game.player2.damageReduction));
-                    }
+                    actualDamage = Math.floor(applyDamageToPlayer(game.player2, this.damage));
                     game.player2.health -= actualDamage;
                     ScreenFX.shake(3, 120);
                     ScreenFX.hitFlash(0.2);

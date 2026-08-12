@@ -11,6 +11,7 @@ const CLASSES = {
         color: '#ff6b6b',
         sprite: '🛡️',
         attackType: 'melee',
+        startingWeapon: 'sword',  // 短剑：标准近战起手
         attackRange: 50,
         // 被动效果
         passiveDesc: '受到伤害减少10%，近战攻击有击退效果',
@@ -38,6 +39,7 @@ const CLASSES = {
         color: '#4ecdc4',
         sprite: '🧙',
         attackType: 'magic',
+        startingWeapon: 'staff',  // 法杖：魔法输出起手
         attackRange: 150,
         passiveDesc: '魔法攻击穿透敌人，攻击范围+30%',
         magicPenetration: true,
@@ -63,6 +65,7 @@ const CLASSES = {
         color: '#95e1d3',
         sprite: '🥷',
         attackType: 'melee',
+        startingWeapon: 'dagger',  // 匕首：低伤高频，配合暴击被动
         attackRange: 45,
         passiveDesc: '移动速度+30%，首次攻击必定暴击',
         critChance: 0.25,
@@ -86,6 +89,7 @@ const CLASSES = {
         color: '#f38181',
         sprite: '🏹',
         attackType: 'ranged',
+        startingWeapon: 'bow',  // 短弓：远程点射
         attackRange: 200,
         passiveDesc: '攻击发射多支箭矢，攻击速度+20%',
         arrowCount: 2,
@@ -112,6 +116,7 @@ const CLASSES = {
         color: '#9b59b6',
         sprite: '🔮',
         attackType: 'summon',
+        startingWeapon: 'staff',  // 法杖：随从之外的自保手段
         attackRange: 180,
         maxSummons: 3,
         passiveDesc: '可召唤3个幽灵助战，召唤物击杀恢复生命',
@@ -135,6 +140,7 @@ const CLASSES = {
         color: '#c0c0c0',
         sprite: '⚔️',
         attackType: 'melee',
+        startingWeapon: 'axe',  // 战斧：慢速重击，契合重装定位
         attackRange: 55,
         armor: 15,
         passiveDesc: '受到伤害减少15%，受击时反弹20%伤害',
@@ -159,6 +165,7 @@ const CLASSES = {
         color: '#ffd700',
         sprite: '✝️',
         attackType: 'holy',
+        startingWeapon: 'sword',  // 短剑：圣武近战
         attackRange: 80,
         healPower: 3,
         passiveDesc: '攻击时恢复生命，对亡灵敌人伤害+50%',
@@ -183,6 +190,7 @@ const CLASSES = {
         color: '#4a0080',
         sprite: '💀',
         attackType: 'dark',
+        startingWeapon: 'fireball',  // 火球术：远程法伤
         attackRange: 160,
         maxSummons: 5,
         passiveDesc: '召唤亡灵骷髅，攻击吸取5%生命',
@@ -267,7 +275,12 @@ const BUFFS = [
         detail: '扩大武器攻击范围，更容易击中敌人',
         icon: '📍',
         type: '通用',
-        apply: (player) => player.attackRange = (player.attackRange || 40) * 1.2
+        apply: (player) => {
+            // 同时提升基础攻击射程与武器射程系数，否则「扩大武器攻击范围」
+            // 这句描述对武器完全不生效
+            player.attackRange = (player.attackRange || 40) * 1.2;
+            player.rangeMultiplier = (player.rangeMultiplier || 1) * 1.2;
+        }
     },
     {
         id: 'critChance',
@@ -450,7 +463,10 @@ const CLASS_BUFFS = {
             icon: '🦅',
             type: '游侠专属',
             classOnly: 'ranger',
-            apply: (player) => player.attackRange *= 1.5
+            apply: (player) => {
+                player.attackRange *= 1.5;
+                player.rangeMultiplier = (player.rangeMultiplier || 1) * 1.5;
+            }
         },
         {
             id: 'multiArrow',
@@ -529,12 +545,19 @@ const CLASS_BUFFS = {
         {
             id: 'steadfast',
             name: '坚定不移',
-            description: '被击中时不会被击退',
-            detail: '骑士专属：站稳脚跟，不受击退效果影响',
+            description: '护甲 +20，生命恢复 +2/秒',
+            detail: '骑士专属：披上更厚的板甲，持续减免伤害并缓慢自愈',
             icon: '🏰',
             type: '骑士专属',
             classOnly: 'knight',
-            apply: (player) => player.knockbackImmune = true
+            // 原来这条写的是 player.knockbackImmune = true，但游戏里压根没有
+            // 「敌人击退玩家」这个机制（knockbackPower/knockbackChance 都是玩家
+            // 击退敌人），这个字段全项目没有任何读取方——选到它等于白白浪费一次升级。
+            // 改成走 armor（已在 getDamageReduction 里按每点 0.5% 折算）和生命恢复。
+            apply: (player) => {
+                player.armor = (player.armor || 0) + 20;
+                player.healthRegen = (player.healthRegen || 0) + 2;
+            }
         },
         {
             id: 'counterAttack',
@@ -818,6 +841,7 @@ const SHOP_ITEMS = [
         price: 55,
         effect: (player) => {
             player.attackRange = Math.floor(player.attackRange * 1.15);
+            player.rangeMultiplier = (player.rangeMultiplier || 1) * 1.15;
         }
     },
     {
@@ -864,6 +888,8 @@ const WEAPONS = {
         maxLevel: 5,
         damage: 5,
         type: 'melee',
+        range: 110,
+        cooldown: 800,
         evolvesWith: 'shield',
         evolvesTo: 'holyBlade'
     },
@@ -877,6 +903,8 @@ const WEAPONS = {
         damage: 3,
         attackSpeed: 0.3,
         type: 'melee',
+        range: 90,
+        cooldown: 400,
         evolvesWith: 'cloak',
         evolvesTo: 'shadowBlade'
     },
@@ -889,6 +917,8 @@ const WEAPONS = {
         maxLevel: 5,
         damage: 4,
         type: 'ranged',
+        range: 320,
+        cooldown: 600,
         evolvesWith: 'quiver',
         evolvesTo: 'phoenixBow'
     },
@@ -901,6 +931,8 @@ const WEAPONS = {
         maxLevel: 5,
         damage: 6,
         type: 'magic',
+        range: 300,
+        cooldown: 900,
         evolvesWith: 'tome',
         evolvesTo: 'arcaneStaff'
     },
@@ -913,6 +945,8 @@ const WEAPONS = {
         maxLevel: 5,
         damage: 8,
         type: 'melee',
+        range: 130,
+        cooldown: 1200,
         evolvesWith: 'gauntlet',
         evolvesTo: 'bloodAxe'
     },
@@ -925,6 +959,8 @@ const WEAPONS = {
         maxLevel: 5,
         damage: 7,
         type: 'magic',
+        range: 280,
+        cooldown: 1100,
         evolvesWith: 'ember',
         evolvesTo: 'inferno'
     },
@@ -1004,6 +1040,8 @@ const WEAPONS = {
         damage: 25,
         maxLevel: 1,
         type: 'evolved',
+        range: 180,
+        cooldown: 800,
         special: '攻击附带圣光爆发'
     },
     shadowBlade: {
@@ -1015,6 +1053,8 @@ const WEAPONS = {
         maxLevel: 1,
         attackSpeed: 0.5,
         type: 'evolved',
+        range: 160,
+        cooldown: 400,
         special: '攻击有几率造成双倍伤害'
     },
     phoenixBow: {
@@ -1025,6 +1065,8 @@ const WEAPONS = {
         damage: 20,
         maxLevel: 1,
         type: 'evolved',
+        range: 400,
+        cooldown: 600,
         special: '箭矢自动追踪敌人'
     },
     arcaneStaff: {
@@ -1035,6 +1077,8 @@ const WEAPONS = {
         damage: 30,
         maxLevel: 1,
         type: 'evolved',
+        range: 380,
+        cooldown: 900,
         special: '魔法弹会弹射'
     },
     bloodAxe: {
@@ -1045,6 +1089,8 @@ const WEAPONS = {
         damage: 35,
         maxLevel: 1,
         type: 'evolved',
+        range: 200,
+        cooldown: 1200,
         special: '造成伤害的10%转化为生命'
     },
     inferno: {
@@ -1055,6 +1101,8 @@ const WEAPONS = {
         damage: 40,
         maxLevel: 1,
         type: 'evolved',
+        range: 360,
+        cooldown: 1100,
         special: '对范围内所有敌人造成持续伤害'
     }
 };
@@ -1077,7 +1125,9 @@ const RELICS = {
         desc: '获得的经验增加25%',
         rarity: 'common',
         onEquip: (player) => {
-            player.expBonus = (player.expBonus || 1) + 0.25;
+            // 真正参与结算的是 expMultiplier（entities.js gainExp 里读它）。
+            // 原来写的 expBonus 全项目没有任何地方读取，这条遗物等于没效果。
+            player.expMultiplier = (player.expMultiplier || 1) + 0.25;
         }
     },
     thornArmor: {

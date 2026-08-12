@@ -365,17 +365,18 @@ function saveAchievementProgress(progress) {
 }
 
 // 更新统计数据（游戏结束时调用）
+// 注意：totalKills / bossKills / dragonKills 以及各项最高记录已经由
+// trackAchievement 在局内实时累加过了，这里**不能再加一遍**，否则每局结束
+// 击杀数都会翻倍。本函数只负责结算类统计（死亡数、通关记录、单局特殊条件）。
 function updateAchievementStats(gameData) {
-    const progress = getAchievementProgress();
+    const progress = getActiveAchievementProgress();
+    if (!progress.stats) progress.stats = initAchievementStats();
     const stats = progress.stats;
 
-    // 更新基础统计
-    stats.totalKills = (stats.totalKills || 0) + (gameData.killCount || 0);
-    stats.bossKills = (stats.bossKills || 0) + (gameData.bossKills || 0);
-    stats.dragonKills = (stats.dragonKills || 0) + (gameData.dragonKills || 0);
     stats.totalDeaths = (stats.totalDeaths || 0) + 1;
 
-    // 更新最高记录
+    // 兜底：万一实时通道没跑起来（例如读档路径没开会话），这里用 max 补齐，
+    // max 是幂等的，重复执行不会翻倍
     if (gameData.survivalTime > (stats.longestSurvivalTime || 0)) {
         stats.longestSurvivalTime = gameData.survivalTime;
     }
@@ -455,6 +456,89 @@ function checkAchievements(progress) {
     return newUnlocks;
 }
 
+// ==================== 局内实时结算 ====================
+// 旧实现只在 gameOver 调一次 updateAchievementStats，玩家打一整局
+// 29 个成就一个都不会弹。这里加一条实时通道：关键事件即时累加到内存态进度，
+// 立刻判定并弹提示，只有真解锁了才落 localStorage（避免每次击杀都序列化）。
+
+let liveAchievementProgress = null;
+
+// 开局调用：把持久化进度读进内存，作为本局的实时累加基底
+function beginAchievementSession() {
+    liveAchievementProgress = getAchievementProgress();
+    if (!liveAchievementProgress.stats) {
+        liveAchievementProgress.stats = initAchievementStats();
+    }
+    return liveAchievementProgress;
+}
+
+// 实时上报。patch 的 key 有两种写法：
+//   'totalKills': 3        累加 3
+//   'max:highestWave': 7   取更大值
+// 返回本次新解锁的成就数组。
+function trackAchievement(patch) {
+    if (!liveAchievementProgress) return [];
+    try {
+        return trackAchievementInner(patch);
+    } catch (err) {
+        // 成就是附加系统，它出问题不该影响击杀结算、掉落、经验这些主流程
+        console.error('[成就] 实时结算异常，已跳过：', err);
+        return [];
+    }
+}
+
+function trackAchievementInner(patch) {
+    const stats = liveAchievementProgress.stats;
+    let changed = false;
+
+    for (const key in patch) {
+        const val = patch[key];
+        if (key.indexOf('max:') === 0) {
+            const realKey = key.slice(4);
+            if (val > (stats[realKey] || 0)) {
+                stats[realKey] = val;
+                changed = true;
+            }
+        } else if (typeof val === 'boolean') {
+            if (val && !stats[key]) {
+                stats[key] = true;
+                changed = true;
+            }
+        } else {
+            stats[key] = (stats[key] || 0) + val;
+            changed = true;
+        }
+    }
+    if (!changed) return [];
+
+    const unlocks = checkAchievements(liveAchievementProgress);
+    unlocks.forEach((a, i) => {
+        // 多个成就同时解锁时错开显示，避免通知叠在一起。
+        // 局内用游戏计时器（跟着暂停一起冻结），结算画面等非 playing 状态
+        // updateGameTimers 不会推进，回落到 setTimeout。
+        const delay = i * 600;
+        if (game && game.state === 'playing' && typeof addGameTimer === 'function') {
+            addGameTimer(() => showAchievementUnlocked(a), delay);
+        } else {
+            registerUiTimeout(() => showAchievementUnlocked(a), delay);
+        }
+    });
+    return unlocks;
+}
+
+// 本局结束/退出时把内存态落盘（checkAchievements 只在有解锁时写盘，
+// 没解锁的纯统计增量要靠这里保住）
+function flushAchievementSession() {
+    if (liveAchievementProgress) {
+        saveAchievementProgress(liveAchievementProgress);
+    }
+}
+
+// 读取当前生效的进度：局内优先用内存态，否则回落到 localStorage
+function getActiveAchievementProgress() {
+    return liveAchievementProgress || getAchievementProgress();
+}
+
 // 显示成就解锁通知
 function showAchievementUnlocked(achievement) {
     const notification = document.createElement('div');
@@ -470,15 +554,16 @@ function showAchievementUnlocked(achievement) {
     document.body.appendChild(notification);
 
     // 3秒后移除
-    setTimeout(() => {
+    registerUiTimeout(() => {
         notification.style.opacity = '0';
-        setTimeout(() => notification.remove(), 500);
+        registerUiTimeout(() => notification.remove(), 500);
     }, 3000);
 }
 
 // 获取成就完成度
 function getAchievementCompletion() {
-    const progress = getAchievementProgress();
+    // 局内要用内存态，否则暂停时打开面板看到的还是开局前的旧数据
+    const progress = getActiveAchievementProgress();
     const total = Object.keys(ACHIEVEMENTS).length;
     const unlocked = Object.keys(progress.unlocked).length;
     return {
@@ -490,7 +575,7 @@ function getAchievementCompletion() {
 
 // 渲染成就面板
 function renderAchievementPanel() {
-    const progress = getAchievementProgress();
+    const progress = getActiveAchievementProgress();
     const completion = getAchievementCompletion();
 
     let html = `

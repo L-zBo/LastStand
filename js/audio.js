@@ -1,9 +1,31 @@
 // ==================== 音效系统（Web Audio API 合成） ====================
 
+// 音效开关的本地存储键，和成就/永久强化保持同一套 laststand_ 前缀
+const SFX_PREF_KEY = 'laststand_sfx';
+
 const SFX = {
     ctx: null,
     masterVolume: 0.3,
     enabled: true,
+
+    // 从本地存储恢复开关状态（隐私模式下 localStorage 可能直接抛错）
+    loadPref() {
+        try {
+            const raw = localStorage.getItem(SFX_PREF_KEY);
+            if (raw !== null) this.enabled = raw === '1';
+        } catch (e) {
+            // 读不到就用默认值
+        }
+        return this.enabled;
+    },
+
+    savePref() {
+        try {
+            localStorage.setItem(SFX_PREF_KEY, this.enabled ? '1' : '0');
+        } catch (e) {
+            // 存不了也不影响本局
+        }
+    },
 
     // 初始化 AudioContext（需要用户交互后触发）
     init() {
@@ -50,7 +72,10 @@ const SFX = {
     // 创建增益节点
     _gain(volume, time) {
         const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(volume * this.masterVolume, time);
+        // exponentialRampToValueAtTime 的起始值不能是 0（规范不允许），
+        // 音量拉到 0 时整条音效会抛异常被外层 catch 静默吞掉。这里兜一个下限。
+        const v = Math.max(0.0001, volume * this.masterVolume);
+        gain.gain.setValueAtTime(v, time);
         gain.connect(this.ctx.destination);
         return gain;
     },
@@ -253,6 +278,12 @@ const SFX = {
     // 开关音效
     toggle() {
         this.enabled = !this.enabled;
+        this.savePref();
+        if (this.enabled) {
+            // 关着的时候可能还没初始化过 AudioContext
+            this.init();
+            this.resume();
+        }
         return this.enabled;
     }
 };

@@ -27,6 +27,13 @@ let game = {
     lastTime: 0,
     gameTime: 0,
     killCount: 0,
+    // 成就统计。这三个字段原本只在 gameOver 里被读（game.bossKills || 0），
+    // 全项目没有任何地方给它们赋值，导致 firstBoss / boss10 / boss50 /
+    // killDragon / noDamage 五个成就永远解不开。现在在击杀与波次结算时真正维护。
+    bossKills: 0,
+    dragonKills: 0,
+    perfectWaves: 0,
+    tookDamageThisWave: false,
     camera: { x: 0, y: 0 },
     // 存档系统
     currentSaveSlot: null,
@@ -394,22 +401,25 @@ function updateWeaponAttacksForPlayer(player) {
     const now = Date.now();
 
     player.weapons.forEach(weapon => {
+        // 配件（盾牌/斗篷/箭袋/魔法书/拳套/余烬）只是被动加成与进化素材，
+        // 它们没有 damage 字段。原来这里不加过滤，配件会照样发射投射物，
+        // 伤害算出来是 NaN，敌人血量被打成 NaN 后 filter(e => e.health > 0)
+        // 判定为假，敌人静默消失——不计击杀、不掉落、不给经验。
+        if (weapon.type === 'accessory') return;
+
         if (!weapon.lastAttackTime) weapon.lastAttackTime = 0;
 
-        let cooldown = 1000;
-        switch(weapon.id) {
-            case 'dagger': case 'shadowBlade': cooldown = 400; break;
-            case 'sword': case 'holyBlade': cooldown = 800; break;
-            case 'axe': case 'bloodAxe': cooldown = 1200; break;
-            case 'bow': case 'phoenixBow': cooldown = 600; break;
-            case 'staff': case 'arcaneStaff': cooldown = 900; break;
-            case 'fireball': case 'inferno': cooldown = 1100; break;
-        }
-        cooldown *= (player.attackCooldown / 500);
+        // 射程与冷却已移入 js/data.js 的 WEAPONS 定义，这里只做兜底
+        const baseCooldown = weapon.cooldown || 1000;
+        const cooldown = baseCooldown * (player.attackCooldown / 500);
 
         if (now - weapon.lastAttackTime < cooldown) return;
 
-        const attackRange = weapon.type === 'melee' ? 100 : (weapon.type === 'evolved' ? 350 : 300);
+        // 武器射程同样吃玩家的射程加成，这样「攻击范围扩大」这类强化对武器有效，
+        // 面板上显示的射程也才和实际打得到的距离对得上
+        const baseRange = weapon.range ||
+            (weapon.type === 'melee' ? 100 : (weapon.type === 'evolved' ? 350 : 300));
+        const attackRange = baseRange * (player.rangeMultiplier || 1);
 
         // 按武器射程扩大网格查询范围，否则 300/350 射程的武器会漏掉 200 格外的敌人
         const nearestEnemy = getNearbyEnemies(player.x, player.y, attackRange).reduce((closest, enemy) => {
@@ -540,6 +550,8 @@ function drawMinimap() {
 // 游戏结束
 function gameOver() {
     game.state = 'gameover';
+    // 局内可能还挂着波次提示、伤害飘字之类的定时器，结算画面不需要它们
+    clearAllUiTimers();
     document.getElementById('finalTime').textContent = Math.floor(game.gameTime);
     document.getElementById('finalKills').textContent = game.killCount;
     let finalLevel = game.player.level;
@@ -589,11 +601,11 @@ function gameOver() {
 
     const newAchievements = updateAchievementStats(gameData);
 
-    // 显示新解锁的成就
+    // 显示新解锁的成就（这里是结算画面，updateGameTimers 已不再推进，用 UI 定时器）
     if (newAchievements && newAchievements.length > 0) {
         let delay = 0;
         newAchievements.forEach(achievement => {
-            setTimeout(() => {
+            registerUiTimeout(() => {
                 showAchievementUnlocked(achievement);
             }, delay);
             delay += 3500; // 每个成就间隔3.5秒
@@ -633,11 +645,36 @@ function checkGameOver() {
     return false;
 }
 
-// 游戏循环
+// 幂等排帧：gameLoopInner 内部有多个 return 分支各自排下一帧，外层 catch 也会补一次。
+// 用标记保证同一帧只排一次，否则 rAF 会成倍叠加、帧率失控。
+function scheduleNextFrame() {
+    if (game._rafScheduled) return;
+    game._rafScheduled = true;
+    requestAnimationFrame(gameLoop);
+}
+
+// 游戏主循环
+// 外层包一层异常护栏：requestAnimationFrame 的回调一旦抛异常，链条就断了，
+// 表现是「画面还留在那里但一切都不动」，而且没有任何红字提示，极难定位。
+// 这里捕获后照常排下一帧，把错误打到 console，单个逻辑 bug 不至于让整局假死。
 function gameLoop(timestamp) {
+    game._rafScheduled = false;
+    try {
+        gameLoopInner(timestamp);
+    } catch (err) {
+        game._loopErrorCount = (game._loopErrorCount || 0) + 1;
+        // 同一个 bug 每帧都会触发，只在前几次和每 600 帧打印一次，避免刷爆控制台
+        if (game._loopErrorCount <= 3 || game._loopErrorCount % 600 === 0) {
+            console.error(`[gameLoop] 第 ${game._loopErrorCount} 次异常，已跳过本帧：`, err);
+        }
+        scheduleNextFrame();
+    }
+}
+
+function gameLoopInner(timestamp) {
     // 暂停时不更新
     if (game.state === 'paused') {
-        requestAnimationFrame(gameLoop);
+        scheduleNextFrame();
         return;
     }
 
@@ -654,6 +691,23 @@ function gameLoop(timestamp) {
 
         // 更新游戏内计时器
         updateGameTimers(deltaTime);
+
+        // 完美波次检测：玩家伤害来源有 5 处（敌人碰撞/敌人投射物/陷阱/闪电/毒），
+        // 与其逐个埋点，不如在这里统一看血量有没有掉过。
+        const hpSum = game.player.health + (game.player2 ? game.player2.health : 0);
+        if (game._lastHpSum !== undefined && hpSum < game._lastHpSum - 0.01) {
+            game.tookDamageThisWave = true;
+        }
+        game._lastHpSum = hpSum;
+
+        // 存活时长成就每秒上报一次即可，不必每帧
+        if (typeof trackAchievement === 'function') {
+            const sec = Math.floor(game.gameTime);
+            if (sec > 0 && sec !== game._lastSurvivalSec) {
+                game._lastSurvivalSec = sec;
+                trackAchievement({ 'max:longestSurvivalTime': sec });
+            }
+        }
 
         // 构建敌人空间网格（每帧重建）
         // 必须放在所有实体 update 之前：Player.update（主动技能）和 Summon.update（索敌）
@@ -771,7 +825,11 @@ function gameLoop(timestamp) {
                 minDist = Math.min(minDist,
                     Math.hypot(enemy.x - game.player2.x, enemy.y - game.player2.y));
             }
-            if (minDist > cullRadius) {
+            // 坐标一旦变成 NaN，敌人就画不出来也打不到，但仍占着 game.enemies，
+            // 而 minDist 是 NaN 时所有比较都为 false，连重投都轮不到它 ——
+            // checkWaveComplete 永远等不到 enemies.length === 0，整局卡在这一波。
+            // 这里统一捞回来：NaN 一律当作超距处理。
+            if (!Number.isFinite(minDist) || minDist > cullRadius) {
                 const pos = getSpawnPosition();
                 enemy.x = pos.x;
                 enemy.y = pos.y;
@@ -780,7 +838,7 @@ function gameLoop(timestamp) {
 
         // 检查游戏结束
         if (checkGameOver()) {
-            requestAnimationFrame(gameLoop);
+            scheduleNextFrame();
             return;
         }
 
@@ -919,7 +977,7 @@ function gameLoop(timestamp) {
         drawMinimap();
     }
 
-    requestAnimationFrame(gameLoop);
+    scheduleNextFrame();
 }
 
 // 自适应屏幕大小
@@ -1020,6 +1078,10 @@ function restartCurrentWave() {
     game.summons = [];
     game.droppedItems = [];
     game.enemyProjectiles = [];
+    // 上一波挂起的延时回调（Boss 召唤、技能结束等）不该漏进重开后的这一波
+    game.damageNumbers = [];
+    game.timers = [];
+    clearAllUiTimers();
 
     game.wave.enemiesSpawned = 0;
     game.wave.totalEnemies = 0;
@@ -1046,10 +1108,29 @@ function returnToMenu() {
     location.reload();
 }
 
+// 把音效按钮的文案和 aria 状态同步到 SFX.enabled
+function syncSfxButton() {
+    const btn = document.getElementById('pauseSfxBtn');
+    if (!btn) return;
+    btn.textContent = SFX.enabled ? '🔊 音效: 开' : '🔇 音效: 关';
+    btn.setAttribute('aria-pressed', SFX.enabled ? 'true' : 'false');
+}
+
 // 开始游戏
 function startGame() {
     // 初始化音效系统（需要在用户交互后）
     SFX.init();
+
+    // 清掉上一局残留的 UI 定时器（通知、倒计时），否则会插进新的一局
+    clearAllUiTimers();
+    // 开启成就实时会话，本局的击杀/波次/等级会即时判定并弹提示
+    beginAchievementSession();
+    game.bossKills = 0;
+    game.dragonKills = 0;
+    game.perfectWaves = 0;
+    game.tookDamageThisWave = false;
+    game._lastHpSum = undefined;
+    game._lastSurvivalSec = 0;
 
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('mapSelection').classList.add('hidden');
@@ -1134,7 +1215,7 @@ function startGame() {
     // 启动游戏循环（防止重复启动）
     if (!game.loopRunning) {
         game.loopRunning = true;
-        requestAnimationFrame(gameLoop);
+        scheduleNextFrame();
     }
 }
 
@@ -1146,6 +1227,16 @@ function initGame() {
     // 自适应屏幕大小
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+
+    // 音效开关：先读回上次的选择。AudioContext 必须等用户交互过才能建，
+    // 之前只在 startGame 里 init，主菜单那一路的点击音效全是静默失败。
+    SFX.loadPref();
+    document.addEventListener('pointerdown', () => {
+        if (SFX.enabled) {
+            SFX.init();
+            SFX.resume();
+        }
+    }, { once: true });
 
     // 检查是否有存档
     checkSaveData();
@@ -1174,6 +1265,13 @@ function initGame() {
 
     window.addEventListener('keyup', (e) => {
         game.keys[e.key] = false;
+    });
+
+    // 中途关页/刷新时把成就的实时增量落盘。
+    // checkAchievements 只在真解锁时写 localStorage，纯统计增量（打了几十个怪
+    // 但没触发新成就）没有这道兜底就会丢。
+    window.addEventListener('beforeunload', () => {
+        if (typeof flushAchievementSession === 'function') flushAchievementSession();
     });
 
     // 新游戏按钮
@@ -1310,6 +1408,17 @@ function initGame() {
 
     // 继续游戏按钮
     document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+
+    // 音效开关：SFX.toggle 早就写好了，之前全项目没有任何地方调用
+    const sfxBtn = document.getElementById('pauseSfxBtn');
+    if (sfxBtn) {
+        syncSfxButton();
+        sfxBtn.addEventListener('click', () => {
+            SFX.toggle();
+            syncSfxButton();
+            SFX.play('menuClick');
+        });
+    }
 
     // 保存按钮
     document.getElementById('saveBtn').addEventListener('click', () => {

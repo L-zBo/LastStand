@@ -186,7 +186,10 @@ function applyMetaBonuses(player) {
         player.speed += upgrades.speed * META_UPGRADES.speed.effectPerLevel;
     }
     if (upgrades.expBonus) {
-        player.expBonus = (player.expBonus || 1) + (upgrades.expBonus * META_UPGRADES.expBonus.effectPerLevel / 100);
+        // 经验结算只看 expMultiplier（entities.js gainExp）。这里原本写的是
+        // expBonus——一个没有任何读取方的死字段，等于玩家花灵魂石买了个空强化。
+        player.expMultiplier = (player.expMultiplier || 1) +
+            (upgrades.expBonus * META_UPGRADES.expBonus.effectPerLevel / 100);
     }
     if (upgrades.critChance) {
         player.critChance = (player.critChance || 0) + (upgrades.critChance * META_UPGRADES.critChance.effectPerLevel / 100);
@@ -287,6 +290,25 @@ function closeMetaPanel() {
 }
 
 // 游戏结束时的灵魂石奖励
+// 直接发放指定数量的灵魂石（成就奖励用）
+// achievements.js 的 checkAchievements 一直在调 grantSoulStones(数量, 来源)，
+// 但 meta.js 里从来只有按局结算的 grantSoulStoneReward(wave,kills,time,difficulty)，
+// 名字和签名都对不上——只要有成就解锁就抛 ReferenceError。
+// 过去它只在 gameOver 里触发，异常被结算流程盖住没人发现；一旦成就改成局内实时判定，
+// 这个异常会当场打断 requestAnimationFrame 链，表现为「画面还在但一切都不动」。
+function grantSoulStones(amount, reason) {
+    const gain = Math.max(0, Math.floor(amount || 0));
+    if (gain === 0) return 0;
+    const meta = loadMetaData();
+    meta.soulStones += gain;
+    meta.totalSoulStones += gain;
+    saveMetaData(meta);
+    if (reason) {
+        console.log(`[灵魂石] +${gain}（${reason}）`);
+    }
+    return gain;
+}
+
 function grantSoulStoneReward(wave, kills, timeAlive, difficulty) {
     const reward = calculateSoulStoneReward(wave, kills, timeAlive, difficulty);
     const meta = loadMetaData();

@@ -50,6 +50,11 @@ function startNewWave() {
     wave.bossSpawned = false;
     wave.enemiesSpawned = 0;
     wave.waveStartTime = Date.now();
+    // 本波是否挨过打（完美波次成就用），每波重置
+    game.tookDamageThisWave = false;
+    if (typeof trackAchievement === 'function') {
+        trackAchievement({ 'max:highestWave': wave.current });
+    }
 
     // 保险：清理所有玩家残留技能状态和冷却
     [game.player, game.player2].forEach(p => {
@@ -184,6 +189,16 @@ function checkWaveComplete() {
         // 波次完成！
         wave.inBreak = true;
         wave.waveStartTime = Date.now();
+
+        // 完美波次统计：连续无伤波数，挨一下就归零
+        if (game.tookDamageThisWave) {
+            game.perfectWaves = 0;
+        } else {
+            game.perfectWaves = (game.perfectWaves || 0) + 1;
+            if (typeof trackAchievement === 'function') {
+                trackAchievement({ 'max:perfectWaves': game.perfectWaves });
+            }
+        }
 
         // 强制结束所有玩家的活跃技能，防止buff在商店期间永久保留，并重置冷却
         [game.player, game.player2].forEach(p => {

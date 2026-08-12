@@ -19,6 +19,7 @@ const PLAYER_SAVE_PROPS = [
     ['gold', 0], ['goldMultiplier', 1],
     ['damageReduction', 0], ['armor', 0],
     ['attackCooldown', 500], ['attackRange', 200],
+    ['rangeMultiplier', 1],
     ['dashMaxCooldown', 3000],
     // 职业特殊属性
     ['knockbackPower', 0], ['arrowCount', 0],
@@ -33,9 +34,14 @@ const PLAYER_SAVE_PROPS = [
     ['spellEcho', 0], ['backstab', false],
     ['poisonDamage', 0], ['hunterMark', false],
     ['summonDamageBonus', 1], ['summonDurationBonus', 1],
+    // knockbackImmune 已废弃（游戏没有敌人击退玩家的机制），骑士的「坚定不移」
+    // 改走 armor + healthRegen，这里保留读取兼容旧存档但不再写入新值
     ['knockbackImmune', false],
     ['holyHeal', 0], ['divineShield', false],
     ['corpseExplosion', false], ['deathCoil', false],
+    // 凤凰之羽的复活标记。漏存会让玩家复活过一次后读档就重置成 undefined，
+    // 等于拿到无限复活。
+    ['phoenixUsed', false],
 ];
 
 // 检查是否有任何存档
@@ -389,6 +395,17 @@ function applyLoadedSaveData(saveData) {
     if (!saveData.version || saveData.version < SAVE_VERSION) {
         saveData = migrateSaveData(saveData);
     }
+
+    // 与 startGame 保持一致：清上一局残留的 UI 定时器 + 开成就实时会话
+    clearAllUiTimers();
+    beginAchievementSession();
+    game.bossKills = 0;
+    game.dragonKills = 0;
+    game.perfectWaves = 0;
+    game.tookDamageThisWave = false;
+    game._lastHpSum = undefined;
+    game._lastSurvivalSec = 0;
+
     game.selectedClass = saveData.selectedClass;
     game.selectedDifficulty = saveData.selectedDifficulty || 'normal';
     game.selectedMap = saveData.selectedMap || 'forest';
@@ -459,7 +476,7 @@ function applyLoadedSaveData(saveData) {
     // 防止重复启动游戏循环
     if (!game.loopRunning) {
         game.loopRunning = true;
-        requestAnimationFrame(gameLoop);
+        scheduleNextFrame();
     }
 }
 
