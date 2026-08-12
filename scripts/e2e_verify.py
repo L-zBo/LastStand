@@ -254,10 +254,13 @@ def main():
               or page.evaluate("() => game.wave.inBreak"),
               repr(page.locator("#waveRemaining").inner_text()))
 
-        # ---------- 13c. 成就统计在局内不结算（现状记录，非断言）----------
-        stats_kills = page.evaluate("() => getAchievementProgress().stats.totalKills")
-        check("成就统计只在游戏结束时结算（已知设计）", True,
-              f"局内 stats.totalKills={stats_kills}，实际击杀={s3['kills']}")
+        # ---------- 13c. 成就实时结算：局内进度必须跟上击杀 ----------
+        # 改造前成就只在 gameOver 结算一次，局内 29 个成就全程无反馈。
+        # 现在实时进度走 liveAchievementProgress，落盘仍在结算时，两者要能对上。
+        live_kills = page.evaluate("() => getActiveAchievementProgress().stats.totalKills")
+        persisted_kills = page.evaluate("() => getAchievementProgress().stats.totalKills")
+        check("成就实时进度跟上局内击杀", live_kills >= s3["kills"],
+              f"实时 totalKills={live_kills}，本局击杀={s3['kills']}，已落盘={persisted_kills}")
 
         # ---------- 14. 暂停 / 继续 ----------
         dismiss_overlays(page)
@@ -270,6 +273,29 @@ def main():
         page.wait_for_timeout(1500)
         t2 = page.evaluate("() => game.gameTime")
         check("暂停时游戏时间冻结", abs(t2 - t1) < 0.1, f"{t1:.2f} -> {t2:.2f}")
+
+        # ---------- 14b. 音效开关（SFX.toggle 之前全项目无人调用） ----------
+        sfx0 = page.evaluate("() => ({on: SFX.enabled, "
+                             "label: document.getElementById('pauseSfxBtn').textContent.trim()})")
+        check("音效按钮文案与状态一致",
+              ("开" in sfx0["label"]) == sfx0["on"], f"{sfx0}")
+        page.click("#pauseSfxBtn")
+        page.wait_for_timeout(300)
+        sfx1 = page.evaluate("""() => ({
+            on: SFX.enabled,
+            label: document.getElementById('pauseSfxBtn').textContent.trim(),
+            saved: localStorage.getItem('laststand_sfx'),
+            pressed: document.getElementById('pauseSfxBtn').getAttribute('aria-pressed')
+        })""")
+        check("点击后音效状态翻转", sfx1["on"] != sfx0["on"], f"{sfx0['on']} -> {sfx1['on']}")
+        check("音效开关已落盘", sfx1["saved"] == ("1" if sfx1["on"] else "0"),
+              f"localStorage laststand_sfx={sfx1['saved']}")
+        check("音效按钮 aria-pressed 同步",
+              sfx1["pressed"] == ("true" if sfx1["on"] else "false"),
+              f"aria-pressed={sfx1['pressed']} enabled={sfx1['on']}")
+        page.click("#pauseSfxBtn")   # 还原，别影响后面的流程
+        page.wait_for_timeout(200)
+
         page.click("#resumeBtn")
         page.wait_for_timeout(4000)
         # 恢复后这 4 秒里可能已经打完本波（levelup / waveComplete），
